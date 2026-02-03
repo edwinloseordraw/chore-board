@@ -511,9 +511,13 @@ async function sha256Hex(str){
 ========================= */
 
 function route(){
-  const raw = location.hash.replace("#/","").trim();
-  if (!raw) return "dashboard";
-  return raw;
+  // Normalize: supports "#/dashboard", "#dashboard", "#//dashboard", etc.
+  const raw = (location.hash || "")
+    .replace(/^#/, "")     // remove leading "#"
+    .replace(/^\/+/, "")   // remove one or more leading "/"
+    .trim();
+
+  return raw || "dashboard";
 }
 
 function goto(path){
