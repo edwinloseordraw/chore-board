@@ -4,1416 +4,1190 @@
   <meta charset="UTF-8" />
   <title>Chore Board</title>
 
-  <!-- PWA hooks (you already have these files in the repo) -->
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#111111">
-
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#111111" />
+  <link rel="manifest" href="manifest.webmanifest" />
 
   <style>
     :root{
       --bg:#111;
-      --panel:#1b1b1b;
-      --panel2:#191919;
-      --ink:#f1f1f1;
-      --muted:#b6b6b6;
-      --muted2:#8a8a8a;
-      --line:#2a2a2a;
-      --accent:#2ea043;
-      --danger:#c0392b;
+      --panel:#171717;
+      --panel2:#1f1f1f;
+      --panel3:#121212;
+      --border:#2a2a2a;
+      --border2:#222;
+      --text:#f5f5f5;
+      --muted: rgba(245,245,245,0.75);
+      --muted2: rgba(245,245,245,0.6);
       --btn:#2a2a2a;
-      --btn2:#222;
-      --shadow: 0 10px 30px rgba(0,0,0,.35);
-      --radius: 14px;
-      --radius2: 18px;
+      --btnActive:#4caf50;
+      --danger:#c62828;
+      --radius: 10px;
     }
+
     *{ box-sizing:border-box; }
+
     body{
       margin:0;
-      background: radial-gradient(1200px 700px at 20% -10%, #1f1f1f, #111);
-      color:var(--ink);
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    }
-    .wrap{
-      min-height:100vh;
+      background:var(--bg);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      height:100vh;
       display:flex;
       flex-direction:column;
     }
 
-    /* Top nav */
-    .topbar{
-      position:sticky;
-      top:0;
-      z-index:50;
-      background: rgba(17,17,17,.92);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid var(--line);
-      padding: 10px 12px;
-    }
-    .navRow{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .navGroup{
+    header{
       display:flex;
       gap:8px;
+      padding:10px;
+      background:#1a1a1a;
       flex-wrap:wrap;
       align-items:center;
-    }
-    .tab{
-      appearance:none;
-      border: 1px solid var(--line);
-      background: #1a1a1a;
-      color: var(--ink);
-      padding: 8px 12px;
-      border-radius: 10px;
-      cursor:pointer;
-      font-weight: 650;
-      letter-spacing: .2px;
-    }
-    .tab:hover{ border-color:#3a3a3a; }
-    .tab.active{
-      background: rgba(46,160,67,.18);
-      border-color: rgba(46,160,67,.55);
-      color: #dff7e5;
-    }
-    .tab.small{ padding: 8px 10px; font-weight:700; }
-    .tab.danger{
-      background: rgba(192,57,43,.18);
-      border-color: rgba(192,57,43,.55);
-      color: #ffd6d2;
+      position:sticky;
+      top:0;
+      z-index:5;
     }
 
-    /* Layout */
-    #app{
-      width: 100%;
-      padding: 14px 14px 30px;
+    header button{
+      background:var(--btn);
+      color:#fff;
+      border:none;
+      padding:8px 12px;
+      border-radius:8px;
+      font-size:14px;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+
+    header button.active{
+      background:var(--btnActive);
+      color:#000;
+      font-weight:700;
+    }
+
+    header .spacer{ flex:1; }
+
+    header .danger{ background:var(--danger); }
+
+    main{
       flex:1;
+      padding:10px;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      min-height:0;
     }
+
+    /* ---------- Common panels ---------- */
     .panel{
-      background: linear-gradient(180deg, rgba(27,27,27,.92), rgba(22,22,22,.92));
-      border: 1px solid var(--line);
-      border-radius: var(--radius2);
-      box-shadow: var(--shadow);
-      padding: 14px;
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:10px;
     }
-    .panel + .panel{ margin-top: 12px; }
+
+    .panel h2, .panel h3{
+      margin:0 0 8px 0;
+      font-size:14px;
+      letter-spacing:0.2px;
+      opacity:0.95;
+    }
 
     .hint{
-      color:var(--muted);
-      font-size: 13px;
-      margin-top:6px;
-      line-height: 1.35;
-    }
-    h2{
-      margin:0;
-      font-size: 18px;
-      letter-spacing:.2px;
-    }
-    h3{
-      margin:0;
-      font-size: 16px;
-    }
-    .divider{
-      height:1px;
-      background: var(--line);
-      margin: 12px 0;
+      font-size:12px;
+      color:var(--muted2);
+      margin-top:-4px;
+      margin-bottom:8px;
+      line-height:1.25;
     }
 
-    /* Dashboard grid */
+    /* ---------- Dashboard ---------- */
     .dashGrid{
       display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap: 12px;
-    }
-    @media (max-width: 980px){
-      .dashGrid{ grid-template-columns: 1fr; }
+      grid-template-columns: 1.2fr 1fr;
+      gap:10px;
+      min-height:0;
     }
 
     .rings{
-      display:grid;
-      grid-template-columns: repeat(2, minmax(220px, 1fr));
-      gap: 10px;
-      margin-top: 12px;
-    }
-    @media (max-width: 720px){
-      .rings{ grid-template-columns: 1fr; }
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:stretch;
     }
 
     .ringCard{
+      background:var(--panel2);
+      border:1px solid var(--border2);
+      border-radius:var(--radius);
+      padding:10px;
+      flex:1 1 220px;
+      min-width:220px;
       display:flex;
-      gap: 12px;
+      gap:12px;
       align-items:center;
-      border: 1px solid var(--line);
-      background: rgba(24,24,24,.85);
-      border-radius: var(--radius);
-      padding: 12px;
-      min-height: 88px;
     }
+
+    .ringMeta{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-width:110px;
+    }
+
+    .ringMeta .title{
+      font-weight:700;
+      font-size:14px;
+      letter-spacing:0.2px;
+    }
+
+    .ringMeta .sub{
+      font-size:12px;
+      color:var(--muted2);
+      line-height:1.2;
+    }
+
     .ringSvgWrap{
+      width:76px;
+      height:76px;
       position:relative;
-      width: 64px;
-      height: 64px;
-      flex: 0 0 auto;
+      flex:0 0 auto;
     }
-    .pct{
+
+    .ringSvgWrap .pct{
       position:absolute;
       inset:0;
       display:flex;
       align-items:center;
       justify-content:center;
-      font-weight: 800;
-      font-size: 14px;
-      color: #e9e9e9;
+      font-size:13px;
+      font-weight:800;
+      letter-spacing:0.2px;
     }
-    .ringMeta .title{
-      font-weight: 800;
-      font-size: 15px;
-    }
-    .sub{
-      margin-top: 4px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.25;
+
+    svg{ display:block; }
+
+    /* a slightly "chalky" look without getting fancy */
+    .chalkTrack{ opacity:0.25; }
+    .chalkStroke{
+      filter: drop-shadow(0 0 0.6px rgba(255,255,255,0.2));
     }
 
     .dashNav{
       display:flex;
+      gap:8px;
       flex-wrap:wrap;
-      gap: 10px;
-      margin-top: 12px;
-    }
-    .btn{
-      border: 1px solid var(--line);
-      background: var(--btn);
-      color: var(--ink);
-      padding: 10px 12px;
-      border-radius: 12px;
-      font-weight: 750;
-      cursor:pointer;
-    }
-    .btn:hover{ border-color:#3a3a3a; }
-    .btn.danger{
-      background: rgba(192,57,43,.18);
-      border-color: rgba(192,57,43,.55);
-      color: #ffd6d2;
-    }
-    .btn.accent{
-      background: rgba(46,160,67,.18);
-      border-color: rgba(46,160,67,.55);
-      color: #dff7e5;
+      margin-top:10px;
     }
 
-    /* Daily layout */
-    .fourCols{
+    .dashNav button{
+      padding:10px 12px;
+      border-radius:10px;
+    }
+
+    .notesBox{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      min-height:0;
+    }
+
+    .notesControls{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .notesControls input{
+      background:var(--panel3);
+      border:1px solid #333;
+      color:#fff;
+      border-radius:8px;
+      padding:8px 10px;
+      font-size:14px;
+      width:180px;
+    }
+
+    .notesControls .small{
+      font-size:12px;
+      color:var(--muted2);
+    }
+
+    textarea{
+      width:100%;
+      min-height:180px;
+      background:var(--panel3);
+      color:#fff;
+      border:1px solid #333;
+      border-radius:10px;
+      padding:10px;
+      resize:vertical;
+      font-size:14px;
+      line-height:1.25;
+    }
+
+    .lockedOverlay{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:space-between;
+      background:rgba(0,0,0,0.35);
+      border:1px dashed rgba(255,255,255,0.25);
+      border-radius:10px;
+      padding:10px;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    /* ---------- Day view ---------- */
+    .columns{
+      flex:1;
       display:grid;
-      grid-template-columns: repeat(4, minmax(200px, 1fr));
-      gap: 12px;
-      width: 100%;
-    }
-    @media (max-width: 1100px){
-      .fourCols{ grid-template-columns: repeat(2, minmax(200px, 1fr)); }
-    }
-    @media (max-width: 640px){
-      .fourCols{ grid-template-columns: 1fr; }
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+      overflow:hidden;
+      min-height:0;
     }
 
-    .card{
-      border: 1px solid var(--line);
-      background: rgba(26,26,26,.85);
-      border-radius: var(--radius);
-      padding: 12px;
-      min-height: 280px;
+    .column{
+      background:var(--panel2);
+      border:1px solid var(--border2);
+      border-radius:var(--radius);
+      padding:10px;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
     }
-    .cardTitle{
-      font-weight: 900;
-      font-size: 16px;
+
+    .column h2{
+      margin:0 0 8px 0;
       text-align:center;
-      margin-bottom: 10px;
+      font-size:16px;
+      font-weight:800;
     }
 
-    .item{
+    .chore{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-bottom:6px;
+      font-size:14px;
+    }
+
+    /* Weekly chores panel (Phase 3), moved BELOW columns per your request */
+    .weeklyGrid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:8px 10px;
+    }
+
+    .weeklyItem{
+      display:grid;
+      grid-template-columns:18px 1fr 120px;
+      align-items:center;
+      gap:8px;
+      background:var(--panel3);
+      border:1px solid var(--border2);
+      border-radius:10px;
+      padding:8px;
+      min-height:44px;
+    }
+
+    .weeklyItem .label{
+      font-size:13px;
+      opacity:0.95;
+      line-height:1.15;
+      word-break:break-word;
+    }
+
+    .weeklyItem select{
+      background:#0f0f0f;
+      color:#fff;
+      border:1px solid #333;
+      border-radius:8px;
+      padding:6px 8px;
+      font-size:13px;
+      width:120px;
+    }
+
+    /* Yesterday summary */
+    .yesterdayGrid{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+    }
+
+    .yCard{
+      background:var(--panel3);
+      border:1px solid var(--border2);
+      border-radius:10px;
+      padding:8px;
+      min-height:48px;
+    }
+
+    .yTitle{
+      font-weight:800;
+      font-size:13px;
+      text-align:center;
+      margin-bottom:6px;
+      opacity:0.95;
+    }
+
+    .yLine{
+      font-size:12.5px;
+      opacity:0.9;
+      margin:4px 0;
+      line-height:1.2;
+      word-break:break-word;
+    }
+
+    .notesDay textarea{
+      min-height:80px;
+    }
+
+    /* ---------- Simple list pages (biweekly/monthly/maintenance scaffolding) ---------- */
+    .listGrid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:10px;
+    }
+    .listItem{
+      background:var(--panel2);
+      border:1px solid var(--border2);
+      border-radius:10px;
+      padding:10px;
       display:flex;
       align-items:center;
       gap:10px;
-      padding: 6px 2px;
-      user-select:none;
+      min-height:48px;
     }
-    .item input[type="checkbox"]{
-      width: 18px;
-      height: 18px;
-      accent-color: #2f81f7;
-      cursor:pointer;
+    .listItem .name{
+      flex:1;
+      font-size:14px;
+      opacity:0.95;
     }
-    .item span{ font-weight: 650; color: #e8e8e8; }
-
-    /* Semanal */
-    .sectionTitleRow{
+    .toolbar{
       display:flex;
-      align-items:baseline;
-      gap: 10px;
-      flex-wrap:wrap;
-    }
-    .weeklyGrid{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 12px;
-    }
-    @media (max-width: 900px){
-      .weeklyGrid{ grid-template-columns: 1fr; }
-    }
-    .weeklyRow{
-      display:grid;
-      grid-template-columns: 1fr 180px;
-      gap: 10px;
-      align-items:center;
-      border: 1px solid var(--line);
-      background: rgba(22,22,22,.7);
-      border-radius: 12px;
-      padding: 10px;
-    }
-    @media (max-width: 520px){
-      .weeklyRow{ grid-template-columns: 1fr; }
-    }
-    select{
-      width:100%;
-      border: 1px solid var(--line);
-      background: #151515;
-      color: var(--ink);
-      border-radius: 10px;
-      padding: 10px 10px;
-      font-weight: 750;
-    }
-    select:focus{ outline:none; border-color:#3a3a3a; }
-
-    /* Ayer reference */
-    .refGrid{
-      display:grid;
-      grid-template-columns: repeat(4, minmax(200px, 1fr));
-      gap: 12px;
-      margin-top: 10px;
-    }
-    @media (max-width: 1100px){
-      .refGrid{ grid-template-columns: repeat(2, minmax(200px, 1fr)); }
-    }
-    @media (max-width: 640px){
-      .refGrid{ grid-template-columns: 1fr; }
-    }
-    .refCard{
-      border: 1px solid var(--line);
-      background: rgba(24,24,24,.75);
-      border-radius: var(--radius);
-      padding: 12px;
-      min-height: 110px;
-    }
-    .refCard h4{
-      margin:0 0 8px;
-      font-size: 14px;
-      font-weight: 900;
-      text-align:center;
-      color:#efefef;
-    }
-    .refLine{
-      color: var(--muted);
-      font-size: 13px;
-      padding: 2px 0;
-      line-height: 1.25;
-    }
-
-    /* Notes */
-    textarea{
-      width:100%;
-      min-height: 120px;
-      resize: vertical;
-      border: 1px solid var(--line);
-      background: #121212;
-      color: var(--ink);
-      border-radius: 12px;
-      padding: 12px;
-      font-weight: 650;
-      line-height: 1.35;
-    }
-    textarea:disabled{
-      opacity: .65;
-      cursor: not-allowed;
-    }
-    .notesControls{
-      display:flex;
-      gap: 10px;
+      gap:8px;
       flex-wrap:wrap;
       align-items:center;
-      margin: 10px 0 10px;
-    }
-    .pinInput{
-      flex: 1 1 160px;
-      border: 1px solid var(--line);
-      background: #121212;
-      color: var(--ink);
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-weight: 800;
-    }
-
-    /* List pages */
-    .pageHeader{
-      display:flex;
-      align-items:flex-start;
       justify-content:space-between;
-      gap: 12px;
-      flex-wrap:wrap;
+      margin-bottom:8px;
     }
-    .pageActions{
-      display:flex;
-      gap: 10px;
-      flex-wrap:wrap;
+    .toolbar .left{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center;
     }
-    .listGrid{
-      display:grid;
-      grid-template-columns: repeat(2, minmax(260px, 1fr));
-      gap: 10px;
-      margin-top: 12px;
+    .toolbar .right{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center;
     }
-    @media (max-width: 860px){
-      .listGrid{ grid-template-columns: 1fr; }
-    }
-    .rowItem{
-      display:flex;
-      align-items:center;
-      gap: 10px;
-      padding: 12px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: rgba(22,22,22,.7);
+    .toolbar button{
+      background:var(--btn);
+      color:#fff;
+      border:none;
+      border-radius:10px;
+      padding:10px 12px;
       cursor:pointer;
     }
-    .rowItem input{ cursor:pointer; }
-    .rowItem span{ font-weight: 750; }
+    .toolbar button.danger{ background:var(--danger); }
 
-    /* Maintenance */
-    .table{
-      width:100%;
-      border-collapse: separate;
-      border-spacing: 0 10px;
-      margin-top: 10px;
+    /* responsive */
+    @media (max-width: 980px){
+      .dashGrid{ grid-template-columns:1fr; }
+      .columns{ grid-template-columns:1fr 1fr; }
+      .yesterdayGrid{ grid-template-columns:1fr 1fr; }
+      .weeklyGrid{ grid-template-columns:1fr; }
+      .listGrid{ grid-template-columns:1fr; }
     }
-    .tr{
-      background: rgba(22,22,22,.7);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-    }
-    .td{
-      padding: 12px;
-      vertical-align: middle;
-    }
-    .tableRow{
-      display:grid;
-      grid-template-columns: 1.2fr .6fr .6fr;
-      gap: 10px;
-      padding: 12px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: rgba(22,22,22,.7);
-      align-items:center;
-    }
-    @media (max-width: 820px){
-      .tableRow{ grid-template-columns: 1fr; }
-    }
-    .textInput{
-      width:100%;
-      border: 1px solid var(--line);
-      background: #121212;
-      color: var(--ink);
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-weight: 750;
-    }
-    .dateInput{
-      width:100%;
-      border: 1px solid var(--line);
-      background: #121212;
-      color: var(--ink);
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-weight: 750;
-    }
-    .footerPad{ height: 20px; }
   </style>
 </head>
 
 <body>
-  <div class="wrap">
-    <div class="topbar">
-      <div class="navRow">
-        <div class="navGroup" id="leftTabs"></div>
-        <div class="navGroup" id="rightTabs"></div>
+<header id="topNav"></header>
+<main id="app"></main>
+
+<script>
+/* =========================
+   ROUTES + CONSTANTS
+========================= */
+
+const DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
+const PEOPLE = ["Dad","Mom","Ethan","Celo"];
+
+function todayKey(){
+  const map = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+  return map[new Date().getDay()];
+}
+
+function prevDayKey(dayKey){
+  const idx = DAYS.indexOf(dayKey);
+  if (idx === -1) return "domingo";
+  return DAYS[(idx - 1 + DAYS.length) % DAYS.length];
+}
+
+/* =========================
+   DATA (still placeholders)
+   - We'll replace DAILY_CHORES & WEEKLY_CHORES with your real lists later.
+   - Bi-weekly/monthly/maintenance lists stay mostly empty until Phase 5-7.
+========================= */
+
+const DAILY_CHORES = {
+  Dad: ["Dog poop","Trash"],
+  Mom: ["Laundry","Kitchen"],
+  Ethan: ["Room","Homework"],
+  Celo: ["Dishes","Toys"]
+};
+
+const WEEKLY_CHORES = [
+  "Sweep backyard",
+  "Wipe inside fridge",
+  "Clean inside microwave",
+  "Clean trash can (inside & out)",
+  "Clean toilets",
+  "Dust ceiling fans & vents",
+  "Wipe down bathroom",
+  "Doors & windows"
+];
+
+// Phase 4 scaffolding: these will be populated properly in Phase 5/6/7
+const BIWEEKLY_CHORES = [];   // Phase 5
+const MONTHLY_CHORES = [];    // Phase 6
+
+/* =========================
+   STORAGE HELPERS
+========================= */
+
+function jget(k, fallback){
+  try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(fallback)); }
+  catch{ return fallback; }
+}
+function jset(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+
+// Daily state (per day)
+function loadDailyState(){ return jget("dailyState", {}); }
+function saveDailyState(s){ jset("dailyState", s); }
+
+// Weekly shared state
+function loadWeeklyState(){ return jget("weeklyState", { checks:{}, assign:{} }); }
+function saveWeeklyState(s){ jset("weeklyState", s); }
+
+// Biweekly shared state (Phase 5)
+function loadBiweeklyState(){ return jget("biweeklyState", { checks:{} }); }
+function saveBiweeklyState(s){ jset("biweeklyState", s); }
+
+// Monthly shared state (Phase 6)
+function loadMonthlyState(){ return jget("monthlyState", { checks:{} }); }
+function saveMonthlyState(s){ jset("monthlyState", s); }
+
+// Maintenance log (Phase 7)
+function loadMaintState(){ return jget("maintState", { entries:[] }); }
+function saveMaintState(s){ jset("maintState", s); }
+
+// Dashboard notes + pin
+function loadDashState(){ return jget("dashState", { pinHash:null, notes:"" }); }
+function saveDashState(s){ jset("dashState", s); }
+
+/* =========================
+   PIN (SHA-256 hash)
+   - Not "bank security", just enough to stop kids from mashing notes.
+========================= */
+
+function bufToHex(buffer){
+  const bytes = new Uint8Array(buffer);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function sha256Hex(str){
+  const enc = new TextEncoder();
+  const data = enc.encode(str);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return bufToHex(hash);
+}
+
+/* =========================
+   NAV + ROUTING
+========================= */
+
+function route(){
+  const raw = location.hash.replace("#/","").trim();
+  if (!raw) return "dashboard";
+  return raw;
+}
+
+function goto(path){
+  location.hash = "#/" + path;
+}
+
+function renderTopNav(){
+  const nav = document.getElementById("topNav");
+  nav.innerHTML = "";
+
+  const r = route();
+
+  // Left: Dashboard + Hoy
+  const btnDash = document.createElement("button");
+  btnDash.textContent = "Dashboard";
+  if (r === "dashboard") btnDash.classList.add("active");
+  btnDash.onclick = () => goto("dashboard");
+  nav.appendChild(btnDash);
+
+  const btnHoy = document.createElement("button");
+  btnHoy.textContent = "Hoy";
+  if (DAYS.includes(r) && r === todayKey()) btnHoy.classList.add("active");
+  btnHoy.onclick = () => goto(todayKey());
+  nav.appendChild(btnHoy);
+
+  // Day quick buttons (small but usable)
+  DAYS.forEach(d => {
+    const b = document.createElement("button");
+    b.textContent = d;
+    if (r === d) b.classList.add("active");
+    b.onclick = () => goto(d);
+    nav.appendChild(b);
+  });
+
+  const spacer = document.createElement("div");
+  spacer.className = "spacer";
+  nav.appendChild(spacer);
+
+  // Right: other sections
+  const b1 = document.createElement("button");
+  b1.textContent = "Bi-weekly";
+  if (r === "biweekly") b1.classList.add("active");
+  b1.onclick = () => goto("biweekly");
+  nav.appendChild(b1);
+
+  const b2 = document.createElement("button");
+  b2.textContent = "Monthly";
+  if (r === "monthly") b2.classList.add("active");
+  b2.onclick = () => goto("monthly");
+  nav.appendChild(b2);
+
+  const b3 = document.createElement("button");
+  b3.textContent = "Maintenance";
+  if (r === "maintenance") b3.classList.add("active");
+  b3.onclick = () => goto("maintenance");
+  nav.appendChild(b3);
+}
+
+window.addEventListener("hashchange", renderApp);
+
+/* =========================
+   RING CALCULATIONS
+========================= */
+
+function calcWeeklyProgress(){
+  const total = WEEKLY_CHORES.length;
+  const w = loadWeeklyState();
+  const done = WEEKLY_CHORES.reduce((acc, c) => acc + (w.checks && w.checks ? 1 : 0), 0);
+  return { done, total };
+}
+function calcBiweeklyProgress(){
+  const total = BIWEEKLY_CHORES.length;
+  const b = loadBiweeklyState();
+  const done = BIWEEKLY_CHORES.reduce((acc, c) => acc + (b.checks && b.checks ? 1 : 0), 0);
+  return { done, total };
+}
+function calcMonthlyProgress(){
+  const total = MONTHLY_CHORES.length;
+  const m = loadMonthlyState();
+  const done = MONTHLY_CHORES.reduce((acc, c) => acc + (m.checks && m.checks ? 1 : 0), 0);
+  return { done, total };
+}
+
+function pct(done, total){
+  if (!total) return 0;
+  return Math.round((done / total) * 100);
+}
+
+function ringSVG(percent){
+  // Circle math: r=30 => circumference ~188.5
+  const r = 30;
+  const c = 2 * Math.PI * r;
+  const offset = c - (c * (percent / 100));
+
+  return `
+    <svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true">
+      <defs>
+        <filter id="chalky">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" result="noise"/>
+          <feColorMatrix type="saturate" values="0"/>
+          <feComposite operator="in" in2="SourceGraphic"/>
+        </filter>
+      </defs>
+      <g transform="translate(38,38)">
+        <circle class="chalkTrack" r="${r}" cx="0" cy="0" stroke="white" stroke-width="8" fill="none"></circle>
+        <circle class="chalkStroke" r="${r}" cx="0" cy="0"
+          stroke="white" stroke-width="8" fill="none"
+          stroke-linecap="round"
+          stroke-dasharray="${c}"
+          stroke-dashoffset="${offset}"
+          transform="rotate(-90)"
+          style="filter:url(#chalky)"
+        ></circle>
+      </g>
+    </svg>
+  `;
+}
+
+/* =========================
+   DASHBOARD RENDER
+========================= */
+
+function renderDashboard(){
+  const app = document.getElementById("app");
+
+  const w = calcWeeklyProgress();
+  const b = calcBiweeklyProgress();
+  const m = calcMonthlyProgress();
+
+  const wp = pct(w.done, w.total);
+  const bp = pct(b.done, b.total);
+  const mp = pct(m.done, m.total);
+
+  const dash = loadDashState();
+  const locked = !!dash.pinHash;
+
+  app.innerHTML = `
+    <div class="dashGrid">
+      <div class="panel">
+        <h2>Progress Dashboard</h2>
+        <div class="hint">Rings track completion for Semanal, Bi-weekly, and Monthly. (Maintenance not included yet.)</div>
+
+        <div class="rings">
+          ${ringCard("Semanal", w.done, w.total, wp)}
+          ${ringCard("Bi-weekly", b.done, b.total, bp, "Not configured yet (Phase 5)")}
+          ${ringCard("Monthly", m.done, m.total, mp, "Not configured yet (Phase 6)")}
+        </div>
+
+        <div class="dashNav">
+          <button onclick="goto('${todayKey()}')">Go to Hoy</button>
+          <button onclick="goto('biweekly')">Bi-weekly</button>
+          <button onclick="goto('monthly')">Monthly</button>
+          <button onclick="goto('maintenance')">Maintenance</button>
+        </div>
+      </div>
+
+      <div class="panel notesBox">
+        <h2>Dashboard Notes (PIN locked)</h2>
+        <div class="hint">Lives only here. Not affected by weekly reset. Keep it simple and useful.</div>
+
+        <div class="notesControls" id="pinControls"></div>
+
+        <div id="notesArea"></div>
       </div>
     </div>
+  `;
 
-    <div id="app"></div>
-  </div>
+  // Render notes area based on lock state
+  renderPinControlsAndNotes();
+}
 
-  <script>
-    // Service worker registration (you already created service-worker.js)
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js").catch(() => {});
-      });
-    }
+function ringCard(title, done, total, percent, extraHint){
+  const sub = total ? `${done}/${total} complete` : `0/0 (set up later)`;
+  const hint = extraHint ? `<div class="sub">${extraHint}</div>` : `<div class="sub">${sub}</div>`;
 
-    /* =========================
-       CONFIG
-    ========================= */
+  return `
+    <div class="ringCard">
+      <div class="ringSvgWrap">
+        ${ringSVG(percent)}
+        <div class="pct">${percent}%</div>
+      </div>
+      <div class="ringMeta">
+        <div class="title">${title}</div>
+        ${hint}
+        ${!extraHint ? `<div class="sub">${sub}</div>` : `<div class="sub">${sub}</div>`}
+      </div>
+    </div>
+  `;
+}
 
-    const PEOPLE = ["Dad","Mom","Ethan","Celo"];
+function renderPinControlsAndNotes(){
+  const dash = loadDashState();
+  const controls = document.getElementById("pinControls");
+  const area = document.getElementById("notesArea");
 
-    const DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
+  if (!dash.pinHash){
+    controls.innerHTML = `
+      <input id="pinSet" type="password" inputmode="numeric" placeholder="Set new PIN" />
+      <button id="btnSetPin">Set PIN</button>
+      <div class="small">Optional. If you set a PIN, editing requires it.</div>
+    `;
+    area.innerHTML = `
+      <textarea id="dashNotes" placeholder="Write dashboard notes...">${escapeHtml(dash.notes || "")}</textarea>
+    `;
 
-    // Daily chores (per person, per day). These persist per day.
-    // Replace these with your full lists later.
-    const DAILY_CHORES = {
-      "Dad":   ["Dog poop","Trash"],
-      "Mom":   ["Laundry","Kitchen"],
-      "Ethan": ["Room","Homework"],
-      "Celo":  ["Dishes","Toys"]
+    document.getElementById("btnSetPin").onclick = async () => {
+      const pin = (document.getElementById("pinSet").value || "").trim();
+      if (pin.length < 4) { alert("PIN must be at least 4 digits."); return; }
+      dash.pinHash = await sha256Hex(pin);
+      saveDashState(dash);
+      // lock immediately
+      dashSessionLock(true);
+      renderPinControlsAndNotes();
     };
 
-    // Semanal chores shared across all days
-    const WEEKLY_CHORES = [
-      "Sweep backyard",
-      "Wipe inside fridge",
-      "Clean inside microwave",
-      "Clean trash can (inside & out)",
-      "Clean toilets",
-      "Dust ceiling fans & vents",
-      "Wipe down bathroom",
-      "Doors & windows"
-    ];
+    document.getElementById("dashNotes").oninput = () => {
+      const d = loadDashState();
+      d.notes = document.getElementById("dashNotes").value;
+      saveDashState(d);
+    };
 
-    // Phase 5: Bi-weekly chores list (edit anytime)
-    const BIWEEKLY_CHORES = [
-      "Wipe baseboards",
-      "Deep clean fridge shelves",
-      "Vacuum couch cushions",
-      "Clean car interior",
-      "Wipe light switches & handles",
-      "Dust blinds",
-      "Wash bedding",
-      "Organize pantry shelf"
-    ];
+    return;
+  }
 
-    // Monthly placeholder list (Phase 6 will flesh this out)
-    const MONTHLY_CHORES = [
-      // Add items later, example:
-      // "Deep clean oven",
-      // "Clean out closets"
-    ];
+  const unlocked = dashSessionUnlocked();
 
-    // Maintenance (not in rings yet)
-    const MAINTENANCE_ITEMS = [
-      "Change AC filter",
-      "AC Flush",
-      "Pool Filter clean/change"
-    ];
+  if (!unlocked){
+    controls.innerHTML = `
+      <input id="pinEnter" type="password" inputmode="numeric" placeholder="Enter PIN" />
+      <button id="btnUnlock">Unlock</button>
+      <button id="btnChangePin">Change PIN</button>
+      <div class="small">Notes are locked. Kids can't edit unless they guess your PIN (good luck).</div>
+    `;
 
-    // Static text shown on every daily page (not part of any ring)
-    const EVERYONE_CONTRIBUTES_TEXT =
-      "Things everyone should contribute to: keep room organized, things picked up, keep garage organized, fridge wiped & food put away, shoes put away.";
+    area.innerHTML = `
+      <div class="lockedOverlay">
+        <div>🔒 Notes locked. Unlock to edit.</div>
+        <div style="opacity:0.8;">(Content is still visible.)</div>
+      </div>
+      <textarea id="dashNotes" readonly>${escapeHtml(dash.notes || "")}</textarea>
+    `;
 
-    /* =========================
-       STORAGE KEYS
-    ========================= */
-    const KEY_DAILY   = "chores_daily_v2";
-    const KEY_WEEKLY  = "chores_weekly_v2";
-    const KEY_BIWEEK  = "chores_biweekly_v2";
-    const KEY_MONTHLY = "chores_monthly_v2";
-    const KEY_DASH    = "chores_dash_v2";
-    const KEY_MAINT   = "chores_maint_v2";
-
-    /* =========================
-       HELPERS
-    ========================= */
-
-    function escapeHTML(str){
-      return String(str)
-        .replaceAll("&","&amp;")
-        .replaceAll("<","&lt;")
-        .replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;")
-        .replaceAll("'","&#039;");
-    }
-
-    function escapeJS(str){
-      return String(str).replaceAll("\\","\\\\").replaceAll("'","\\'");
-    }
-
-    function pct(done, total){
-      if (!total) return 0;
-      return Math.round((done / total) * 100);
-    }
-
-    // Very not-secure hash. Good enough to stop kids from editing dashboard notes.
-    function simpleHash(s){
-      let h = 2166136261;
-      for (let i=0;i<s.length;i++){
-        h ^= s.charCodeAt(i);
-        h = Math.imul(h, 16777619);
-      }
-      return (h >>> 0).toString(16);
-    }
-
-    function dayKeyFromDate(d){
-      // JS: 0=Sun .. 6=Sat. We want Spanish keys.
-      const map = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
-      return map[d.getDay()];
-    }
-
-    function todayKey(){
-      return dayKeyFromDate(new Date());
-    }
-
-    function prevDayKey(dayKey){
-      const idx = DAYS.indexOf(dayKey);
-      if (idx === -1){
-        // if todayKey returns domingo (not in DAYS array order), handle separately
-        if (dayKey === "domingo") return "sabado";
-        // fallback
-        return "domingo";
-      }
-      // DAYS is lunes..domingo (but we included domingo)
-      if (idx === 0) return "domingo";
-      return DAYS[idx - 1];
-    }
-
-    /* =========================
-       LOAD/SAVE STATE
-    ========================= */
-
-    function loadDailyState(){
-      const raw = localStorage.getItem(KEY_DAILY);
-      if (!raw) return {};
-      try { return JSON.parse(raw) || {}; } catch { return {}; }
-    }
-    function saveDailyState(s){
-      localStorage.setItem(KEY_DAILY, JSON.stringify(s));
-    }
-
-    function loadWeeklyState(){
-      const raw = localStorage.getItem(KEY_WEEKLY);
-      if (!raw) return { checks:{}, assign:{} };
-      try {
-        const p = JSON.parse(raw) || {};
-        return { checks: p.checks || {}, assign: p.assign || {} };
-      } catch {
-        return { checks:{}, assign:{} };
-      }
-    }
-    function saveWeeklyState(w){
-      localStorage.setItem(KEY_WEEKLY, JSON.stringify(w));
-    }
-
-    function loadBiweeklyState(){
-      const raw = localStorage.getItem(KEY_BIWEEK);
-      if (!raw) return { checks:{}, lastReset:null };
-      try {
-        const p = JSON.parse(raw) || {};
-        return { checks: p.checks || {}, lastReset: p.lastReset || null };
-      } catch {
-        return { checks:{}, lastReset:null };
-      }
-    }
-    function saveBiweeklyState(b){
-      localStorage.setItem(KEY_BIWEEK, JSON.stringify(b));
-    }
-
-    function loadMonthlyState(){
-      const raw = localStorage.getItem(KEY_MONTHLY);
-      if (!raw) return { checks:{}, lastReset:null };
-      try {
-        const p = JSON.parse(raw) || {};
-        return { checks: p.checks || {}, lastReset: p.lastReset || null };
-      } catch {
-        return { checks:{}, lastReset:null };
-      }
-    }
-    function saveMonthlyState(m){
-      localStorage.setItem(KEY_MONTHLY, JSON.stringify(m));
-    }
-
-    function loadDashState(){
-      const raw = localStorage.getItem(KEY_DASH);
-      if (!raw) return { pinHash:null, notes:"" };
-      try {
-        const p = JSON.parse(raw) || {};
-        return { pinHash: p.pinHash || null, notes: p.notes || "" };
-      } catch {
-        return { pinHash:null, notes:"" };
-      }
-    }
-    function saveDashState(d){
-      localStorage.setItem(KEY_DASH, JSON.stringify(d));
-    }
-
-    function loadMaintState(){
-      const raw = localStorage.getItem(KEY_MAINT);
-      if (!raw){
-        // Initialize default maintenance rows
-        return MAINTENANCE_ITEMS.map(name => ({ name, who:"", date:"" }));
-      }
-      try {
-        const p = JSON.parse(raw) || [];
-        // ensure all default items exist (preserve existing)
-        const byName = new Map(p.map(r => [r.name, r]));
-        return MAINTENANCE_ITEMS.map(name => {
-          const existing = byName.get(name);
-          return existing ? { name, who: existing.who || "", date: existing.date || "" } : { name, who:"", date:"" };
-        });
-      } catch {
-        return MAINTENANCE_ITEMS.map(name => ({ name, who:"", date:"" }));
-      }
-    }
-    function saveMaintState(m){
-      localStorage.setItem(KEY_MAINT, JSON.stringify(m));
-    }
-
-    /* =========================
-       RING CALCULATIONS
-    ========================= */
-
-    function calcWeeklyProgress(){
-      const total = WEEKLY_CHORES.length;
-      const w = loadWeeklyState();
-
-      const done = WEEKLY_CHORES.reduce((acc, c) => {
-        const checked  = w.checks && w.checks;
-        const assigned = w.assign && w.assign;
-        return acc + (checked && assigned ? 1 : 0);
-      }, 0);
-
-      return { done, total };
-    }
-
-    function calcBiweeklyProgress(){
-      const total = BIWEEKLY_CHORES.length;
-      const b = loadBiweeklyState();
-      const done = BIWEEKLY_CHORES.reduce((acc, c) => acc + (b.checks && b.checks ? 1 : 0), 0);
-      return { done, total };
-    }
-
-    function calcMonthlyProgress(){
-      const total = MONTHLY_CHORES.length;
-      const m = loadMonthlyState();
-      const done = MONTHLY_CHORES.reduce((acc, c) => acc + (m.checks && m.checks ? 1 : 0), 0);
-      return { done, total };
-    }
-
-    function calcDailyProgress(){
-      const day = todayKey();
-      const s = loadDailyState();
-      const dayObj = s[day] || { checks:{} };
-
-      let total = 0;
-      for (const person of PEOPLE){
-        total += (DAILY_CHORES[person] || []).length;
-      }
-
-      let done = 0;
-      for (const person of PEOPLE){
-        for (const chore of (DAILY_CHORES[person] || [])){
-          const key = `${person}::${chore}`;
-          if (dayObj.checks && dayObj.checks[key]) done++;
-        }
-      }
-
-      return { done, total };
-    }
-
-    /* =========================
-       UI BUILDERS
-    ========================= */
-
-    function ringSVG(percent){
-      // Simple ring: background track + progress stroke
-      const r = 26;
-      const cx = 32, cy = 32;
-      const c = 2 * Math.PI * r;
-      const p = Math.max(0, Math.min(100, percent));
-      const dash = (p / 100) * c;
-      const gap = c - dash;
-
-      return `
-        <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
-          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#333" stroke-width="8" />
-          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
-            stroke="#e5e5e5" stroke-width="8"
-            stroke-linecap="round"
-            stroke-dasharray="${dash} ${gap}"
-            transform="rotate(-90 ${cx} ${cy})"
-          />
-        </svg>
-      `;
-    }
-
-    function ringCard(title, done, total, percent, extraHint){
-      const sub = total ? `${done}/${total} complete` : `0/0 (set up later)`;
-      const hint = extraHint ? `<div class="sub">${extraHint}</div>` : "";
-      return `
-        <div class="ringCard">
-          <div class="ringSvgWrap">
-            ${ringSVG(percent)}
-            <div class="pct">${percent}%</div>
-          </div>
-          <div class="ringMeta">
-            <div class="title">${escapeHTML(title)}</div>
-            ${hint}
-            <div class="sub">${escapeHTML(sub)}</div>
-          </div>
-        </div>
-      `;
-    }
-
-    /* =========================
-       ROUTING / NAV
-    ========================= */
-
-    let dashUnlocked = false;
-
-    function getRoute(){
-      // We support:
-      // #dashboard
-      // #hoy
-      // #lunes ... #domingo
-      // #biweekly
-      // #monthly
-      // #maintenance
-      const raw = (location.hash || "#dashboard").replace("#","");
-      return raw || "dashboard";
-    }
-
-    function goto(route){
-      location.hash = "#" + route;
-    }
-
-    function renderNav(){
-      const left = document.getElementById("leftTabs");
-      const right = document.getElementById("rightTabs");
-      const route = getRoute();
-
-      const dayToday = todayKey();
-      const isDayRoute = (r) => (r === "hoy" || DAYS.includes(r) || r === "domingo");
-
-      const leftTabs = [
-        { key:"dashboard", label:"Dashboard" },
-        { key:"hoy", label:"Hoy" },
-        ...DAYS.map(d => ({ key:d, label:d }))
-      ];
-
-      const rightTabs = [
-        { key:"biweekly", label:"Bi-weekly" },
-        { key:"monthly", label:"Monthly" },
-        { key:"maintenance", label:"Maintenance" }
-      ];
-
-      left.innerHTML = leftTabs.map(t => {
-        const active = (route === t.key) || (t.key === "hoy" && (route === dayToday));
-        // For "hoy", we highlight when route is literally hoy, not when you're on a day.
-        const isActive = route === t.key;
-        return `<button class="tab ${isActive ? "active" : ""}" onclick="goto('${t.key}')">${escapeHTML(t.label)}</button>`;
-      }).join("");
-
-      right.innerHTML = rightTabs.map(t => {
-        const isActive = route === t.key;
-        return `<button class="tab ${isActive ? "active" : ""}" onclick="goto('${t.key}')">${escapeHTML(t.label)}</button>`;
-      }).join("");
-    }
-
-    /* =========================
-       RENDERS
-    ========================= */
-
-    function render(){
-      renderNav();
-      const route = getRoute();
-
-      if (route === "dashboard") return renderDashboard();
-      if (route === "biweekly") return renderBiweekly();
-      if (route === "monthly") return renderMonthly();
-      if (route === "maintenance") return renderMaintenance();
-
-      if (route === "hoy"){
-        return renderDay(todayKey(), true);
-      }
-
-      if (route === "domingo") return renderDay("domingo", false);
-      if (DAYS.includes(route)) return renderDay(route, false);
-
-      // fallback
-      return renderDashboard();
-    }
-
-    /* =========================
-       DASHBOARD RENDER
-    ========================= */
-
-    function renderDashboard(){
-      const app = document.getElementById("app");
-
-      const w = calcWeeklyProgress();
-      const b = calcBiweeklyProgress();
-      const m = calcMonthlyProgress();
-      const d = calcDailyProgress();
-
-      const wp = pct(w.done, w.total);
-      const bp = pct(b.done, b.total);
-      const mp = pct(m.done, m.total);
-      const dp = pct(d.done, d.total);
-
-      const dash = loadDashState();
-      const locked = !!dash.pinHash;
-
-      app.innerHTML = `
-        <div class="dashGrid">
-          <div class="panel">
-            <h2>Progress Dashboard</h2>
-            <div class="hint">Rings track completion for Daily (Hoy), Semanal, Bi-weekly, and Monthly. (Maintenance not included yet.)</div>
-
-            <div class="rings">
-              ${ringCard("Daily (Hoy)", d.done, d.total, dp)}
-              ${ringCard("Semanal", w.done, w.total, wp)}
-              ${ringCard("Bi-weekly", b.done, b.total, bp)}
-              ${ringCard("Monthly", m.done, m.total, mp)}
-            </div>
-
-            <div class="dashNav">
-              <button class="btn" onclick="goto('hoy')">Go to Hoy</button>
-              <button class="btn" onclick="goto('biweekly')">Bi-weekly</button>
-              <button class="btn" onclick="goto('monthly')">Monthly</button>
-              <button class="btn" onclick="goto('maintenance')">Maintenance</button>
-            </div>
-          </div>
-
-          <div class="panel notesBox">
-            <h2>Dashboard Notes (PIN locked)</h2>
-            <div class="hint">Lives only here. Not affected by weekly reset.</div>
-
-            <div class="notesControls" id="pinControls"></div>
-            <div id="notesArea"></div>
-          </div>
-        </div>
-      `;
-
+    document.getElementById("btnUnlock").onclick = async () => {
+      const pin = (document.getElementById("pinEnter").value || "").trim();
+      const h = await sha256Hex(pin);
+      const d = loadDashState();
+      if (h !== d.pinHash){ alert("Wrong PIN."); return; }
+      dashSessionLock(false);
       renderPinControlsAndNotes();
-    }
+    };
 
-    function renderPinControlsAndNotes(){
-      const dash = loadDashState();
-      const locked = !!dash.pinHash;
-
-      const pinControls = document.getElementById("pinControls");
-      const notesArea = document.getElementById("notesArea");
-
-      if (!locked){
-        pinControls.innerHTML = `
-          <input class="pinInput" id="pinSetInput" placeholder="Set new PIN" inputmode="numeric" />
-          <button class="btn accent" onclick="setPin()">Set PIN</button>
-          <div class="hint">Optional. If you set a PIN, editing requires it.</div>
-        `;
-        notesArea.innerHTML = `
-          <textarea id="dashNotes" placeholder="Write dashboard notes...">${escapeHTML(dash.notes || "")}</textarea>
-          <div style="margin-top:10px;">
-            <button class="btn" onclick="saveDashNotes()">Save Notes</button>
-          </div>
-        `;
-        return;
-      }
-
-      // Locked with a PIN:
-      if (!dashUnlocked){
-        pinControls.innerHTML = `
-          <input class="pinInput" id="pinUnlockInput" placeholder="Enter PIN to edit" inputmode="numeric" />
-          <button class="btn accent" onclick="unlockPin()">Unlock</button>
-          <button class="btn danger" onclick="clearPinConfirm()">Remove PIN</button>
-        `;
-        notesArea.innerHTML = `
-          <textarea id="dashNotes" disabled>${escapeHTML(dash.notes || "")}</textarea>
-          <div class="hint">Locked. Unlock to edit.</div>
-        `;
-        return;
-      }
-
-      // Unlocked session
-      pinControls.innerHTML = `
-        <button class="btn" onclick="lockPin()">Lock</button>
-        <button class="btn danger" onclick="clearPinConfirm()">Remove PIN</button>
-      `;
-      notesArea.innerHTML = `
-        <textarea id="dashNotes" placeholder="Write dashboard notes...">${escapeHTML(dash.notes || "")}</textarea>
-        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn" onclick="saveDashNotes()">Save Notes</button>
-        </div>
-      `;
-    }
-
-    function setPin(){
-      const input = document.getElementById("pinSetInput");
-      const pin = (input?.value || "").trim();
-      if (!pin){
-        alert("Enter a PIN first.");
-        return;
-      }
-      const dash = loadDashState();
-      dash.pinHash = simpleHash(pin);
-      saveDashState(dash);
-      dashUnlocked = true;
+    document.getElementById("btnChangePin").onclick = async () => {
+      const oldPin = prompt("Enter current PIN:");
+      if (oldPin === null) return;
+      const oldHash = await sha256Hex(oldPin.trim());
+      const d = loadDashState();
+      if (oldHash !== d.pinHash){ alert("Wrong PIN."); return; }
+      const newPin = prompt("Enter new PIN (min 4 digits):");
+      if (newPin === null) return;
+      if (newPin.trim().length < 4){ alert("PIN must be at least 4 digits."); return; }
+      d.pinHash = await sha256Hex(newPin.trim());
+      saveDashState(d);
+      dashSessionLock(true); // lock after change
       renderPinControlsAndNotes();
-    }
+    };
 
-    function unlockPin(){
-      const input = document.getElementById("pinUnlockInput");
-      const pin = (input?.value || "").trim();
-      const dash = loadDashState();
-      if (!pin){
-        alert("Enter PIN.");
-        return;
-      }
-      if (simpleHash(pin) !== dash.pinHash){
-        alert("Wrong PIN.");
-        return;
-      }
-      dashUnlocked = true;
-      renderPinControlsAndNotes();
-    }
+    return;
+  }
 
-    function lockPin(){
-      dashUnlocked = false;
-      renderPinControlsAndNotes();
-    }
+  // unlocked
+  controls.innerHTML = `
+    <button id="btnLock">Lock</button>
+    <button id="btnClearPin">Remove PIN</button>
+    <div class="small">Unlocked for this session only.</div>
+  `;
 
-    function clearPinConfirm(){
-      const ok = confirm("Remove PIN lock? Anyone can edit dashboard notes after this.");
-      if (!ok) return;
-      const dash = loadDashState();
-      dash.pinHash = null;
-      saveDashState(dash);
-      dashUnlocked = false;
-      renderPinControlsAndNotes();
-    }
+  area.innerHTML = `
+    <textarea id="dashNotes" placeholder="Write dashboard notes...">${escapeHtml(dash.notes || "")}</textarea>
+  `;
 
-    function saveDashNotes(){
-      const ta = document.getElementById("dashNotes");
-      const dash = loadDashState();
-      dash.notes = ta?.value || "";
-      saveDashState(dash);
-      alert("Dashboard notes saved.");
-    }
+  document.getElementById("dashNotes").oninput = () => {
+    const d = loadDashState();
+    d.notes = document.getElementById("dashNotes").value;
+    saveDashState(d);
+  };
 
-    /* =========================
-       DAY RENDER
-    ========================= */
+  document.getElementById("btnLock").onclick = () => {
+    dashSessionLock(true);
+    renderPinControlsAndNotes();
+  };
 
-    function renderDay(dayKey, isHoy){
-      const app = document.getElementById("app");
-      const s = loadDailyState();
+  document.getElementById("btnClearPin").onclick = () => {
+    if (!confirm("Remove PIN protection?")) return;
+    const d = loadDashState();
+    d.pinHash = null;
+    saveDashState(d);
+    dashSessionLock(true);
+    renderPinControlsAndNotes();
+  };
+}
 
-      const dayObj = s[dayKey] || { checks:{}, notes:"" };
+/* Session unlock state (not persisted across devices; this is intentional) */
+function dashSessionUnlocked(){
+  return sessionStorage.getItem("dashUnlocked") === "1";
+}
+function dashSessionLock(lock){
+  sessionStorage.setItem("dashUnlocked", lock ? "0" : "1");
+}
 
-      const title = isHoy ? `Hoy (${dayKey})` : dayKey;
-      const prev = prevDayKey(dayKey);
+/* =========================
+   DAY VIEW RENDER
+   - Layout switch implemented here: columns first, then semanal panel.
+========================= */
 
-      app.innerHTML = `
-        <div class="panel">
-          <div class="pageHeader">
-            <div>
-              <h2>${escapeHTML(title)}</h2>
-              <div class="hint">Daily chores are per-day. Semanal stays the same across all days.</div>
-            </div>
-            <div class="pageActions">
-              <button class="btn danger" onclick="weeklyReset()">Weekly Reset</button>
-            </div>
-          </div>
+function renderDay(dayKey){
+  const app = document.getElementById("app");
 
-          <div class="divider"></div>
+  const dayState = loadDailyState();
+  dayState[dayKey] = dayState[dayKey] || { checks:{}, notes:"" };
 
-          <!-- Daily chores (top) -->
-          <div class="fourCols">
-            ${PEOPLE.map(person => renderDailyCard(person, dayKey, dayObj)).join("")}
-          </div>
+  app.innerHTML = `
+    <div class="columns" id="columns"></div>
 
-          <div class="divider"></div>
+    <section class="panel" aria-label="Weekly chores">
+      <h3>Semanal</h3>
+      <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
+      <div class="weeklyGrid" id="weeklyGrid"></div>
+    </section>
 
-          <!-- Semanal (below daily) -->
-          <div class="sectionTitleRow">
-            <h3>Semanal</h3>
-            <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
-          </div>
+    <section class="panel" aria-label="Yesterday Summary">
+      <h3 id="yesterdayTitle">Ayer</h3>
+      <div class="yesterdayGrid" id="yesterdayGrid"></div>
+    </section>
 
-          <div class="weeklyGrid">
-            ${renderWeeklyRows()}
-          </div>
+    <section class="panel notesDay">
+      <h3>Notas del día</h3>
+      <textarea id="dailyNotes" placeholder="Notas para hoy..."></textarea>
+    </section>
+  `;
 
-          <div class="divider"></div>
+  renderDailyColumns(dayKey);
+  renderWeekly();
+  renderYesterday(dayKey);
+  renderDayNotes(dayKey);
+}
 
-          <!-- Everyone contributes (static text) -->
-          <div class="panel" style="background: rgba(22,22,22,.55); border-radius: var(--radius2);">
-            <h3>Todos contribuyen</h3>
-            <div class="hint">${escapeHTML(EVERYONE_CONTRIBUTES_TEXT)}</div>
-          </div>
+function renderDailyColumns(dayKey){
+  const columns = document.getElementById("columns");
+  columns.innerHTML = "";
 
-          <div class="divider"></div>
+  const state = loadDailyState();
+  state[dayKey] = state[dayKey] || { checks:{}, notes:"" };
 
-          <!-- Responsibility reference (yesterday) -->
-          <div class="sectionTitleRow">
-            <h3>Referencia de responsabilidad (ayer: ${escapeHTML(prev)})</h3>
-            <div class="hint">Daily chores only. This is a reference list, not a completion check.</div>
-          </div>
+  PEOPLE.forEach(person => {
+    const col = document.createElement("div");
+    col.className = "column";
 
-          <div class="refGrid">
-            ${renderYesterdayReferenceCards()}
-          </div>
+    const h = document.createElement("h2");
+    h.textContent = person;
+    col.appendChild(h);
 
-          <div class="divider"></div>
-
-          <!-- Notes -->
-          <div>
-            <h3>Notas del día</h3>
-            <div class="hint">Cleared on weekly reset.</div>
-            <textarea id="dayNotes" placeholder="Notas para hoy...">${escapeHTML(dayObj.notes || "")}</textarea>
-            <div style="margin-top:10px;">
-              <button class="btn" onclick="saveDayNotes('${dayKey}')">Save Notes</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="footerPad"></div>
-      `;
-    }
-
-    function renderDailyCard(person, dayKey, dayObj){
-      const chores = DAILY_CHORES[person] || [];
-      const items = chores.map(chore => {
-        const key = `${person}::${chore}`;
-        const checked = !!(dayObj.checks && dayObj.checks[key]);
-        return `
-          <label class="item">
-            <input type="checkbox" ${checked ? "checked" : ""} onchange="toggleDaily('${escapeJS(dayKey)}','${escapeJS(person)}','${escapeJS(chore)}', this.checked)">
-            <span>${escapeHTML(chore)}</span>
-          </label>
-        `;
-      }).join("");
-
-      return `
-        <div class="card">
-          <div class="cardTitle">${escapeHTML(person)}</div>
-          ${items || `<div class="hint">No chores configured.</div>`}
-        </div>
-      `;
-    }
-
-    function renderWeeklyRows(){
-      const w = loadWeeklyState();
-      return WEEKLY_CHORES.map(chore => {
-        const checked = !!(w.checks && w.checks[chore]);
-        const assigned = (w.assign && w.assign[chore]) ? w.assign[chore] : "";
-
-        return `
-          <div class="weeklyRow">
-            <label class="item" style="padding:0; margin:0;">
-              <input type="checkbox" ${checked ? "checked" : ""} onchange="toggleWeeklyCheck('${escapeJS(chore)}', this.checked)">
-              <span>${escapeHTML(chore)}</span>
-            </label>
-
-            <select onchange="setWeeklyAssign('${escapeJS(chore)}', this.value)">
-              <option value="">Asignar...</option>
-              ${PEOPLE.map(p => `<option value="${escapeHTML(p)}" ${assigned===p ? "selected" : ""}>${escapeHTML(p)}</option>`).join("")}
-            </select>
-          </div>
-        `;
-      }).join("");
-    }
-
-    function renderYesterdayReferenceCards(){
-      // This is static: list daily chores per person.
-      return PEOPLE.map(person => {
-        const chores = DAILY_CHORES[person] || [];
-        const lines = chores.map(c => `<div class="refLine">${escapeHTML(person)} — ${escapeHTML(c)}</div>`).join("");
-        return `
-          <div class="refCard">
-            <h4>${escapeHTML(person)}</h4>
-            ${lines || `<div class="refLine">No daily chores</div>`}
-          </div>
-        `;
-      }).join("");
-    }
-
-    /* =========================
-       TOGGLES / SAVES
-    ========================= */
-
-    function toggleDaily(dayKey, person, chore, isChecked){
-      const s = loadDailyState();
-      const dayObj = s[dayKey] || { checks:{}, notes:"" };
-      dayObj.checks = dayObj.checks || {};
+    (DAILY_CHORES[person] || []).forEach(chore => {
       const key = `${person}::${chore}`;
-      dayObj.checks[key] = !!isChecked;
-      s[dayKey] = dayObj;
-      saveDailyState(s);
-    }
+      const row = document.createElement("div");
+      row.className = "chore";
 
-    function saveDayNotes(dayKey){
-      const ta = document.getElementById("dayNotes");
-      const s = loadDailyState();
-      const dayObj = s[dayKey] || { checks:{}, notes:"" };
-      dayObj.notes = ta?.value || "";
-      s[dayKey] = dayObj;
-      saveDailyState(s);
-      alert("Saved.");
-    }
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = !!state[dayKey].checks[key];
+      cb.onchange = () => {
+        const s = loadDailyState();
+        s[dayKey] = s[dayKey] || { checks:{}, notes:"" };
+        s[dayKey].checks[key] = cb.checked;
+        saveDailyState(s);
+      };
 
-    function toggleWeeklyCheck(chore, isChecked){
-      const w = loadWeeklyState();
-      w.checks = w.checks || {};
-      w.checks[chore] = !!isChecked;
-      saveWeeklyState(w);
-    }
+      const label = document.createElement("span");
+      label.textContent = chore;
 
-    function setWeeklyAssign(chore, person){
-      const w = loadWeeklyState();
-      w.assign = w.assign || {};
-      w.assign[chore] = person || "";
-      saveWeeklyState(w);
-    }
+      row.appendChild(cb);
+      row.appendChild(label);
+      col.appendChild(row);
+    });
 
-    /* =========================
-       RESETS
-    ========================= */
+    columns.appendChild(col);
+  });
+}
 
-    function weeklyReset(){
-      const ok = confirm("Weekly reset will clear: daily checkboxes, daily notes, and Semanal checks/assignments. Continue?");
-      if (!ok) return;
+function renderDayNotes(dayKey){
+  const state = loadDailyState();
+  state[dayKey] = state[dayKey] || { checks:{}, notes:"" };
 
-      // Clear daily page state
-      const s = loadDailyState();
-      for (const d of DAYS){
-        if (s){
-          s.checks = {};
-          s.notes = "";
-        }
-      }
-      // Also clear domingo (in case it exists separately)
-      if (s["domingo"]){
-        s["domingo"].checks = {};
-        s["domingo"].notes = "";
-      }
-      saveDailyState(s);
+  const notes = document.getElementById("dailyNotes");
+  notes.value = state[dayKey].notes || "";
+  notes.oninput = () => {
+    const s = loadDailyState();
+    s[dayKey] = s[dayKey] || { checks:{}, notes:"" };
+    s[dayKey].notes = notes.value;
+    saveDailyState(s);
+  };
+}
 
-      // Clear weekly (Semanal) state
-      saveWeeklyState({ checks:{}, assign:{} });
+function renderWeekly(){
+  const grid = document.getElementById("weeklyGrid");
+  grid.innerHTML = "";
 
-      // Do NOT touch dashboard notes, biweekly, monthly, maintenance
-      render();
-    }
+  const w = loadWeeklyState();
+  w.checks = w.checks || {};
+  w.assign = w.assign || {};
 
-    function biweeklyReset(){
-      const ok = confirm("Bi-weekly reset will clear Bi-weekly checkboxes only. Continue?");
-      if (!ok) return;
-      const b = loadBiweeklyState();
-      b.checks = {};
-      b.lastReset = new Date().toISOString();
-      saveBiweeklyState(b);
-      render();
-    }
+  WEEKLY_CHORES.forEach(chore => {
+    const row = document.createElement("div");
+    row.className = "weeklyItem";
 
-    function monthlyReset(){
-      const ok = confirm("Monthly reset will clear Monthly checkboxes only. Continue?");
-      if (!ok) return;
-      const m = loadMonthlyState();
-      m.checks = {};
-      m.lastReset = new Date().toISOString();
-      saveMonthlyState(m);
-      render();
-    }
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !!w.checks[chore];
+    cb.onchange = () => {
+      const ws = loadWeeklyState();
+      ws.checks = ws.checks || {};
+      ws.checks[chore] = cb.checked;
+      saveWeeklyState(ws);
+      // update dashboard ring if open later
+    };
 
-    function maintenanceReset(){
-      const ok = confirm("Maintenance reset will clear Maintenance fields only. Continue?");
-      if (!ok) return;
-      const m = MAINTENANCE_ITEMS.map(name => ({ name, who:"", date:"" }));
-      saveMaintState(m);
-      render();
-    }
+    const label = document.createElement("div");
+    label.className = "label";
+    label.textContent = chore;
 
-    /* =========================
-       BI-WEEKLY RENDER (PHASE 5)
-    ========================= */
+    const sel = document.createElement("select");
+    const blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = "Asignar…";
+    sel.appendChild(blank);
 
-    function renderBiweekly(){
-      const app = document.getElementById("app");
-      const b = loadBiweeklyState();
+    PEOPLE.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p;
+      opt.textContent = p;
+      sel.appendChild(opt);
+    });
 
-      const total = BIWEEKLY_CHORES.length;
-      const done = BIWEEKLY_CHORES.reduce((acc, c) => acc + (b.checks && b.checks ? 1 : 0), 0);
-      const pctNow = pct(done, total);
-      const last = b.lastReset ? new Date(b.lastReset).toLocaleDateString() : "Not set";
+    sel.value = w.assign[chore] || "";
+    sel.onchange = () => {
+      const ws = loadWeeklyState();
+      ws.assign = ws.assign || {};
+      ws.assign[chore] = sel.value;
+      saveWeeklyState(ws);
+    };
 
-      app.innerHTML = `
-        <div class="panel">
-          <div class="pageHeader">
-            <div>
-              <h2>Bi-weekly</h2>
-              <div class="hint">Independent from weekly reset.</div>
-              <div class="hint"><strong>Progress:</strong> ${done}/${total} (${pctNow}%) · <strong>Last reset:</strong> ${escapeHTML(last)}</div>
-            </div>
-            <div class="pageActions">
-              <button class="btn danger" onclick="biweeklyReset()">Bi-weekly Reset</button>
-            </div>
-          </div>
+    row.appendChild(cb);
+    row.appendChild(label);
+    row.appendChild(sel);
+    grid.appendChild(row);
+  });
 
-          <div class="divider"></div>
+  saveWeeklyState(w);
+}
 
-          <div class="listGrid">
-            ${BIWEEKLY_CHORES.map(chore => {
-              const checked = !!(b.checks && b.checks[chore]);
-              return `
-                <label class="rowItem">
-                  <input type="checkbox" ${checked ? "checked" : ""} onchange="toggleBiweekly('${escapeJS(chore)}', this.checked)">
-                  <span>${escapeHTML(chore)}</span>
-                </label>
-              `;
-            }).join("")}
-          </div>
+function renderYesterday(dayKey){
+  const y = prevDayKey(dayKey);
+  const title = document.getElementById("yesterdayTitle");
+  title.textContent = `Ayer (${y})`;
+
+  const grid = document.getElementById("yesterdayGrid");
+  grid.innerHTML = "";
+
+  PEOPLE.forEach(person => {
+    const card = document.createElement("div");
+    card.className = "yCard";
+
+    const t = document.createElement("div");
+    t.className = "yTitle";
+    t.textContent = person;
+    card.appendChild(t);
+
+    const list = DAILY_CHORES[person] || [];
+    list.forEach(chore => {
+      const line = document.createElement("div");
+      line.className = "yLine";
+      line.textContent = `${person} – ${chore}`;
+      card.appendChild(line);
+    });
+
+    grid.appendChild(card);
+  });
+}
+
+/* =========================
+   BIWEEKLY / MONTHLY / MAINTENANCE (scaffold pages)
+   - These are intentionally minimal in Phase 4.
+========================= */
+
+function renderChecklistPage(kind){
+  const app = document.getElementById("app");
+  const isBi = kind === "biweekly";
+  const title = isBi ? "Bi-weekly" : "Monthly";
+  const list = isBi ? BIWEEKLY_CHORES : MONTHLY_CHORES;
+
+  app.innerHTML = `
+    <section class="panel">
+      <div class="toolbar">
+        <div class="left">
+          <h2 style="margin:0;">${title}</h2>
+          <div class="hint" style="margin:0;">This page is wired. We'll populate the list in Phase ${isBi ? "5" : "6"}.</div>
         </div>
-      `;
-    }
-
-    function toggleBiweekly(chore, isChecked){
-      const b = loadBiweeklyState();
-      b.checks = b.checks || {};
-      b.checks[chore] = !!isChecked;
-      saveBiweeklyState(b);
-    }
-
-    /* =========================
-       MONTHLY RENDER
-    ========================= */
-
-    function renderMonthly(){
-      const app = document.getElementById("app");
-      const m = loadMonthlyState();
-
-      const total = MONTHLY_CHORES.length;
-      const done = MONTHLY_CHORES.reduce((acc, c) => acc + (m.checks && m.checks ? 1 : 0), 0);
-      const pctNow = pct(done, total);
-      const last = m.lastReset ? new Date(m.lastReset).toLocaleDateString() : "Not set";
-
-      app.innerHTML = `
-        <div class="panel">
-          <div class="pageHeader">
-            <div>
-              <h2>Monthly</h2>
-              <div class="hint">Independent from weekly reset.</div>
-              <div class="hint"><strong>Progress:</strong> ${done}/${total} (${pctNow}%) · <strong>Last reset:</strong> ${escapeHTML(last)}</div>
-              <div class="hint">Add monthly items in code under <code>MONTHLY_CHORES</code> (Phase 6 will refine this).</div>
-            </div>
-            <div class="pageActions">
-              <button class="btn danger" onclick="monthlyReset()">Monthly Reset</button>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          ${MONTHLY_CHORES.length ? `
-            <div class="listGrid">
-              ${MONTHLY_CHORES.map(chore => {
-                const checked = !!(m.checks && m.checks[chore]);
-                return `
-                  <label class="rowItem">
-                    <input type="checkbox" ${checked ? "checked" : ""} onchange="toggleMonthly('${escapeJS(chore)}', this.checked)">
-                    <span>${escapeHTML(chore)}</span>
-                  </label>
-                `;
-              }).join("")}
-            </div>
-          ` : `
-            <div class="hint">No monthly chores added yet.</div>
-          `}
+        <div class="right">
+          <button class="danger" id="btnReset">${title} Reset</button>
         </div>
-      `;
-    }
+      </div>
+      <div class="listGrid" id="listGrid"></div>
+    </section>
+  `;
 
-    function toggleMonthly(chore, isChecked){
-      const m = loadMonthlyState();
-      m.checks = m.checks || {};
-      m.checks[chore] = !!isChecked;
-      saveMonthlyState(m);
-    }
+  const grid = document.getElementById("listGrid");
+  grid.innerHTML = "";
 
-    /* =========================
-       MAINTENANCE RENDER
-    ========================= */
+  if (list.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "panel";
+    empty.style.background = "transparent";
+    empty.style.borderStyle = "dashed";
+    empty.style.color = "rgba(245,245,245,0.7)";
+    empty.textContent = "No items yet. We'll add them next phase.";
+    grid.appendChild(empty);
+  } else {
+    const state = isBi ? loadBiweeklyState() : loadMonthlyState();
+    state.checks = state.checks || {};
 
-    function renderMaintenance(){
-      const app = document.getElementById("app");
-      const rows = loadMaintState();
+    list.forEach(item => {
+      const row = document.createElement("div");
+      row.className = "listItem";
 
-      app.innerHTML = `
-        <div class="panel">
-          <div class="pageHeader">
-            <div>
-              <h2>Home Maintenance</h2>
-              <div class="hint">Not included in rings yet. Each item tracks who completed it and the date.</div>
-            </div>
-            <div class="pageActions">
-              <button class="btn danger" onclick="maintenanceReset()">Maintenance Reset</button>
-            </div>
-          </div>
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = !!state.checks[item];
+      cb.onchange = () => {
+        const s = isBi ? loadBiweeklyState() : loadMonthlyState();
+        s.checks = s.checks || {};
+        s.checks[item] = cb.checked;
+        isBi ? saveBiweeklyState(s) : saveMonthlyState(s);
+      };
 
-          <div class="divider"></div>
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = item;
 
-          <div class="hint" style="margin-bottom:10px;">
-            People: ${PEOPLE.map(p => `<strong>${escapeHTML(p)}</strong>`).join(", ")}
-          </div>
+      row.appendChild(cb);
+      row.appendChild(name);
+      grid.appendChild(row);
+    });
 
-          ${rows.map((r, idx) => `
-            <div class="tableRow">
-              <div>
-                <div style="font-weight:900; margin-bottom:6px;">${escapeHTML(r.name)}</div>
-              </div>
+    isBi ? saveBiweeklyState(state) : saveMonthlyState(state);
+  }
 
-              <div>
-                <select onchange="setMaintWho(${idx}, this.value)">
-                  <option value="">Completed by...</option>
-                  ${PEOPLE.map(p => `<option value="${escapeHTML(p)}" ${r.who===p ? "selected" : ""}>${escapeHTML(p)}</option>`).join("")}
-                </select>
-              </div>
+  document.getElementById("btnReset").onclick = () => {
+    if (!confirm(`Reset ${title} items?`)) return;
+    localStorage.removeItem(isBi ? "biweeklyState" : "monthlyState");
+    renderChecklistPage(kind);
+  };
+}
 
-              <div>
-                <input class="dateInput" type="date" value="${escapeHTML(r.date || "")}" onchange="setMaintDate(${idx}, this.value)" />
-              </div>
-            </div>
-          `).join("")}
+function renderMaintenance(){
+  const app = document.getElementById("app");
+  const s = loadMaintState();
+  s.entries = s.entries || [];
+
+  app.innerHTML = `
+    <section class="panel">
+      <div class="toolbar">
+        <div class="left">
+          <h2 style="margin:0;">House Maintenance</h2>
+          <div class="hint" style="margin:0;">Full log UI comes in Phase 7. This is the wired landing page.</div>
         </div>
-      `;
-    }
+        <div class="right">
+          <button class="danger" id="btnResetMaint">Maintenance Reset</button>
+        </div>
+      </div>
 
-    function setMaintWho(idx, who){
-      const rows = loadMaintState();
-      rows[idx].who = who || "";
-      saveMaintState(rows);
-    }
-    function setMaintDate(idx, date){
-      const rows = loadMaintState();
-      rows[idx].date = date || "";
-      saveMaintState(rows);
-    }
+      <div class="panel" style="background:transparent;border-style:dashed;color:rgba(245,245,245,0.7);">
+        Coming soon: log entries with task, completedBy, date. (Phase 7)
+      </div>
+    </section>
+  `;
 
-    /* =========================
-       INIT
-    ========================= */
+  document.getElementById("btnResetMaint").onclick = () => {
+    if (!confirm("Reset maintenance log?")) return;
+    localStorage.removeItem("maintState");
+    renderMaintenance();
+  };
+}
 
-    window.addEventListener("hashchange", render);
-    render();
-  </script>
+/* =========================
+   WEEKLY RESET (per your rules)
+   - resets daily pages (checkboxes + notes)
+   - resets weekly chores (checks + assignments)
+   - DOES NOT touch dashboard notes/pin
+   - DOES NOT touch biweekly/monthly/maintenance
+========================= */
+
+function weeklyReset(){
+  if (!confirm("Weekly Reset: clear daily checkboxes + daily notes + weekly chores assignments/checks?")) return;
+  localStorage.removeItem("dailyState");
+  localStorage.removeItem("weeklyState");
+  // stay on current page, re-render
+  renderApp();
+}
+
+/* =========================
+   APP RENDER
+========================= */
+
+function renderApp(){
+  renderTopNav();
+  const r = route();
+
+  // add a contextual reset button to top nav only when on a day page
+  // (keeps screen real estate used but avoids clutter on dashboard)
+  addContextResetButton(r);
+
+  if (r === "dashboard") return renderDashboard();
+  if (r === "biweekly") return renderChecklistPage("biweekly");
+  if (r === "monthly") return renderChecklistPage("monthly");
+  if (r === "maintenance") return renderMaintenance();
+
+  // day route
+  const day = DAYS.includes(r) ? r : todayKey();
+  return renderDay(day);
+}
+
+function addContextResetButton(r){
+  // Remove any existing context buttons first (id-based)
+  const nav = document.getElementById("topNav");
+  const existing = document.getElementById("ctxReset");
+  if (existing) existing.remove();
+
+  if (DAYS.includes(r)){
+    const btn = document.createElement("button");
+    btn.id = "ctxReset";
+    btn.className = "danger";
+    btn.textContent = "Weekly Reset";
+    btn.onclick = weeklyReset;
+    nav.appendChild(btn);
+  }
+}
+
+/* =========================
+   UTIL
+========================= */
+
+function escapeHtml(str){
+  return (str || "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;");
+}
+
+/* =========================
+   INIT
+========================= */
+
+// Default to dashboard if no hash
+if (!location.hash){
+  goto("dashboard");
+} else {
+  renderApp();
+}
+
+/* =========================
+   SERVICE WORKER
+========================= */
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./service-worker.js");
+}
+</script>
 </body>
 </html>
