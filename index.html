@@ -578,12 +578,12 @@ window.addEventListener("hashchange", renderApp);
    RING CALCULATIONS
 ========================= */
 
-  function calcDailyProgress(){
+function calcDailyProgress(){
   const day = todayKey();
   const s = loadDailyState();
   const dayObj = s[day] || { checks:{} };
 
-  // total number of daily checkboxes
+  // total number of daily checkboxes (all people)
   let total = 0;
   for (const person of PEOPLE){
     total += (DAILY_CHORES[person] || []).length;
@@ -600,92 +600,49 @@ window.addEventListener("hashchange", renderApp);
 
   return { done, total };
 }
+
+/**
+ * Weekly/Semanal ring rule (your requirement):
+ * Count a weekly chore as "done" ONLY if:
+ *  - it is assigned to someone, AND
+ *  - it is checked
+ */
 function calcWeeklyProgress(){
   const total = WEEKLY_CHORES.length;
   const w = loadWeeklyState();
+  w.checks = w.checks || {};
+  w.assign = w.assign || {};
 
   const done = WEEKLY_CHORES.reduce((acc, c) => {
-    const checked = w.checks && w.checks;
-    const assigned = w.assign && w.assign;
+    const checked  = !!w.checks;
+    const assigned = !!w.assign;
     return acc + (checked && assigned ? 1 : 0);
   }, 0);
 
   return { done, total };
 }
-function calcWeeklyProgress(){
-  const total = WEEKLY_CHORES.length;
-  const w = loadWeeklyState();
 
-  const done = WEEKLY_CHORES.reduce((acc, c) => {
-    const checked  = w.checks && w.checks;
-    const assigned = w.assign && w.assign;
-    return acc + (checked && assigned ? 1 : 0);
-  }, 0);
+function calcBiweeklyProgress(){
+  const total = BIWEEKLY_CHORES.length;
+  const b = loadBiweeklyState();
+  b.checks = b.checks || {};
 
+  const done = BIWEEKLY_CHORES.reduce((acc, c) => acc + (b.checks ? 1 : 0), 0);
   return { done, total };
 }
+
 function calcMonthlyProgress(){
   const total = MONTHLY_CHORES.length;
   const m = loadMonthlyState();
-  const done = MONTHLY_CHORES.reduce((acc, c) => acc + (m.checks && m.checks ? 1 : 0), 0);
-  return { done, total };
-}
-  function calcDailyProgress(){
-  const day = todayKey();
-  const s = loadDailyState();
-  const dayObj = s[day] || { checks:{} };
+  m.checks = m.checks || {};
 
-  // total = number of daily checkboxes (all people, today)
-  let total = 0;
-  for (const person of PEOPLE){
-    total += (DAILY_CHORES[person] || []).length;
-  }
-
-  // done = checked boxes for that day
-  let done = 0;
-  for (const person of PEOPLE){
-    for (const chore of (DAILY_CHORES[person] || [])){
-      const key = `${person}::${chore}`;
-      if (dayObj.checks && dayObj.checks[key]) done++;
-    }
-  }
-
+  const done = MONTHLY_CHORES.reduce((acc, c) => acc + (m.checks ? 1 : 0), 0);
   return { done, total };
 }
 
 function pct(done, total){
   if (!total) return 0;
   return Math.round((done / total) * 100);
-}
-
-function ringSVG(percent){
-  // Circle math: r=30 => circumference ~188.5
-  const r = 30;
-  const c = 2 * Math.PI * r;
-  const offset = c - (c * (percent / 100));
-
-  return `
-    <svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true">
-      <defs>
-        <filter id="chalky">
-          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" result="noise"/>
-          <feColorMatrix type="saturate" values="0"/>
-          <feComposite operator="in" in2="SourceGraphic"/>
-        </filter>
-      </defs>
-      <g transform="translate(38,38)">
-        <circle class="chalkTrack" r="${r}" cx="0" cy="0" stroke="white" stroke-width="8" fill="none"></circle>
-        <circle class="chalkStroke" r="${r}" cx="0" cy="0"
-          stroke="white" stroke-width="8" fill="none"
-          stroke-linecap="round"
-          stroke-dasharray="${c}"
-          stroke-dashoffset="${offset}"
-          transform="rotate(-90)"
-          style="filter:url(#chalky)"
-        ></circle>
-      </g>
-    </svg>
-  `;
 }
 
 /* =========================
@@ -696,10 +653,9 @@ function renderDashboard(){
   const app = document.getElementById("app");
 
   const w = calcWeeklyProgress();
-  const d = calcDailyProgress();
-  const dp = pct(d.done, d.total);
   const b = calcBiweeklyProgress();
   const m = calcMonthlyProgress();
+  const d = calcDailyProgress();
 
   const wp = pct(w.done, w.total);
   const bp = pct(b.done, b.total);
