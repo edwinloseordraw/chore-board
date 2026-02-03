@@ -1,20 +1,266 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Chore Board</title>
 
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#111111">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#111111" />
+  <link rel="manifest" href="manifest.webmanifest" />
+
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      color: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      background: #1a1a1a;
+      flex-wrap: wrap;
+    }
+
+    header button {
+      background: #2a2a2a;
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    header button.active {
+      background: #4caf50;
+      color: #000;
+    }
+
+    header .spacer {
+      flex: 1;
+    }
+
+    header .reset {
+      background: #c62828;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      overflow: hidden;
+    }
+
+    .columns {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .column {
+      background: #1f1f1f;
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .column h2 {
+      margin: 0 0 8px 0;
+      text-align: center;
+      font-size: 16px;
+    }
+
+    .chore {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .notes {
+      margin-top: 10px;
+    }
+
+    .notes textarea {
+      width: 100%;
+      min-height: 70px;
+      background: #121212;
+      color: #fff;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 6px;
+      resize: vertical;
+    }
+  </style>
 </head>
+
 <body>
-  <h1>Hello Chores</h1>
-  <script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./service-worker.js");
+
+<header id="dayNav"></header>
+
+<main>
+  <div class="columns" id="columns"></div>
+
+  <div class="notes">
+    <h3>Notas del día</h3>
+    <textarea id="dailyNotes" placeholder="Notas para hoy..."></textarea>
+  </div>
+</main>
+
+<script>
+/* =========================
+   DATA DEFINITIONS
+========================= */
+
+const DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
+const PEOPLE = ["Dad","Mom","Ethan","Celo"];
+
+const DAILY_CHORES = {
+  Dad: ["Dog poop","Trash"],
+  Mom: ["Laundry","Kitchen"],
+  Ethan: ["Room","Homework"],
+  Celo: ["Dishes","Toys"]
+};
+
+/* =========================
+   STATE HELPERS
+========================= */
+
+function todayKey() {
+  const map = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+  return map[new Date().getDay()];
+}
+
+function loadState() {
+  return JSON.parse(localStorage.getItem("dailyState") || "{}");
+}
+
+function saveState(state) {
+  localStorage.setItem("dailyState", JSON.stringify(state));
+}
+
+/* =========================
+   RENDERING
+========================= */
+
+let currentDay = location.hash.replace("#/","") || todayKey();
+
+function renderNav() {
+  const nav = document.getElementById("dayNav");
+  nav.innerHTML = "";
+
+  DAYS.forEach(day => {
+    const btn = document.createElement("button");
+    btn.textContent = day;
+    if (day === currentDay) btn.classList.add("active");
+    btn.onclick = () => {
+      location.hash = "#/" + day;
+    };
+    nav.appendChild(btn);
+  });
+
+  const spacer = document.createElement("div");
+  spacer.className = "spacer";
+  nav.appendChild(spacer);
+
+  const resetBtn = document.createElement("button");
+  resetBtn.textContent = "Weekly Reset";
+  resetBtn.className = "reset";
+  resetBtn.onclick = weeklyReset;
+  nav.appendChild(resetBtn);
+}
+
+function renderDay() {
+  const columns = document.getElementById("columns");
+  columns.innerHTML = "";
+
+  const state = loadState();
+  state[currentDay] = state[currentDay] || { checks:{}, notes:"" };
+
+  PEOPLE.forEach(person => {
+    const col = document.createElement("div");
+    col.className = "column";
+
+    const h = document.createElement("h2");
+    h.textContent = person;
+    col.appendChild(h);
+
+    DAILY_CHORES[person].forEach(chore => {
+      const key = person + "::" + chore;
+      const row = document.createElement("div");
+      row.className = "chore";
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = !!state[currentDay].checks[key];
+      cb.onchange = () => {
+        state[currentDay].checks[key] = cb.checked;
+        saveState(state);
+      };
+
+      const label = document.createElement("span");
+      label.textContent = chore;
+
+      row.appendChild(cb);
+      row.appendChild(label);
+      col.appendChild(row);
     });
-  }
+
+    columns.appendChild(col);
+  });
+
+  const notes = document.getElementById("dailyNotes");
+  notes.value = state[currentDay].notes || "";
+  notes.oninput = () => {
+    state[currentDay].notes = notes.value;
+    saveState(state);
+  };
+}
+
+/* =========================
+   RESET LOGIC
+========================= */
+
+function weeklyReset() {
+  if (!confirm("Reset ALL daily checkboxes and notes?")) return;
+  localStorage.removeItem("dailyState");
+  renderDay();
+}
+
+/* =========================
+   ROUTING
+========================= */
+
+window.addEventListener("hashchange", () => {
+  currentDay = location.hash.replace("#/","") || todayKey();
+  renderNav();
+  renderDay();
+});
+
+/* =========================
+   INIT
+========================= */
+
+renderNav();
+renderDay();
+
+/* =========================
+   SERVICE WORKER
+========================= */
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./service-worker.js");
+}
 </script>
+
 </body>
 </html>
