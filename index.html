@@ -619,6 +619,7 @@ function calcDailyProgress(){
  *  - assigned to someone AND
  *  - checked complete
  */
+  
 function calcWeeklyProgress(){
   const total = WEEKLY_CHORES.length;
   const w = loadWeeklyState();
@@ -626,8 +627,8 @@ function calcWeeklyProgress(){
   w.assign = w.assign || {};
 
   const done = WEEKLY_CHORES.reduce((acc, c) => {
-    const checked  = !!w.checks;
-    const assigned = !!w.assign;
+    const checked  = !!w.checks[c];
+    const assigned = !!w.assign[c];
     return acc + (checked && assigned ? 1 : 0);
   }, 0);
 
@@ -639,7 +640,7 @@ function calcBiweeklyProgress(){
   const b = loadBiweeklyState();
   b.checks = b.checks || {};
 
-  const done = BIWEEKLY_CHORES.reduce((acc, c) => acc + (b.checks ? 1 : 0), 0);
+  const done = BIWEEKLY_CHORES.reduce((acc, c) => acc + (b.checks[c] ? 1 : 0), 0);
   return { done, total };
 }
 
@@ -648,7 +649,7 @@ function calcMonthlyProgress(){
   const m = loadMonthlyState();
   m.checks = m.checks || {};
 
-  const done = MONTHLY_CHORES.reduce((acc, c) => acc + (m.checks ? 1 : 0), 0);
+  const done = MONTHLY_CHORES.reduce((acc, c) => acc + (m.checks[c] ? 1 : 0), 0);
   return { done, total };
 }
 
@@ -712,7 +713,27 @@ function renderDashboard(){
   // Render notes area based on lock state
   renderPinControlsAndNotes();
 }
+function ringSVG(percent){
+  const r = 30;                 // radius
+  const cx = 38, cy = 38;       // center
+  const c = 2 * Math.PI * r;    // circumference
 
+  // clamp 0-100
+  const p = Math.max(0, Math.min(100, Number(percent) || 0));
+  const dash = (p / 100) * c;
+
+  return `
+    <svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true">
+      <circle class="chalkTrack" cx="${cx}" cy="${cy}" r="${r}"
+        stroke="rgba(255,255,255,0.55)" stroke-width="10" fill="none" />
+      <circle class="chalkStroke" cx="${cx}" cy="${cy}" r="${r}"
+        stroke="rgba(255,255,255,0.95)" stroke-width="10" fill="none"
+        stroke-linecap="round"
+        stroke-dasharray="${dash} ${c - dash}"
+        transform="rotate(-90 ${cx} ${cy})" />
+    </svg>
+  `;
+}
 function ringCard(title, done, total, percent, extraHint){
   const sub = total ? `${done}/${total} complete` : `0/0 (set up later)`;
   const hint = extraHint ? `<div class="sub">${extraHint}</div>` : "";
