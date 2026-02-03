@@ -57,6 +57,7 @@
       padding: 10px;
       overflow: hidden;
       gap: 10px;
+      min-height: 0;
     }
 
     .columns {
@@ -89,6 +90,68 @@
       gap: 8px;
       margin-bottom: 6px;
       font-size: 14px;
+    }
+
+    /* Phase 3: Weekly chores */
+    .weekly {
+      background: #171717;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .weeklyHeader {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .weeklyHeader h3 {
+      margin: 0;
+      font-size: 14px;
+      opacity: 0.95;
+      letter-spacing: 0.2px;
+    }
+
+    .weeklyHeader .hint {
+      font-size: 12px;
+      opacity: 0.7;
+    }
+
+    .weeklyGrid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px 10px;
+    }
+
+    .weeklyItem {
+      display: grid;
+      grid-template-columns: 18px 1fr 120px;
+      align-items: center;
+      gap: 8px;
+      background: #121212;
+      border: 1px solid #222;
+      border-radius: 8px;
+      padding: 8px;
+      min-height: 44px;
+    }
+
+    .weeklyItem .label {
+      font-size: 13px;
+      line-height: 1.15;
+      word-break: break-word;
+      opacity: 0.95;
+    }
+
+    .weeklyItem select {
+      background: #0f0f0f;
+      color: #fff;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 13px;
+      width: 120px;
     }
 
     /* Phase 2: Yesterday Summary */
@@ -160,6 +223,15 @@
 <header id="dayNav"></header>
 
 <main>
+  <!-- Phase 3: Weekly chores (shared across all days) -->
+  <section class="weekly" aria-label="Weekly chores">
+    <div class="weeklyHeader">
+      <h3>Semanal</h3>
+      <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
+    </div>
+    <div class="weeklyGrid" id="weeklyGrid"></div>
+  </section>
+
   <div class="columns" id="columns"></div>
 
   <!-- Phase 2: Yesterday Summary (text-only) -->
@@ -183,8 +255,8 @@ const DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"
 const PEOPLE = ["Dad","Mom","Ethan","Celo"];
 
 /**
- * Phase 1/2: simple shared daily chore list (same each day).
- * Later, we can evolve this into DAILY_CHORES_BY_DAY if needed without breaking Phase 2.
+ * Daily chores are stable and grouped by person.
+ * We can later swap this to per-day lists without breaking the renderer.
  */
 const DAILY_CHORES = {
   Dad: ["Dog poop","Trash"],
@@ -192,6 +264,21 @@ const DAILY_CHORES = {
   Ethan: ["Room","Homework"],
   Celo: ["Dishes","Toys"]
 };
+
+/**
+ * Phase 3: Weekly chores (Semanal).
+ * Replace these with your real weekly chores later, same structure.
+ */
+const WEEKLY_CHORES = [
+  "Sweep backyard",
+  "Wipe inside fridge",
+  "Clean inside microwave",
+  "Clean trash can (inside & out)",
+  "Clean toilets",
+  "Dust ceiling fans & vents",
+  "Wipe down bathroom",
+  "Doors & windows"
+];
 
 /* =========================
    STATE HELPERS
@@ -202,12 +289,20 @@ function todayKey() {
   return map[new Date().getDay()];
 }
 
-function loadState() {
+function loadDailyState() {
   return JSON.parse(localStorage.getItem("dailyState") || "{}");
 }
 
-function saveState(state) {
+function saveDailyState(state) {
   localStorage.setItem("dailyState", JSON.stringify(state));
+}
+
+function loadWeeklyState() {
+  return JSON.parse(localStorage.getItem("weeklyState") || "{}");
+}
+
+function saveWeeklyState(state) {
+  localStorage.setItem("weeklyState", JSON.stringify(state));
 }
 
 /* =========================
@@ -221,13 +316,10 @@ function prevDayKey(dayKey) {
 }
 
 function displayDayLabel(dayKey) {
-  // Simple label for now. We can prettify later.
   return dayKey;
 }
 
 function getDailyChoresForDay(/*dayKey*/) {
-  // For Phase 2 we use the same list for every day.
-  // If you later want day-specific daily chores, we swap this implementation.
   return DAILY_CHORES;
 }
 
@@ -245,9 +337,7 @@ function renderNav() {
     const btn = document.createElement("button");
     btn.textContent = day;
     if (day === currentDay) btn.classList.add("active");
-    btn.onclick = () => {
-      location.hash = "#/" + day;
-    };
+    btn.onclick = () => location.hash = "#/" + day;
     nav.appendChild(btn);
   });
 
@@ -262,12 +352,68 @@ function renderNav() {
   nav.appendChild(resetBtn);
 }
 
+function renderWeekly() {
+  const grid = document.getElementById("weeklyGrid");
+  grid.innerHTML = "";
+
+  const wState = loadWeeklyState();
+  wState.checks = wState.checks || {};
+  wState.assign = wState.assign || {};
+
+  WEEKLY_CHORES.forEach((chore) => {
+    const key = chore;
+
+    const row = document.createElement("div");
+    row.className = "weeklyItem";
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !!wState.checks[key];
+    cb.onchange = () => {
+      wState.checks[key] = cb.checked;
+      saveWeeklyState(wState);
+    };
+
+    const label = document.createElement("div");
+    label.className = "label";
+    label.textContent = chore;
+
+    const sel = document.createElement("select");
+    const optBlank = document.createElement("option");
+    optBlank.value = "";
+    optBlank.textContent = "Asignar…";
+    sel.appendChild(optBlank);
+
+    PEOPLE.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p;
+      opt.textContent = p;
+      sel.appendChild(opt);
+    });
+
+    sel.value = wState.assign[key] || "";
+    sel.onchange = () => {
+      wState.assign[key] = sel.value;
+      saveWeeklyState(wState);
+    };
+
+    row.appendChild(cb);
+    row.appendChild(label);
+    row.appendChild(sel);
+    grid.appendChild(row);
+  });
+
+  saveWeeklyState(wState);
+}
+
 function renderDay() {
+  renderWeekly(); // weekly is shared, so render once per view switch
+
   const columns = document.getElementById("columns");
   columns.innerHTML = "";
 
-  const state = loadState();
-  state[currentDay] = state[currentDay] || { checks:{}, notes:"" };
+  const dState = loadDailyState();
+  dState[currentDay] = dState[currentDay] || { checks:{}, notes:"" };
 
   const choresForToday = getDailyChoresForDay(currentDay);
 
@@ -286,10 +432,10 @@ function renderDay() {
 
       const cb = document.createElement("input");
       cb.type = "checkbox";
-      cb.checked = !!state[currentDay].checks[key];
+      cb.checked = !!dState[currentDay].checks[key];
       cb.onchange = () => {
-        state[currentDay].checks[key] = cb.checked;
-        saveState(state);
+        dState[currentDay].checks[key] = cb.checked;
+        saveDailyState(dState);
       };
 
       const label = document.createElement("span");
@@ -304,10 +450,10 @@ function renderDay() {
   });
 
   const notes = document.getElementById("dailyNotes");
-  notes.value = state[currentDay].notes || "";
+  notes.value = dState[currentDay].notes || "";
   notes.oninput = () => {
-    state[currentDay].notes = notes.value;
-    saveState(state);
+    dState[currentDay].notes = notes.value;
+    saveDailyState(dState);
   };
 
   renderYesterdaySummary();
@@ -356,8 +502,14 @@ function renderYesterdaySummary() {
 ========================= */
 
 function weeklyReset() {
-  if (!confirm("Reset ALL daily checkboxes and notes?")) return;
+  if (!confirm("Reset weekly chores + ALL daily checkboxes and notes?")) return;
+
+  // Clear daily pages state
   localStorage.removeItem("dailyState");
+
+  // Clear weekly chores (checkboxes + assignments)
+  localStorage.removeItem("weeklyState");
+
   renderDay();
 }
 
