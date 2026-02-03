@@ -1155,6 +1155,7 @@ function weeklyReset(){
 function renderApp(){
   renderTopNav();
   const r = route();
+  console.log("HASH:", location.hash, "ROUTE:", r);
 
   // add a contextual reset button to top nav only when on a day page
   // (keeps screen real estate used but avoids clutter on dashboard)
@@ -1166,8 +1167,13 @@ function renderApp(){
   if (r === "maintenance") return renderMaintenance();
 
   // day route
-  const day = DAYS.includes(r) ? r : todayKey();
-  return renderDay(day);
+  if (DAYS.includes(r)) return renderDay(r);
+
+  // special alias: "hoy" means today's day page
+  if (r === "hoy") return renderDay(todayKey());
+
+  // unknown route: go home instead of silently showing today
+  return goto("dashboard");
 }
 
 function addContextResetButton(r){
