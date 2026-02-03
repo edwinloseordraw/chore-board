@@ -451,8 +451,16 @@ const WEEKLY_CHORES = [
   "Doors & windows"
 ];
 
-// Phase 4 scaffolding: these will be populated properly in Phase 5/6/7
-const BIWEEKLY_CHORES = [];   // Phase 5
+// Phase 5/6 scaffolding
+const BIWEEKLY_CHORES = [
+  "Sweep the outside area",
+  "Wipe cabinet fronts & handles",
+  "Clean pet bedding (if applicable)",
+  "Wipe window sills & tracks",
+  "Wipe walls & doors",
+  "Clean windows (inside)"
+];
+
 const MONTHLY_CHORES = [];    // Phase 6
 
 /* =========================
@@ -587,13 +595,13 @@ function calcDailyProgress(){
   const s = loadDailyState();
   const dayObj = s[day] || { checks:{} };
 
-  // total number of daily checkboxes (all people)
+  // total daily checkboxes (all people)
   let total = 0;
   for (const person of PEOPLE){
     total += (DAILY_CHORES[person] || []).length;
   }
 
-  // done = checked boxes for that day
+  // done today
   let done = 0;
   for (const person of PEOPLE){
     for (const chore of (DAILY_CHORES[person] || [])){
@@ -606,10 +614,10 @@ function calcDailyProgress(){
 }
 
 /**
- * Weekly/Semanal ring rule (your requirement):
- * Count a weekly chore as "done" ONLY if:
- *  - it is assigned to someone, AND
- *  - it is checked
+ * Semanal ring rule:
+ * Weekly chore counts as done ONLY when:
+ *  - assigned to someone AND
+ *  - checked complete
  */
 function calcWeeklyProgress(){
   const total = WEEKLY_CHORES.length;
@@ -648,7 +656,6 @@ function pct(done, total){
   if (!total) return 0;
   return Math.round((done / total) * 100);
 }
-
 /* =========================
    DASHBOARD RENDER
 ========================= */
@@ -678,7 +685,7 @@ function renderDashboard(){
         <div class="rings">
           ${ringCard("Daily (Hoy)", d.done, d.total, dp)}
           ${ringCard("Semanal", w.done, w.total, wp)}
-          ${ringCard("Bi-weekly", b.done, b.total, bp, "Not configured yet (Phase 5)")}
+          ${ringCard("Bi-weekly", b.done, b.total, bp)}
           ${ringCard("Monthly", m.done, m.total, mp, "Not configured yet (Phase 6)")}
         </div>
 
