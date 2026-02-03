@@ -578,22 +578,78 @@ window.addEventListener("hashchange", renderApp);
    RING CALCULATIONS
 ========================= */
 
+  function calcDailyProgress(){
+  const day = todayKey();
+  const s = loadDailyState();
+  const dayObj = s[day] || { checks:{} };
+
+  // total number of daily checkboxes
+  let total = 0;
+  for (const person of PEOPLE){
+    total += (DAILY_CHORES[person] || []).length;
+  }
+
+  // done = checked boxes for that day
+  let done = 0;
+  for (const person of PEOPLE){
+    for (const chore of (DAILY_CHORES[person] || [])){
+      const key = `${person}::${chore}`;
+      if (dayObj.checks && dayObj.checks[key]) done++;
+    }
+  }
+
+  return { done, total };
+}
 function calcWeeklyProgress(){
   const total = WEEKLY_CHORES.length;
   const w = loadWeeklyState();
-  const done = WEEKLY_CHORES.reduce((acc, c) => acc + (w.checks && w.checks ? 1 : 0), 0);
+
+  const done = WEEKLY_CHORES.reduce((acc, c) => {
+    const checked = w.checks && w.checks;
+    const assigned = w.assign && w.assign;
+    return acc + (checked && assigned ? 1 : 0);
+  }, 0);
+
   return { done, total };
 }
-function calcBiweeklyProgress(){
-  const total = BIWEEKLY_CHORES.length;
-  const b = loadBiweeklyState();
-  const done = BIWEEKLY_CHORES.reduce((acc, c) => acc + (b.checks && b.checks ? 1 : 0), 0);
+function calcWeeklyProgress(){
+  const total = WEEKLY_CHORES.length;
+  const w = loadWeeklyState();
+
+  const done = WEEKLY_CHORES.reduce((acc, c) => {
+    const checked  = w.checks && w.checks[c];
+    const assigned = w.assign && w.assign[c];
+    return acc + (checked && assigned ? 1 : 0);
+  }, 0);
+
   return { done, total };
 }
 function calcMonthlyProgress(){
   const total = MONTHLY_CHORES.length;
   const m = loadMonthlyState();
-  const done = MONTHLY_CHORES.reduce((acc, c) => acc + (m.checks && m.checks ? 1 : 0), 0);
+  const done = MONTHLY_CHORES.reduce((acc, c) => acc + (m.checks && m.checks[c] ? 1 : 0), 0);
+  return { done, total };
+}
+  function calcDailyProgress(){
+  const day = todayKey();
+  const s = loadDailyState();
+  const dayObj = s[day] || { checks:{} };
+
+  // total = number of daily checkboxes (all people, today)
+  let total = 0;
+  for (const person of PEOPLE){
+    total += (DAILY_CHORES[person] || []).length;
+  }
+
+  // done = checked boxes for that day
+  let done = 0;
+  for (const person of PEOPLE){
+    for (const chore of (DAILY_CHORES[person] || [])){
+      const key = `${person}::${chore}`;
+      if (dayObj.checks && dayObj.checks[key]) done++;
+    }
+  }
+
   return { done, total };
 }
 
@@ -640,12 +696,15 @@ function renderDashboard(){
   const app = document.getElementById("app");
 
   const w = calcWeeklyProgress();
+  const d = calcDailyProgress();
+  const dp = pct(d.done, d.total);
   const b = calcBiweeklyProgress();
   const m = calcMonthlyProgress();
 
   const wp = pct(w.done, w.total);
   const bp = pct(b.done, b.total);
   const mp = pct(m.done, m.total);
+  const dp = pct(d.done, d.total);
 
   const dash = loadDashState();
   const locked = !!dash.pinHash;
@@ -657,6 +716,7 @@ function renderDashboard(){
         <div class="hint">Rings track completion for Semanal, Bi-weekly, and Monthly. (Maintenance not included yet.)</div>
 
         <div class="rings">
+          ${ringCard("Daily (Hoy)", d.done, d.total, dp)}
           ${ringCard("Semanal", w.done, w.total, wp)}
           ${ringCard("Bi-weekly", b.done, b.total, bp, "Not configured yet (Phase 5)")}
           ${ringCard("Monthly", m.done, m.total, mp, "Not configured yet (Phase 6)")}
@@ -687,8 +747,7 @@ function renderDashboard(){
 
 function ringCard(title, done, total, percent, extraHint){
   const sub = total ? `${done}/${total} complete` : `0/0 (set up later)`;
-  const hint = extraHint ? `<div class="sub">${extraHint}</div>` : `<div class="sub">${sub}</div>`;
-
+  const hint = extraHint ? `<div class="sub">${extraHint}</div>` : "";
   return `
     <div class="ringCard">
       <div class="ringSvgWrap">
@@ -698,7 +757,7 @@ function ringCard(title, done, total, percent, extraHint){
       <div class="ringMeta">
         <div class="title">${title}</div>
         ${hint}
-        ${!extraHint ? `<div class="sub">${sub}</div>` : `<div class="sub">${sub}</div>`}
+        <div class="sub">${sub}</div>
       </div>
     </div>
   `;
