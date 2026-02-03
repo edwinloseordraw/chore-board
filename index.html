@@ -482,7 +482,7 @@ function loadWeeklyState(){ return jget("weeklyState", { checks:{}, assign:{} })
 function saveWeeklyState(s){ jset("weeklyState", s); }
 
 // Biweekly shared state (Phase 5)
-function loadBiweeklyState(){ return jget("biweeklyState", { checks:{} }); }
+function loadBiweeklyState(){ return jget("biweeklyState", { checks:{}, assign:{} }); }
 function saveBiweeklyState(s){ jset("biweeklyState", s); }
 
 // Monthly shared state (Phase 6)
@@ -639,8 +639,14 @@ function calcBiweeklyProgress(){
   const total = BIWEEKLY_CHORES.length;
   const b = loadBiweeklyState();
   b.checks = b.checks || {};
+  b.assign = b.assign || {};
 
-  const done = BIWEEKLY_CHORES.reduce((acc, c) => acc + (b.checks[c] ? 1 : 0), 0);
+  const done = BIWEEKLY_CHORES.reduce((acc, c) => {
+    const checked  = !!b.checks[c];
+    const assigned = !!b.assign[c];
+    return acc + (checked && assigned ? 1 : 0);
+  }, 0);
+
   return { done, total };
 }
 
@@ -1090,6 +1096,7 @@ function renderChecklistPage(kind){
   } else {
     const state = isBi ? loadBiweeklyState() : loadMonthlyState();
     state.checks = state.checks || {};
+    if (isBi) state.assign = state.assign || {};
 
     list.forEach(item => {
       const row = document.createElement("div");
@@ -1109,6 +1116,7 @@ function renderChecklistPage(kind){
       name.className = "name";
       name.textContent = item;
 
+      
       row.appendChild(cb);
       row.appendChild(name);
       grid.appendChild(row);
