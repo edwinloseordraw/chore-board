@@ -593,7 +593,7 @@ function calcWeeklyProgress(){
 function calcBiweeklyProgress(){
   const total = BIWEEKLY_CHORES.length;
   const b = loadBiweeklyState();
-  const done = BIWEEKLY_CHORES.reduce((acc, c) => acc + (b.checks && b.checks ? 1 : 0), 0);
+  const done = BIWEEKLY_CHORES.reduce((acc, c) => acc + (b.checks && b.checks[c] ? 1 : 0), 0);
   return { done, total };
 }
 function calcMonthlyProgress(){
@@ -677,13 +677,12 @@ function renderDashboard(){
   const dp = pct(d.done, d.total);
 
   const dash = loadDashState();
-  const locked = !!dash.pinHash;
 
   app.innerHTML = `
     <div class="dashGrid">
       <div class="panel">
         <h2>Progress Dashboard</h2>
-        <div class="hint">Rings track completion for Semanal, Bi-weekly, and Monthly. (Maintenance not included yet.)</div>
+        <div class="hint">Rings track completion for Daily (Hoy), Semanal, Bi-weekly, and Monthly. (Maintenance not included yet.)</div>
 
         <div class="rings">
           ${ringCard("Daily (Hoy)", d.done, d.total, dp)}
