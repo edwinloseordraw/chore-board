@@ -461,7 +461,15 @@ const BIWEEKLY_CHORES = [
   "Clean windows (inside)"
 ];
 
-const MONTHLY_CHORES = [];    // Phase 6
+const MONTHLY_CHORES = ["Clean baseboards",
+  "Clean light switches & door handles",
+  "Deep clean bathrooms (grout, tub edges, behind toilet)",
+  "Clean behind large appliances (fridge, stove if movable)",
+  "Wash blankets & throws",
+  "Wash mattress protectors",
+  "Clean oven (light or self-clean)",
+  "Clean front door",
+  "Spot clean patio or porch"];    // Phase 6
 
 /* =========================
    STORAGE HELPERS
@@ -653,9 +661,8 @@ function calcBiweeklyProgress(){
 function calcMonthlyProgress(){
   const total = MONTHLY_CHORES.length;
   const m = loadMonthlyState();
-  m.checks = m.checks || {};
 
-  const done = MONTHLY_CHORES.reduce((acc, c) => acc + (m.checks[c] ? 1 : 0), 0);
+  const done = MONTHLY_CHORES.reduce((acc, c) => acc + (m.checks && m.checks[c] ? 1 : 0), 0);
   return { done, total };
 }
 
@@ -693,7 +700,7 @@ function renderDashboard(){
           ${ringCard("Daily (Hoy)", d.done, d.total, dp)}
           ${ringCard("Semanal", w.done, w.total, wp)}
           ${ringCard("Bi-weekly", b.done, b.total, bp)}
-          ${ringCard("Monthly", m.done, m.total, mp, "Not configured yet (Phase 6)")}
+          ${ringCard("Monthly", m.done, m.total, mp)}
         </div>
 
         <div class="dashNav">
@@ -1071,7 +1078,7 @@ function renderChecklistPage(kind){
       <div class="toolbar">
         <div class="left">
           <h2 style="margin:0;">${title}</h2>
-          <div class="hint" style="margin:0;">This page is wired. We'll populate the list in Phase ${isBi ? "5" : "6"}.</div>
+          <div class="hint" style="margin:0;">Check items as you complete them. Use the reset button to clear this section only.</div>
         </div>
         <div class="right">
           <button class="danger" id="btnReset">${title} Reset</button>
