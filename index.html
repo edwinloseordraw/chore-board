@@ -671,8 +671,15 @@ function calcBiweeklyProgress(){
 function calcMonthlyProgress(){
   const total = MONTHLY_CHORES.length;
   const m = loadMonthlyState();
+  m.checks = m.checks || {};
+  m.assign = m.assign || {};
 
-  const done = MONTHLY_CHORES.reduce((acc, c) => acc + (m.checks && m.checks[c] ? 1 : 0), 0);
+  const done = MONTHLY_CHORES.reduce((acc, c) => {
+    const checked  = !!m.checks[c];
+    const assigned = !!m.assign[c];
+    return acc + (checked && assigned ? 1 : 0);
+  }, 0);
+
   return { done, total };
 }
 
