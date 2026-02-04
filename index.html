@@ -89,6 +89,56 @@
       gap:10px;
       min-height:0;
     }
+.maintForm{
+  display:grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap:12px;
+  align-items:end;
+}
+.maintForm .field label{
+  display:block;
+  font-size:12px;
+  opacity:.8;
+  margin-bottom:6px;
+}
+.maintForm input, .maintForm select{
+  width:100%;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(0,0,0,.25);
+  color:var(--text);
+}
+.maintForm .actions button{
+  width:100%;
+}
+
+.maintList{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.maintRow{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(0,0,0,.18);
+}
+.maintTask{
+  font-weight:700;
+}
+.maintSub{
+  margin-top:4px;
+  font-size:12px;
+  opacity:.8;
+}
+
+@media (max-width: 980px){
+  .maintForm{ grid-template-columns: 1fr; }
+}
 
     /* ---------- Common panels ---------- */
     .panel{
@@ -1191,24 +1241,152 @@ function renderMaintenance(){
   const s = loadMaintState();
   s.entries = s.entries || [];
 
+  // Sort newest first (by date, then by insertion order)
+  const entries = [...s.entries].sort((a, b) => {
+    const da = (a.date || "");
+    const db = (b.date || "");
+    if (da === db) return 0;
+    return da < db ? 1 : -1;
+  });
+
+  // Build options for completedBy
+  const peopleOpts = PEOPLE.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("");
+
+  // Simple suggested tasks (you can type anything)
+  const suggestions = [
+    "Change AC filter",
+    "AC Flush",
+    "Pool Filter clean/change"
+  ];
+
+  const suggestionOptions = suggestions
+    .map(t => `<option value="${escapeHtml(t)}"></option>`)
+    .join("");
+
   app.innerHTML = `
     <section class="panel">
       <div class="toolbar">
         <div class="left">
           <h2 style="margin:0;">House Maintenance</h2>
-          <div class="hint" style="margin:0;">Full log UI comes in Phase 7. This is the wired landing page.</div>
+          <div class="hint" style="margin:0;">Log entries with task, completed by, and date. Stored locally on this device.</div>
         </div>
         <div class="right">
           <button class="danger" id="btnResetMaint">Maintenance Reset</button>
         </div>
       </div>
 
-      <div class="panel" style="background:transparent;border-style:dashed;color:rgba(245,245,245,0.7);">
-        Coming soon: log entries with task, completedBy, date. (Phase 7)
+      <div class="panel" style="margin-top:12px;">
+        <div class="hint" style="margin-top:0;">Add a new entry</div>
+
+        <div class="maintForm">
+          <div class="field">
+            <label>Task</label>
+            <input id="maintTask" list="maintTaskSuggestions" placeholder="Type a task (or pick a suggestion)..." />
+            <datalist id="maintTaskSuggestions">
+              ${suggestionOptions}
+            </datalist>
+          </div>
+
+          <div class="field">
+            <label>Completed by</label>
+            <select id="maintBy">
+              <option value="">Select…</option>
+              ${peopleOpts}
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Date</label>
+            <input id="maintDate" type="date" />
+          </div>
+
+          <div class="field actions">
+            <label>&nbsp;</label>
+            <button id="btnAddMaint">Add entry</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:12px;">
+        <div class="toolbar" style="margin-bottom:8px;">
+          <div class="left">
+            <div class="hint" style="margin:0;">History</div>
+          </div>
+          <div class="right">
+            <div class="hint" style="margin:0;">${entries.length} entr${entries.length === 1 ? "y" : "ies"}</div>
+          </div>
+        </div>
+
+        <div id="maintEmpty" class="panel" style="display:${entries.length ? "none" : "block"};background:transparent;border-style:dashed;color:rgba(245,245,245,0.7);">
+          No maintenance entries yet. Which is either amazing or terrifying.
+        </div>
+
+        <div class="maintList" id="maintList"></div>
       </div>
     </section>
   `;
 
+  // Default the date to today (Option A you picked earlier)
+  const dateEl = document.getElementById("maintDate");
+  dateEl.value = isoToday();
+
+  // Render list
+  const list = document.getElementById("maintList");
+  list.innerHTML = entries.map((e, idx) => {
+    const task = escapeHtml(e.task || "");
+    const by = escapeHtml(e.by || "");
+    const date = escapeHtml(e.date || "");
+
+    return `
+      <div class="maintRow">
+        <div class="maintMeta">
+          <div class="maintTask">${task || "(No task)"}</div>
+          <div class="maintSub">${by || "(No person)"} • ${date || "(No date)"}</div>
+        </div>
+        <div class="maintActions">
+          <button class="ghost" data-del="${idx}" title="Delete entry">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // Delete handlers (by index in the sorted list, so we match by value)
+  list.querySelectorAll("[data-del]").forEach(btn => {
+    btn.onclick = () => {
+      const delIdx = Number(btn.getAttribute("data-del"));
+      const target = entries[delIdx];
+      if (!target) return;
+
+      if (!confirm("Delete this maintenance entry?")) return;
+
+      const current = loadMaintState();
+      current.entries = (current.entries || []).filter(e =>
+        !(e.task === target.task && e.by === target.by && e.date === target.date)
+      );
+      saveMaintState(current);
+      renderMaintenance();
+    };
+  });
+
+  // Add entry handler
+  document.getElementById("btnAddMaint").onclick = () => {
+    const task = (document.getElementById("maintTask").value || "").trim();
+    const by = (document.getElementById("maintBy").value || "").trim();
+    const date = (document.getElementById("maintDate").value || "").trim();
+
+    if (!task) { alert("Task is required."); return; }
+    if (!by) { alert("Completed by is required."); return; }
+    if (!date) { alert("Date is required."); return; }
+
+    const current = loadMaintState();
+    current.entries = current.entries || [];
+    current.entries.push({ task, by, date });
+    saveMaintState(current);
+
+    renderMaintenance();
+  };
+
+  // Reset button (kept)
   document.getElementById("btnResetMaint").onclick = () => {
     if (!confirm("Reset maintenance log?")) return;
     localStorage.removeItem("maintState");
@@ -1286,6 +1464,15 @@ function escapeHtml(str){
     .replaceAll("<","&lt;")
     .replaceAll(">","&gt;");
 }
+function isoToday(){
+  // Returns YYYY-MM-DD in local time
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 
 /* =========================
    INIT
