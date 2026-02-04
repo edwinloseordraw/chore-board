@@ -25,6 +25,16 @@
       --radius: 10px;
     }
 
+    .assignSelect{
+      width: 130px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(0,0,0,0.45);
+      color: #fff;
+      font-size: 13px;
+    }
+
     *{ box-sizing:border-box; }
 
     body{
@@ -494,7 +504,7 @@ function loadBiweeklyState(){ return jget("biweeklyState", { checks:{}, assign:{
 function saveBiweeklyState(s){ jset("biweeklyState", s); }
 
 // Monthly shared state (Phase 6)
-function loadMonthlyState(){ return jget("monthlyState", { checks:{} }); }
+function loadMonthlyState(){ return jget("monthlyState", { checks:{}, assign:{} }); }
 function saveMonthlyState(s){ jset("monthlyState", s); }
 
 // Maintenance log (Phase 7)
@@ -1102,7 +1112,7 @@ function renderChecklistPage(kind){
   } else {
     const state = isBi ? loadBiweeklyState() : loadMonthlyState();
     state.checks = state.checks || {};
-    if (isBi) state.assign = state.assign || {};
+    state.assign = state.assign || {};
 
     list.forEach(item => {
       const row = document.createElement("div");
@@ -1124,8 +1134,39 @@ function renderChecklistPage(kind){
 
       
       row.appendChild(cb);
-      row.appendChild(name);
-      grid.appendChild(row);
+row.appendChild(name);
+
+// Assignment dropdown (bi-weekly + monthly)
+state.assign = state.assign || {};
+
+const sel = document.createElement("select");
+sel.className = "assignSelect";
+
+const blank = document.createElement("option");
+blank.value = "";
+blank.textContent = "Asignar…";
+sel.appendChild(blank);
+
+PEOPLE.forEach(p => {
+  const opt = document.createElement("option");
+  opt.value = p;
+  opt.textContent = p;
+  sel.appendChild(opt);
+});
+
+sel.value = state.assign[item] || "";
+
+sel.onchange = () => {
+  const s = isBi ? loadBiweeklyState() : loadMonthlyState();
+  s.assign = s.assign || {};
+  s.assign[item] = sel.value;
+  if (isBi) saveBiweeklyState(s);
+  else saveMonthlyState(s);
+};
+
+row.appendChild(sel);
+
+grid.appendChild(row);
     });
 
     isBi ? saveBiweeklyState(state) : saveMonthlyState(state);
