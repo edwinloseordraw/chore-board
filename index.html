@@ -539,7 +539,7 @@ const DAILY_SCHEDULE = {
     makeTask("lunes", "cabinets", "Cabinets", ["Celo"], "Celo"),
     makeTask("lunes", "read", "Read for 20 min", ["Celo"], "Celo"),
     // Celo-only weekday chores (Mon–Fri)
-    makeTask("lunes", "prepBackpack", "Reminder: Prepare backpack for tomorrow", ["Celo"], "Celo"),
+    makeTask("lunes", "prepBackpack", "Reminder: Prep backpack for tomorrow", ["Celo"], "Celo"),
     makeTask("lunes", "appleWatch", "Reminder: Where's your Apple Watch?", ["Celo"], "Celo")
   ],
 
@@ -559,7 +559,7 @@ const DAILY_SCHEDULE = {
 
     makeTask("martes", "dogPoop", "Dog poop", ["Celo"], "Celo"),
     makeTask("martes", "read", "Read for 20 min", ["Celo"], "Celo"),
-    makeTask("martes", "prepBackpack", "Reminder: Prepare backpack for tomorrow", ["Celo"], "Celo"),
+    makeTask("martes", "prepBackpack", "Reminder: Prep backpack for tomorrow", ["Celo"], "Celo"),
     makeTask("martes", "appleWatch", "Reminder: Where's your Apple Watch?", ["Celo"], "Celo")
   ],
 
@@ -580,7 +580,7 @@ const DAILY_SCHEDULE = {
 
     makeTask("miercoles", "mop", "Mop", ["Celo"], "Celo"),
     makeTask("miercoles", "read", "Read for 20 min", ["Celo"], "Celo"),
-    makeTask("miercoles", "prepBackpack", "Reminder: Prepare backpack for tomorrow", ["Celo"], "Celo"),
+    makeTask("miercoles", "prepBackpack", "Reminder: Prep backpack for tomorrow", ["Celo"], "Celo"),
     makeTask("miercoles", "appleWatch", "Reminder: Where's your Apple Watch?", ["Celo"], "Celo")
   ],
 
@@ -600,7 +600,7 @@ const DAILY_SCHEDULE = {
     makeTask("jueves", "dust", "Dust", ["Celo"], "Celo"),
     makeTask("jueves", "counters", "Wipe kitchen counters", ["Celo"], "Celo"),
     makeTask("jueves", "read", "Read for 20 min", ["Celo"], "Celo"),
-    makeTask("jueves", "prepBackpack", "Reminder: Prepare backpack for tomorrow", ["Celo"], "Celo"),
+    makeTask("jueves", "prepBackpack", "Reminder: Prep backpack for tomorrow", ["Celo"], "Celo"),
     makeTask("jueves", "appleWatch", "Reminder: Where's your Apple Watch?", ["Celo"], "Celo")
   ],
 
@@ -621,7 +621,7 @@ const DAILY_SCHEDULE = {
 
     makeTask("viernes", "mop", "Mop", ["Celo"], "Celo"),
     makeTask("viernes", "read", "Read for 20 min", ["Celo"], "Celo"),
-    makeTask("viernes", "prepBackpack", "Reminder: Prepare backpack for tomorrow", ["Celo"], "Celo"),
+    makeTask("viernes", "prepBackpack", "Reminder: Prep backpack for tomorrow", ["Celo"], "Celo"),
     makeTask("viernes", "appleWatch", "Reminder: Where's your Apple Watch?", ["Celo"], "Celo")
   ],
 
@@ -1290,7 +1290,7 @@ function renderYesterday(dayKey){
 
         // omit only from validation section
         if (id.endsWith("::prepBackpack") || id.endsWith("::appleWatch")) return false;
-        if (text.includes("prepare backpack for tomorrow")) return false;
+        if (text.includes("Prep backpack for tomorrow")) return false;
         if (text.includes("where's your apple watch")) return false;
 
         return true;
