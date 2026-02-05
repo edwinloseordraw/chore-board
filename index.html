@@ -306,10 +306,13 @@
     .columns{
       flex:1;
       display:grid;
-      grid-template-columns:repeat(4,1fr);
+      /* Slightly wider columns to prevent cramped lists (still iPad-friendly) */
+      grid-template-columns:repeat(4, minmax(260px, 1fr));
       gap:10px;
-      overflow:hidden;
+      overflow-x:auto;
+      overflow-y:hidden;
       min-height:0;
+      -webkit-overflow-scrolling: touch;
     }
 
     .column{
@@ -330,7 +333,7 @@
     }
 
     .chore{
-      margin-bottom:4px;
+      margin-bottom:3px;
       font-size:14px;
     }
 
@@ -338,8 +341,8 @@
     .choreLabel{
       display:flex;
       align-items:center;
-      gap:8px;
-      padding:8px 10px;
+      gap:7px;
+      padding:7px 10px;
       border-radius:10px;
       cursor:pointer;
       user-select:none;
@@ -350,7 +353,7 @@
     }
     .choreLabel span{
       flex:1;
-      line-height:1.15;
+      line-height:1.1;
     }
     .choreLabel input[type="checkbox"]{
       width:18px;
