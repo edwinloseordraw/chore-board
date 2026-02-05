@@ -330,11 +330,28 @@
     }
 
     .chore{
-      display:flex;
-      align-items:center;
-      gap:8px;
       margin-bottom:6px;
       font-size:14px;
+    }
+
+    /* Phase 8.5: make the entire chore row (including text) a tap target */
+    .choreLabel{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 10px;
+      border-radius:10px;
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: rgba(255,255,255,0.08);
+    }
+    .choreLabel:active{
+      background: rgba(255,255,255,0.06);
+    }
+    .choreLabel input[type="checkbox"]{
+      width:20px;
+      height:20px;
+      flex:0 0 auto;
     }
 
     /* Weekly chores panel (Phase 3), moved BELOW columns per your request */
@@ -1227,6 +1244,7 @@ function renderDailyColumns(dayKey){
 
       const cb = document.createElement("input");
       cb.type = "checkbox";
+      cb.id = `${t.id}__${person}`;
       cb.checked = !!state[dayKey].checks[t.id];
       cb.onchange = () => {
         const s = loadDailyState();
@@ -1237,22 +1255,25 @@ function renderDailyColumns(dayKey){
         renderDailyColumns(dayKey);
       };
 
-      const label = document.createElement("span");
+      // Label wraps checkbox + text so the text is part of the tap target
+      const wrap = document.createElement("label");
+      wrap.className = "choreLabel";
+      wrap.htmlFor = cb.id;
+
+      const text = document.createElement("span");
 
       // Friendly labels for 2-person chores (mirrors v1 text style)
-      // Example: if Dad+Celo are paired on Vacuum:
-      //   Dad sees:  "Vacuum (with Celo)"
-      //   Celo sees: "Vacuum (with Dad)"
       if ((t.assignees || []).length === 2) {
         const other = (t.assignees || []).find(p => p !== person) || "";
         const base = (t.text || "").trim();
-        label.textContent = other ? `${base} (with ${other})` : base;
+        text.textContent = other ? `${base} (with ${other})` : base;
       } else {
-        label.textContent = (t.text || "").trim();
+        text.textContent = (t.text || "").trim();
       }
 
-      row.appendChild(cb);
-      row.appendChild(label);
+      wrap.appendChild(cb);
+      wrap.appendChild(text);
+      row.appendChild(wrap);
       col.appendChild(row);
     });
 
@@ -1297,9 +1318,11 @@ function renderWeekly(){
       // update dashboard ring if open later
     };
 
-    const label = document.createElement("div");
-    label.className = "label";
-    label.textContent = chore;
+    cb.id = `weekly__${chore}`;
+    const wlab = document.createElement("label");
+    wlab.className = "label";
+    wlab.htmlFor = cb.id;
+    wlab.textContent = chore;
 
     const sel = document.createElement("select");
     const blank = document.createElement("option");
@@ -1323,7 +1346,7 @@ function renderWeekly(){
     };
 
     row.appendChild(cb);
-    row.appendChild(label);
+    row.appendChild(wlab);
     row.appendChild(sel);
     grid.appendChild(row);
   });
@@ -1447,6 +1470,7 @@ function renderChecklistPage(kind){
 
       const cb = document.createElement("input");
       cb.type = "checkbox";
+      cb.id = `${kind}__${item}`;
       cb.checked = !!state.checks[item];
       cb.onchange = () => {
         const s = isBi ? loadBiweeklyState() : loadMonthlyState();
@@ -1455,45 +1479,46 @@ function renderChecklistPage(kind){
         isBi ? saveBiweeklyState(s) : saveMonthlyState(s);
       };
 
-      const name = document.createElement("div");
+      const name = document.createElement("label");
       name.className = "name";
+      name.htmlFor = cb.id;
+      name.style.cursor = "pointer";
       name.textContent = item;
 
-      
       row.appendChild(cb);
-row.appendChild(name);
+      row.appendChild(name);
 
-// Assignment dropdown (bi-weekly + monthly)
-state.assign = state.assign || {};
+      // Assignment dropdown (bi-weekly + monthly)
+      state.assign = state.assign || {};
 
-const sel = document.createElement("select");
-sel.className = "assignSelect";
+      const sel = document.createElement("select");
+      sel.className = "assignSelect";
 
-const blank = document.createElement("option");
-blank.value = "";
-blank.textContent = "Asignar…";
-sel.appendChild(blank);
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = "Asignar…";
+      sel.appendChild(blank);
 
-PEOPLE.forEach(p => {
-  const opt = document.createElement("option");
-  opt.value = p;
-  opt.textContent = p;
-  sel.appendChild(opt);
-});
+      PEOPLE.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p;
+        opt.textContent = p;
+        sel.appendChild(opt);
+      });
 
-sel.value = state.assign[item] || "";
+      sel.value = state.assign[item] || "";
 
-sel.onchange = () => {
-  const s = isBi ? loadBiweeklyState() : loadMonthlyState();
-  s.assign = s.assign || {};
-  s.assign[item] = sel.value;
-  if (isBi) saveBiweeklyState(s);
-  else saveMonthlyState(s);
-};
+      sel.onchange = () => {
+        const s = isBi ? loadBiweeklyState() : loadMonthlyState();
+        s.assign = s.assign || {};
+        s.assign[item] = sel.value;
+        if (isBi) saveBiweeklyState(s);
+        else saveMonthlyState(s);
+      };
 
-row.appendChild(sel);
+      row.appendChild(sel);
 
-grid.appendChild(row);
+      grid.appendChild(row);
     });
 
     isBi ? saveBiweeklyState(state) : saveMonthlyState(state);
