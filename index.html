@@ -506,47 +506,107 @@ function prevDayKey(dayKey){
    - Bi-weekly/monthly/maintenance lists stay mostly empty until Phase 5-7.
 ========================= */
 
-const DAILY_CHORES = {
-  Dad: [
-    "Vacuum (with Ethan)",
-    "Take out trash (with Ethan)",
-    "Wipe kitchen counters"
+// Daily chores are scheduled per day (lunes → domingo).
+// Tasks are shared objects so 2-person chores have ONE completion state.
+// `primary` is who is accountable (used for Verification mapping).
+function makeTask(dayKey, slug, text, assignees, primary){
+  return {
+    id: `${dayKey}::${slug}`,
+    text,
+    assignees,      // array of PEOPLE involved (shows in both columns)
+    primary         // accountable person (used for Verification)
+  };
+}
+
+const DAILY_SCHEDULE = {
+  lunes: [
+    makeTask("lunes", "vacuum", "Vacuum (2 people)", ["Dad","Ethan"], "Ethan"),
+    makeTask("lunes", "dishes", "Wash dishes (2 people)", ["Mom","Celo"], "Celo"),
+    makeTask("lunes", "trash", "Take out trash (2 people)", ["Dad","Ethan"], "Ethan"),
+    makeTask("lunes", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
+    makeTask("lunes", "mop", "Mop", ["Mom"], "Mom"),
+    makeTask("lunes", "dust", "Dust", ["Ethan"], "Ethan"),
+    makeTask("lunes", "feedDogs", "Feed dogs", ["Celo"], "Celo"),
+    makeTask("lunes", "read", "Read for 20 min", ["Celo"], "Celo"),
+    makeTask("lunes", "brushHarvey", "Brush Harvey", ["Dad"], "Dad"),
+    makeTask("lunes", "walk", "Walk with Celo", ["Mom"], "Mom") // Mom starts Monday
   ],
-  Mom: [
-    "Wash dishes (with Celo)",
-    "Mop",
-    "Wipe dining table",
-    "Walk with Celo (every other day)"
+
+  martes: [
+    makeTask("martes", "vacuum", "Vacuum (2 people)", ["Mom","Celo"], "Celo"),
+    makeTask("martes", "dishes", "Wash dishes (2 people)", ["Dad","Ethan"], "Ethan"),
+    makeTask("martes", "trash", "Take out trash (2 people)", ["Mom","Celo"], "Celo"),
+    makeTask("martes", "dining", "Wipe dining table", ["Mom"], "Mom"),
+    makeTask("martes", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
+    makeTask("martes", "dogPoop", "Dog poop", ["Celo"], "Celo"),
+    makeTask("martes", "cabinets", "Cabinets", ["Ethan"], "Ethan"),
+    makeTask("martes", "read", "Read for 20 min", ["Ethan"], "Ethan"),
+    makeTask("martes", "walk", "Walk with Celo", ["Dad"], "Dad")
   ],
-  Ethan: [
-    "Vacuum (with Dad)",
-    "Take out trash (with Dad)",
-    "Dust",
-    "Dog poop"
+
+  miercoles: [
+    makeTask("miercoles", "vacuum", "Vacuum (2 people)", ["Dad","Celo"], "Celo"),
+    makeTask("miercoles", "dishes", "Wash dishes (2 people)", ["Mom","Ethan"], "Ethan"),
+    makeTask("miercoles", "trash", "Take out trash (2 people)", ["Dad","Celo"], "Celo"),
+    makeTask("miercoles", "mop", "Mop", ["Mom"], "Mom"),
+    makeTask("miercoles", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
+    makeTask("miercoles", "dust", "Dust", ["Celo"], "Celo"),
+    makeTask("miercoles", "feedDogs", "Feed dogs", ["Ethan"], "Ethan"),
+    makeTask("miercoles", "brushHarvey", "Brush Harvey", ["Dad"], "Dad"),
+    makeTask("miercoles", "walk", "Walk with Celo", ["Mom"], "Mom")
   ],
-  Celo: [
-    "Wash dishes (with Mom)",
-    "Feed dogs",
-    "Cabinets",
-    "Read for 20 min"
+
+  jueves: [
+    makeTask("jueves", "vacuum", "Vacuum (2 people)", ["Mom","Ethan"], "Ethan"),
+    makeTask("jueves", "dishes", "Wash dishes (2 people)", ["Dad","Celo"], "Celo"),
+    makeTask("jueves", "trash", "Take out trash (2 people)", ["Mom","Ethan"], "Ethan"),
+    makeTask("jueves", "dining", "Wipe dining table", ["Mom"], "Mom"),
+    makeTask("jueves", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
+    makeTask("jueves", "dogPoop", "Dog poop", ["Ethan"], "Ethan"),
+    makeTask("jueves", "cabinets", "Cabinets", ["Celo"], "Celo"),
+    makeTask("jueves", "read", "Read for 20 min", ["Celo"], "Celo"),
+    makeTask("jueves", "walk", "Walk with Celo", ["Dad"], "Dad")
+  ],
+
+  viernes: [
+    makeTask("viernes", "vacuum", "Vacuum (2 people)", ["Dad","Ethan"], "Ethan"),
+    makeTask("viernes", "dishes", "Wash dishes (2 people)", ["Mom","Celo"], "Celo"),
+    makeTask("viernes", "trash", "Take out trash (2 people)", ["Dad","Ethan"], "Ethan"),
+    makeTask("viernes", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
+    makeTask("viernes", "dining", "Wipe dining table", ["Mom"], "Mom"),
+    makeTask("viernes", "dust", "Dust", ["Ethan"], "Ethan"),
+    makeTask("viernes", "feedDogs", "Feed dogs", ["Celo"], "Celo"),
+    makeTask("viernes", "brushHarvey", "Brush Harvey", ["Dad"], "Dad"),
+    makeTask("viernes", "walk", "Walk with Celo", ["Mom"], "Mom")
+  ],
+
+  sabado: [
+    makeTask("sabado", "vacuum", "Vacuum (2 people)", ["Mom","Celo"], "Celo"),
+    makeTask("sabado", "dishes", "Wash dishes (2 people)", ["Dad","Ethan"], "Ethan"),
+    makeTask("sabado", "trash", "Take out trash (2 people)", ["Mom","Celo"], "Celo"),
+    makeTask("sabado", "mop", "Mop", ["Mom"], "Mom"),
+    makeTask("sabado", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
+    makeTask("sabado", "dogPoop", "Dog poop", ["Celo"], "Celo"),
+    makeTask("sabado", "read", "Read for 20 min", ["Ethan"], "Ethan"),
+    makeTask("sabado", "walk", "Walk with Celo", ["Dad"], "Dad")
+  ],
+
+  domingo: [
+    makeTask("domingo", "vacuum", "Vacuum (2 people)", ["Dad","Celo"], "Celo"),
+    makeTask("domingo", "dishes", "Wash dishes (2 people)", ["Mom","Ethan"], "Ethan"),
+    makeTask("domingo", "trash", "Take out trash (2 people)", ["Dad","Celo"], "Celo"),
+    makeTask("domingo", "dining", "Wipe dining table", ["Mom"], "Mom"),
+    makeTask("domingo", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
+    makeTask("domingo", "dust", "Dust", ["Celo"], "Celo"),
+    makeTask("domingo", "feedDogs", "Feed dogs", ["Ethan"], "Ethan"),
+    makeTask("domingo", "read", "Read for 20 min", ["Celo"], "Celo"),
+    makeTask("domingo", "walk", "Walk with Celo", ["Mom"], "Mom")
   ]
 };
 
-// Per-day extras (used for chores that only happen on specific days)
-const DAILY_EXTRAS_BY_DAY = {
-  lunes: { Dad: ["Brush Harvey"] },
-  miercoles: { Dad: ["Brush Harvey"] },
-  viernes: { Dad: ["Brush Harvey"] }
-};
-
-function getDailyChoreList(dayKey, person){
-  const base = (DAILY_CHORES[person] || []);
-  const extras = (DAILY_EXTRAS_BY_DAY[dayKey] && DAILY_EXTRAS_BY_DAY[dayKey][person])
-    ? DAILY_EXTRAS_BY_DAY[dayKey][person]
-    : [];
-  return base.concat(extras);
+function getTasksForDay(dayKey){
+  return DAILY_SCHEDULE[dayKey] || [];
 }
-
 const WEEKLY_CHORES = [
   "Sweep backyard",
   "Wipe inside fridge",
@@ -712,11 +772,16 @@ function calcDailyProgress(){
   const s = loadDailyState();
   const dayObj = s[day] || { checks:{} };
 
-  // total daily checkboxes (all people)
-  let total = 0;
-  for (const person of PEOPLE){
-    total += getDailyChoreList(day, person).length;
+  const tasks = getTasksForDay(day);
+  const total = tasks.length;
+
+  let done = 0;
+  for (const t of tasks){
+    if (dayObj.checks && dayObj.checks[t.id]) done++;
   }
+
+  return { done, total };
+}
 
   // done today
   let done = 0;
@@ -1013,8 +1078,9 @@ function renderDay(dayKey){
       <div class="weeklyGrid" id="weeklyGrid"></div>
     </section>
 
-    <section class="panel" aria-label="Yesterday Summary">
-      <h3 id="yesterdayTitle">Ayer</h3>
+        <section class="panel" aria-label="Verification">
+      <h3 id="yesterdayTitle">Verification</h3>
+      <div class="hint">Dad verifies Ethan's chores from the previous day. Mom verifies Celo's chores from the previous day.</div>
       <div class="yesterdayGrid" id="yesterdayGrid"></div>
     </section>
 
@@ -1045,31 +1111,38 @@ function renderDailyColumns(dayKey){
     h.textContent = person;
     col.appendChild(h);
 
-    getDailyChoreList(dayKey, person).forEach(chore => {
-      const key = `${person}::${chore}`;
+        const tasks = getTasksForDay(dayKey).filter(t => (t.assignees || []).includes(person));
+
+    tasks.forEach(t => {
       const row = document.createElement("div");
       row.className = "chore";
 
       const cb = document.createElement("input");
       cb.type = "checkbox";
-      cb.checked = !!state[dayKey].checks[key];
+      cb.checked = !!state[dayKey].checks[t.id];
       cb.onchange = () => {
         const s = loadDailyState();
         s[dayKey] = s[dayKey] || { checks:{}, notes:"" };
-        s[dayKey].checks[key] = cb.checked;
+        s[dayKey].checks[t.id] = cb.checked;
         saveDailyState(s);
+
+        // keep both columns visually in sync for 2-person chores
+        renderDailyColumns(dayKey);
       };
 
       const label = document.createElement("span");
-      label.textContent = chore;
+      const isPrimary = t.primary === person;
+
+      if ((t.assignees || []).length === 2 && !isPrimary){
+        label.textContent = `${t.text} (help ${t.primary})`;
+      } else {
+        label.textContent = t.text;
+      }
 
       row.appendChild(cb);
       row.appendChild(label);
       col.appendChild(row);
     });
-
-    columns.appendChild(col);
-  });
 }
 
 function renderDayNotes(dayKey){
@@ -1146,12 +1219,27 @@ function renderWeekly(){
 function renderYesterday(dayKey){
   const y = prevDayKey(dayKey);
   const title = document.getElementById("yesterdayTitle");
-  title.textContent = `Ayer (${y})`;
+  title.textContent = `Verification (from ${y})`;
 
   const grid = document.getElementById("yesterdayGrid");
   grid.innerHTML = "";
 
-  PEOPLE.forEach(person => {
+  const yTasks = getTasksForDay(y);
+
+  // Hard requirement mapping:
+  // Dad verifies Ethan's chores from Day N
+  // Mom verifies Celo's chores from Day N
+  const dadList = yTasks.filter(t => t.primary === "Ethan");
+  const momList = yTasks.filter(t => t.primary === "Celo");
+
+  const cards = [
+    { person: "Dad", items: dadList },
+    { person: "Mom", items: momList },
+    { person: "Ethan", items: [] },
+    { person: "Celo", items: [] }
+  ];
+
+  cards.forEach(({person, items}) => {
     const card = document.createElement("div");
     card.className = "yCard";
 
@@ -1160,13 +1248,20 @@ function renderYesterday(dayKey){
     t.textContent = person;
     card.appendChild(t);
 
-    const list = getDailyChoreList(y, person);
-    list.forEach(chore => {
-      const line = document.createElement("div");
-      line.className = "yLine";
-      line.textContent = `${person} – ${chore}`;
-      card.appendChild(line);
-    });
+    if (!items.length){
+      const none = document.createElement("div");
+      none.className = "yLine";
+      none.style.opacity = "0.65";
+      none.textContent = "(No verifications)";
+      card.appendChild(none);
+    } else {
+      items.forEach(task => {
+        const line = document.createElement("div");
+        line.className = "yLine";
+        line.textContent = `${task.primary} – ${task.text}`;
+        card.appendChild(line);
+      });
+    }
 
     grid.appendChild(card);
   });
