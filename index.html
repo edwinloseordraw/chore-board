@@ -1119,10 +1119,14 @@ function renderDailyColumns(dayKey){
       };
 
       const label = document.createElement("span");
-      const isPrimary = t.primary === person;
 
-      if ((t.assignees || []).length === 2 && !isPrimary){
-        label.textContent = `${t.text} (help ${t.primary})`;
+      // Friendly labels for 2-person chores:
+      // Dad sees: "Vacuum (with Ethan)"
+      // Ethan sees: "Vacuum (with Dad)"
+      if ((t.assignees || []).length === 2) {
+        const other = (t.assignees || []).find(p => p !== person) || "";
+        const base = (t.text || "").replace(/\s*\(2\s*people\)\s*/i, "").trim();
+        label.textContent = other ? `${base} (with ${other})` : base;
       } else {
         label.textContent = t.text;
       }
