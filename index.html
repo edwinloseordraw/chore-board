@@ -1124,15 +1124,10 @@ function renderDay(dayKey){
       <div class="weeklyGrid" id="weeklyGrid"></div>
     </section>
 
-        <section class="panel" aria-label="Verification">
-      <h3 id="yesterdayTitle">Verification</h3>
-      <div class="hint">Dad verifies Ethan's chores from the previous day. Mom verifies Celo's chores from the previous day.</div>
-      <div class="yesterdayGrid" id="yesterdayGrid"></div>
-    </section>
-
-    <section class="panel notesDay">
-      <h3>Notas del día</h3>
-      <textarea id="dailyNotes" placeholder="Notas para hoy..."></textarea>
+    <section class="panel" aria-label="Validation chores">
+      <h3 id="validationTitle">Validation chores</h3>
+      <div class="hint">Shows who had what assigned yesterday. Completion does not matter here.</div>
+      <div class="yesterdayGrid" id="validationGrid"></div>
     </section>
   `;
 
@@ -1271,28 +1266,36 @@ function renderWeekly(){
 
 function renderYesterday(dayKey){
   const y = prevDayKey(dayKey);
-  const title = document.getElementById("yesterdayTitle");
-  title.textContent = `Verification (from ${y})`;
 
-  const grid = document.getElementById("yesterdayGrid");
+  const title = document.getElementById("validationTitle");
+  if (title) title.textContent = `Validation chores (from ${y})`;
+
+  const grid = document.getElementById("validationGrid");
+  if (!grid) return;
   grid.innerHTML = "";
 
   const yTasks = getTasksForDay(y);
 
-  // Hard requirement mapping:
-  // Dad verifies Ethan's chores from Day N
-  // Mom verifies Celo's chores from Day N
-  const dadList = yTasks.filter(t => t.primary === "Ethan");
-  const momList = yTasks.filter(t => t.primary === "Celo");
+  // Show what each person had assigned yesterday (regardless of completion).
+  // For 2-person chores, show the friendly "(with X)" label.
+  // Special rule: in this section ONLY, omit Celo's backpack + Apple Watch chores.
+  PEOPLE.forEach(person => {
+    const items = yTasks
+      .filter(t => (t.assignees || []).includes(person))
+      .filter(t => {
+        if (person !== "Celo") return true;
 
-  const cards = [
-    { person: "Dad", items: dadList },
-    { person: "Mom", items: momList },
-    { person: "Ethan", items: [] },
-    { person: "Celo", items: [] }
-  ];
+        const id = (t.id || "");
+        const text = (t.text || "").toLowerCase();
 
-  cards.forEach(({person, items}) => {
+        // omit only from validation section
+        if (id.endsWith("::prepBackpack") || id.endsWith("::appleWatch")) return false;
+        if (text.includes("prepare backpack for tomorrow")) return false;
+        if (text.includes("where's your apple watch")) return false;
+
+        return true;
+      });
+
     const card = document.createElement("div");
     card.className = "yCard";
 
@@ -1305,19 +1308,22 @@ function renderYesterday(dayKey){
       const none = document.createElement("div");
       none.className = "yLine";
       none.style.opacity = "0.65";
-      none.textContent = "(No verifications)";
+      none.textContent = "(No chores)";
       card.appendChild(none);
     } else {
       items.forEach(task => {
         const line = document.createElement("div");
         line.className = "yLine";
+
+        // No "NAME –" prefix. The column header already tells you who.
         if ((task.assignees || []).length === 2) {
-          const other = (task.assignees || []).find(p => p !== task.primary) || "";
+          const other = (task.assignees || []).find(p => p !== person) || "";
           const base = (task.text || "").trim();
-          line.textContent = other ? `${task.primary} – ${base} (with ${other})` : `${task.primary} – ${base}`;
+          line.textContent = other ? `${base} (with ${other})` : base;
         } else {
-          line.textContent = `${task.primary} – ${(task.text || "").trim()}`;
+          line.textContent = (task.text || "").trim();
         }
+
         card.appendChild(line);
       });
     }
