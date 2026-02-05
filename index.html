@@ -783,18 +783,6 @@ function calcDailyProgress(){
   return { done, total };
 }
 
-  // done today
-  let done = 0;
-  for (const person of PEOPLE){
-    for (const chore of getDailyChoreList(day, person)){
-      const key = `${person}::${chore}`;
-      if (dayObj.checks && dayObj.checks[key]) done++;
-    }
-  }
-
-  return { done, total };
-}
-
 /**
  * Semanal ring rule:
  * Weekly chore counts as done ONLY when:
@@ -1111,7 +1099,7 @@ function renderDailyColumns(dayKey){
     h.textContent = person;
     col.appendChild(h);
 
-        const tasks = getTasksForDay(dayKey).filter(t => (t.assignees || []).includes(person));
+    const tasks = getTasksForDay(dayKey).filter(t => (t.assignees || []).includes(person));
 
     tasks.forEach(t => {
       const row = document.createElement("div");
@@ -1125,7 +1113,6 @@ function renderDailyColumns(dayKey){
         s[dayKey] = s[dayKey] || { checks:{}, notes:"" };
         s[dayKey].checks[t.id] = cb.checked;
         saveDailyState(s);
-
         // keep both columns visually in sync for 2-person chores
         renderDailyColumns(dayKey);
       };
@@ -1143,6 +1130,9 @@ function renderDailyColumns(dayKey){
       row.appendChild(label);
       col.appendChild(row);
     });
+
+    columns.appendChild(col);
+  });
 }
 
 function renderDayNotes(dayKey){
@@ -1633,9 +1623,8 @@ function makeId(){
 // Default to dashboard if no hash
 if (!location.hash){
   goto("dashboard");
-} else {
-  renderApp();
 }
+renderApp();
 
 /* =========================
    SERVICE WORKER
