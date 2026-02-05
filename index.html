@@ -1254,6 +1254,18 @@ function renderMaintenance(){
   const s = loadMaintState();
   s.entries = s.entries || [];
 
+// Phase 7.1: migrate legacy entries (no id) so delete works reliably
+  let changed = false;
+  s.entries = s.entries.map(e => {
+    if (!e || typeof e !== "object") return e;
+    if (!e.id) {
+      changed = true;
+      return { ...e, id: makeId() };
+    }
+    return e;
+  });
+  if (changed) saveMaintState(s);
+
   // Sort newest first (by date, then by insertion order)
   const entries = [...s.entries].sort((a, b) => {
     const da = (a.date || "");
