@@ -529,7 +529,7 @@ const DAILY_SCHEDULE = {
     makeTask("lunes", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
     makeTask("lunes", "mop", "Mop", ["Mom"], "Mom"),
     makeTask("lunes", "dining", "Wipe dining table", ["Mom"], "Mom"),
-    makeTask("lunes", "walk", "Walk with Celo (every other day)", ["Mom"], "Mom"),
+    makeTask("lunes", "walk", "Walk with Celo", ["Mom"], "Mom"),
 
     makeTask("lunes", "dust", "Dust", ["Ethan"], "Ethan"),
     makeTask("lunes", "dogPoop", "Dog poop", ["Ethan"], "Ethan"),
@@ -547,7 +547,7 @@ const DAILY_SCHEDULE = {
     makeTask("martes", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
     makeTask("martes", "dust", "Dust", ["Dad"], "Dad"),
     makeTask("martes", "cabinets", "Cabinets", ["Dad"], "Dad"),
-    makeTask("martes", "walk", "Walk with Celo (every other day)", ["Dad"], "Dad"),
+    makeTask("martes", "walk", "Walk with Celo", ["Dad"], "Dad"),
 
     makeTask("martes", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
     makeTask("martes", "counters", "Wipe kitchen counters", ["Mom"], "Mom"),
@@ -572,7 +572,7 @@ const DAILY_SCHEDULE = {
     makeTask("miercoles", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
     makeTask("miercoles", "dust", "Dust", ["Mom"], "Mom"),
     makeTask("miercoles", "cabinets", "Cabinets", ["Mom"], "Mom"),
-    makeTask("miercoles", "walk", "Walk with Celo (every other day)", ["Mom"], "Mom"),
+    makeTask("miercoles", "walk", "Walk with Celo", ["Mom"], "Mom"),
 
     makeTask("miercoles", "counters", "Wipe kitchen counters", ["Ethan"], "Ethan"),
     makeTask("miercoles", "feedDogs", "Feed dogs", ["Ethan"], "Ethan"),
@@ -587,7 +587,7 @@ const DAILY_SCHEDULE = {
     makeTask("jueves", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
     makeTask("jueves", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
     makeTask("jueves", "mop", "Mop", ["Dad"], "Dad"),
-    makeTask("jueves", "walk", "Walk with Celo (every other day)", ["Dad"], "Dad"),
+    makeTask("jueves", "walk", "Walk with Celo", ["Dad"], "Dad"),
 
     makeTask("jueves", "dining", "Wipe dining table", ["Mom"], "Mom"),
     makeTask("jueves", "dogPoop", "Dog poop", ["Mom"], "Mom"),
@@ -613,7 +613,7 @@ const DAILY_SCHEDULE = {
     makeTask("viernes", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
     makeTask("viernes", "dining", "Wipe dining table", ["Mom"], "Mom"),
     makeTask("viernes", "cabinets", "Cabinets", ["Mom"], "Mom"),
-    makeTask("viernes", "walk", "Walk with Celo (every other day)", ["Mom"], "Mom"),
+    makeTask("viernes", "walk", "Walk with Celo", ["Mom"], "Mom"),
 
     makeTask("viernes", "dust", "Dust", ["Ethan"], "Ethan"),
     makeTask("viernes", "dogPoop", "Dog poop", ["Ethan"], "Ethan"),
@@ -629,7 +629,7 @@ const DAILY_SCHEDULE = {
     makeTask("sabado", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
     makeTask("sabado", "cabinets", "Cabinets", ["Dad"], "Dad"),
     makeTask("sabado", "dogPoop", "Dog poop", ["Dad"], "Dad"),
-    makeTask("sabado", "walk", "Walk with Celo (every other day)", ["Dad"], "Dad"),
+    makeTask("sabado", "walk", "Walk with Celo", ["Dad"], "Dad"),
 
     makeTask("sabado", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
     makeTask("sabado", "dust", "Dust", ["Mom"], "Mom"),
@@ -650,7 +650,7 @@ const DAILY_SCHEDULE = {
     makeTask("domingo", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
     makeTask("domingo", "dust", "Dust", ["Mom"], "Mom"),
     makeTask("domingo", "cabinets", "Cabinets", ["Mom"], "Mom"),
-    makeTask("domingo", "walk", "Walk with Celo (every other day)", ["Mom"], "Mom"),
+    makeTask("domingo", "walk", "Walk with Celo", ["Mom"], "Mom"),
 
     makeTask("domingo", "dining", "Wipe dining table", ["Ethan"], "Ethan"),
     makeTask("domingo", "dogPoop", "Dog poop", ["Ethan"], "Ethan"),
@@ -661,8 +661,76 @@ const DAILY_SCHEDULE = {
   ]
 };
 
+// -------------------------
+// Phase 8.3 + 8.4 helpers
+// -------------------------
+const PARENTS = ["Dad", "Mom"];
+const KIDS = ["Ethan", "Celo"];
+
+function isParent(p){ return PARENTS.includes(p); }
+function isKid(p){ return KIDS.includes(p); }
+
+// Phase 8.4: Walk alternates every other day. Mom starts on lunes.
+function walkAssigneeForDay(dayKey){
+  const idx = DAYS.indexOf(dayKey);
+  // lunes (idx 0) => Mom, martes (1) => Dad, etc.
+  return (idx % 2 === 0) ? "Mom" : "Dad";
+}
+
+function buildWalkTask(dayKey){
+  const who = walkAssigneeForDay(dayKey);
+  return makeTask(dayKey, "walk", "Walk with Celo", [who], who);
+}
+
+// Phase 8.3: Enforce the ONLY allowed 2-person pairings:
+//   - Mom + Ethan
+//   - Dad + Celo
+// If schedule data ever drifts, we auto-correct deterministically.
+function normalizeTwoPersonTask(task){
+  if (!task || !Array.isArray(task.assignees) || task.assignees.length !== 2) return task;
+
+  const a = task.assignees[0];
+  const b = task.assignees[1];
+
+  const isAllowed = (a === "Mom" && b === "Ethan") || (a === "Ethan" && b === "Mom") ||
+                    (a === "Dad" && b === "Celo")  || (a === "Celo"  && b === "Dad");
+  if (isAllowed) return task;
+
+  // If we have 1 parent + 1 kid but the "wrong" kid/parent, force the correct pairing.
+  const hasMom = task.assignees.includes("Mom");
+  const hasDad = task.assignees.includes("Dad");
+  const hasEthan = task.assignees.includes("Ethan");
+  const hasCelo = task.assignees.includes("Celo");
+
+  let fixed;
+  if (hasMom || hasEthan) {
+    fixed = ["Mom", "Ethan"];
+  } else if (hasDad || hasCelo) {
+    fixed = ["Dad", "Celo"];
+  } else {
+    // Fallback: decide by primary if present
+    fixed = (task.primary === "Celo" || task.primary === "Dad") ? ["Dad", "Celo"] : ["Mom", "Ethan"];
+  }
+
+  // clone so we don't mutate the schedule literal
+  return { ...task, assignees: fixed };
+}
+
 function getTasksForDay(dayKey){
-  return DAILY_SCHEDULE[dayKey] || [];
+  // Pull from schedule (do NOT use checkbox state for anything here)
+  const base = (DAILY_SCHEDULE[dayKey] || []).slice();
+
+  // Phase 8.4: remove any manually-scheduled walk tasks to avoid duplicates,
+  // then inject the automatic alternating walk task.
+  const withoutWalk = base.filter(t => {
+    const id = (t && t.id) ? t.id : "";
+    return !id.endsWith("::walk");
+  });
+
+  withoutWalk.push(buildWalkTask(dayKey));
+
+  // Phase 8.3: enforce 2-person pairing guardrails.
+  return withoutWalk.map(t => normalizeTwoPersonTask(t));
 }
 const WEEKLY_CHORES = [
   "Sweep backyard",
