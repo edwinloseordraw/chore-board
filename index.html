@@ -507,20 +507,56 @@ function prevDayKey(dayKey){
 ========================= */
 
 const DAILY_CHORES = {
-  Dad: ["Dog poop","Trash"],
-  Mom: ["Laundry","Kitchen"],
-  Ethan: ["Room","Homework"],
-  Celo: ["Dishes","Toys"]
+  Dad: [
+    "Vacuum (with Ethan)",
+    "Take out trash (with Ethan)",
+    "Wipe kitchen counters"
+  ],
+  Mom: [
+    "Wash dishes (with Celo)",
+    "Mop",
+    "Wipe dining table",
+    "Walk with Celo (every other day)"
+  ],
+  Ethan: [
+    "Vacuum (with Dad)",
+    "Take out trash (with Dad)",
+    "Dust",
+    "Dog poop"
+  ],
+  Celo: [
+    "Wash dishes (with Mom)",
+    "Feed dogs",
+    "Cabinets",
+    "Read for 20 min"
+  ]
 };
+
+// Per-day extras (used for chores that only happen on specific days)
+const DAILY_EXTRAS_BY_DAY = {
+  lunes: { Dad: ["Brush Harvey"] },
+  miercoles: { Dad: ["Brush Harvey"] },
+  viernes: { Dad: ["Brush Harvey"] }
+};
+
+function getDailyChoreList(dayKey, person){
+  const base = (DAILY_CHORES[person] || []);
+  const extras = (DAILY_EXTRAS_BY_DAY[dayKey] && DAILY_EXTRAS_BY_DAY[dayKey][person])
+    ? DAILY_EXTRAS_BY_DAY[dayKey][person]
+    : [];
+  return base.concat(extras);
+}
 
 const WEEKLY_CHORES = [
   "Sweep backyard",
   "Wipe inside fridge",
   "Clean inside microwave",
   "Clean trash can (inside & out)",
-  "Clean toilets",
+  "Shake out entry mats",
   "Dust ceiling fans & vents",
+  "Clean toilets",
   "Wipe down bathroom",
+  "Clean showers",
   "Doors & windows"
 ];
 
@@ -679,13 +715,13 @@ function calcDailyProgress(){
   // total daily checkboxes (all people)
   let total = 0;
   for (const person of PEOPLE){
-    total += (DAILY_CHORES[person] || []).length;
+    total += getDailyChoreList(day, person).length;
   }
 
   // done today
   let done = 0;
   for (const person of PEOPLE){
-    for (const chore of (DAILY_CHORES[person] || [])){
+    for (const chore of getDailyChoreList(day, person)){
       const key = `${person}::${chore}`;
       if (dayObj.checks && dayObj.checks[key]) done++;
     }
@@ -1009,7 +1045,7 @@ function renderDailyColumns(dayKey){
     h.textContent = person;
     col.appendChild(h);
 
-    (DAILY_CHORES[person] || []).forEach(chore => {
+    getDailyChoreList(dayKey, person).forEach(chore => {
       const key = `${person}::${chore}`;
       const row = document.createElement("div");
       row.className = "chore";
@@ -1124,7 +1160,7 @@ function renderYesterday(dayKey){
     t.textContent = person;
     card.appendChild(t);
 
-    const list = DAILY_CHORES[person] || [];
+    const list = getDailyChoreList(y, person);
     list.forEach(chore => {
       const line = document.createElement("div");
       line.className = "yLine";
