@@ -1357,29 +1357,26 @@ function renderMaintenance(){
           <div class="maintSub">${by || "(No person)"} • ${date || "(No date)"}</div>
         </div>
         <div class="maintActions">
-          <button class="ghost" data-del="${idx}" title="Delete entry">Delete</button>
+          <button class="ghost" data-id="${escapeHtml(e.id || "")}" title="Delete entry">Delete</button>
         </div>
       </div>
     `;
   }).join("");
 
   // Delete handlers (by index in the sorted list, so we match by value)
-  list.querySelectorAll("[data-del]").forEach(btn => {
-    btn.onclick = () => {
-      const delIdx = Number(btn.getAttribute("data-del"));
-      const target = entries[delIdx];
-      if (!target) return;
+  list.querySelectorAll("[data-id]").forEach(btn => {
+  btn.onclick = () => {
+    const id = (btn.getAttribute("data-id") || "").trim();
+    if (!id) return;
 
-      if (!confirm("Delete this maintenance entry?")) return;
+    if (!confirm("Delete this maintenance entry?")) return;
 
-      const current = loadMaintState();
-      current.entries = (current.entries || []).filter(e =>
-        !(e.task === target.task && e.by === target.by && e.date === target.date)
-      );
-      saveMaintState(current);
-      renderMaintenance();
-    };
-  });
+    const current = loadMaintState();
+    current.entries = (current.entries || []).filter(e => e.id !== id);
+    saveMaintState(current);
+    renderMaintenance();
+  };
+});
 
   // Add entry handler
   document.getElementById("btnAddMaint").onclick = () => {
@@ -1393,7 +1390,7 @@ function renderMaintenance(){
 
     const current = loadMaintState();
     current.entries = current.entries || [];
-    current.entries.push({ task, by, date });
+    current.entries.push({ id: makeId(), task, by, date });
     saveMaintState(current);
 
     renderMaintenance();
@@ -1484,6 +1481,11 @@ function isoToday(){
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+function makeId(){
+  // Prefer native UUID; fall back for older Safari just in case
+  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
 
