@@ -456,13 +456,6 @@
       font-weight:800;
       font-size:14px;
     }
-    .dot{
-      width:14px;
-      height:14px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,0.25);
-      flex:0 0 auto;
-    }
     .colorInput{
       width:54px;
       height:36px;
@@ -470,28 +463,6 @@
       background:transparent;
       padding:0;
       cursor:pointer;
-    }
-    .miniPills{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      margin-top:8px;
-    }
-    .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:6px 10px;
-      border-radius:999px;
-      background:rgba(255,255,255,0.06);
-      border:1px solid rgba(255,255,255,0.10);
-      font-size:12px;
-      color:var(--muted);
-      white-space:nowrap;
-    }
-    .pill strong{
-      color:var(--text);
-      font-weight:800;
     }
 
     /* ---------- Simple list pages (biweekly/monthly/maintenance scaffolding) ---------- */
@@ -1101,8 +1072,6 @@ function renderDashboard(){
           ${ringCard("Monthly", m.done, m.total, mp)}
         </div>
 
-        <div class="miniPills" id="dailyByPerson"></div>
-
         <div class="dashNav">
           <button onclick="goto('${todayKey()}')">Go to Hoy</button>
           <button onclick="goto('biweekly')">Bi-weekly</button>
@@ -1121,40 +1090,6 @@ function renderDashboard(){
       </div>
     </div>
   `;
-
-  // Daily (Hoy) contribution split by person (uses Admin colors)
-  const pillWrap = document.getElementById("dailyByPerson");
-  if (pillWrap){
-    const colors = loadMemberColors();
-    const day = todayKey();
-    const ds = loadDailyState();
-    const dayObj = ds[day] || { checks:{} };
-    const tasks = getTasksForDay(day);
-
-    const byPerson = {};
-    PEOPLE.forEach(p => { byPerson[p] = { done:0, total:0 }; });
-
-    // Count unique tasks per person (each person gets credit for tasks assigned to them)
-    PEOPLE.forEach(p => {
-      tasks.filter(t => (t.assignees || []).includes(p)).forEach(t => {
-        byPerson[p].total += 1;
-        if (dayObj.checks && dayObj.checks[t.id]) byPerson[p].done += 1;
-      });
-    });
-
-    pillWrap.innerHTML = PEOPLE.map(p => {
-      const c = colors[p] || "#ffffff";
-      const done = byPerson[p].done;
-      const total = byPerson[p].total;
-      return `
-        <div class="pill">
-          <span class="dot" style="background:${c}"></span>
-          <strong>${p}</strong>
-          <span>${done}/${total}</span>
-        </div>
-      `;
-    }).join("");
-  }
 
   // Render notes area based on lock state
   renderPinControlsAndNotes();
