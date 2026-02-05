@@ -1600,7 +1600,6 @@ function renderChecklistPage(kind){
   };
 }
 
-function renderMaintenance(){
 function renderAdmin(){
   const app = document.getElementById("app");
   const colors = loadMemberColors();
@@ -1610,7 +1609,7 @@ function renderAdmin(){
       <div class="toolbar">
         <div class="left">
           <h2 style="margin:0;">Admin</h2>
-          <div class="hint" style="margin:0;">Pick a color for each person. These colors style the daily columns and the dashboard contribution pills.</div>
+          <div class="hint" style="margin:0;">Pick a color for each person. These colors style the daily columns.</div>
         </div>
         <div class="right">
           <button class="danger" id="btnResetColors">Reset Colors</button>
@@ -1619,7 +1618,7 @@ function renderAdmin(){
 
       <div class="adminGrid" id="adminGrid"></div>
 
-      <div class="hint" style="margin-top:10px;">Tip: Think of the colors as each person's "signature". On the dashboard, you'll see today's completion split by person using these colors.</div>
+      <div class="hint" style="margin-top:10px;">Tip: Think of the colors as each person's "signature".</div>
     </section>
   `;
 
@@ -1634,8 +1633,11 @@ function renderAdmin(){
     left.className = "adminName";
 
     const dot = document.createElement("div");
-    dot.className = "dot";
+    dot.style.width = "14px";
+    dot.style.height = "14px";
+    dot.style.borderRadius = "999px";
     dot.style.background = colors[person];
+    dot.style.border = "1px solid rgba(255,255,255,0.25)";
 
     const name = document.createElement("div");
     name.textContent = person;
@@ -1665,11 +1667,13 @@ function renderAdmin(){
     renderAdmin();
   };
 }
+
+function renderMaintenance(){
   const app = document.getElementById("app");
   const s = loadMaintState();
   s.entries = s.entries || [];
 
-// Phase 7.1: migrate legacy entries (no id) so delete works reliably
+  // Phase 7.1: migrate legacy entries (no id) so delete works reliably
   let changed = false;
   s.entries = s.entries.map(e => {
     if (!e || typeof e !== "object") return e;
@@ -1681,7 +1685,7 @@ function renderAdmin(){
   });
   if (changed) saveMaintState(s);
 
-  // Sort newest first (by date, then by insertion order)
+  // Sort newest first (by date)
   const entries = [...s.entries].sort((a, b) => {
     const da = (a.date || "");
     const db = (b.date || "");
@@ -1766,13 +1770,13 @@ function renderAdmin(){
     </section>
   `;
 
-  // Default the date to today (Option A you picked earlier)
+  // Default the date to today
   const dateEl = document.getElementById("maintDate");
   dateEl.value = isoToday();
 
   // Render list
   const list = document.getElementById("maintList");
-  list.innerHTML = entries.map((e, idx) => {
+  list.innerHTML = entries.map(e => {
     const task = escapeHtml(e.task || "");
     const by = escapeHtml(e.by || "");
     const date = escapeHtml(e.date || "");
@@ -1790,20 +1794,20 @@ function renderAdmin(){
     `;
   }).join("");
 
-  // Delete handlers (by index in the sorted list, so we match by value)
+  // Delete handlers
   list.querySelectorAll("[data-id]").forEach(btn => {
-  btn.onclick = () => {
-    const id = (btn.getAttribute("data-id") || "").trim();
-    if (!id) return;
+    btn.onclick = () => {
+      const id = (btn.getAttribute("data-id") || "").trim();
+      if (!id) return;
 
-    if (!confirm("Delete this maintenance entry?")) return;
+      if (!confirm("Delete this maintenance entry?")) return;
 
-    const current = loadMaintState();
-    current.entries = (current.entries || []).filter(e => e.id !== id);
-    saveMaintState(current);
-    renderMaintenance();
-  };
-});
+      const current = loadMaintState();
+      current.entries = (current.entries || []).filter(e => e.id !== id);
+      saveMaintState(current);
+      renderMaintenance();
+    };
+  });
 
   // Add entry handler
   document.getElementById("btnAddMaint").onclick = () => {
@@ -1823,7 +1827,7 @@ function renderAdmin(){
     renderMaintenance();
   };
 
-  // Reset button (kept)
+  // Reset button
   document.getElementById("btnResetMaint").onclick = () => {
     if (!confirm("Reset maintenance log?")) return;
     localStorage.removeItem("maintState");
