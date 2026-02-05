@@ -704,12 +704,10 @@ function calcDailyProgress(){
 function calcWeeklyProgress(){
   const total = WEEKLY_CHORES.length;
   const w = loadWeeklyState();
-  w.checks = w.checks || {};
-  w.assign = w.assign || {};
 
   const done = WEEKLY_CHORES.reduce((acc, c) => {
-    const checked  = !!w.checks;
-    const assigned = !!w.assign;
+    const checked  = w.checks && w.checks;
+    const assigned = w.assign && w.assign;
     return acc + (checked && assigned ? 1 : 0);
   }, 0);
 
@@ -719,12 +717,10 @@ function calcWeeklyProgress(){
 function calcBiweeklyProgress(){
   const total = BIWEEKLY_CHORES.length;
   const b = loadBiweeklyState();
-  b.checks = b.checks || {};
-  b.assign = b.assign || {};
 
   const done = BIWEEKLY_CHORES.reduce((acc, c) => {
-    const checked  = !!b.checks;
-    const assigned = !!b.assign;
+    const checked  = b.checks && b.checks;
+    const assigned = b.assign && b.assign;
     return acc + (checked && assigned ? 1 : 0);
   }, 0);
 
@@ -734,12 +730,10 @@ function calcBiweeklyProgress(){
 function calcMonthlyProgress(){
   const total = MONTHLY_CHORES.length;
   const m = loadMonthlyState();
-  m.checks = m.checks || {};
-  m.assign = m.assign || {};
 
   const done = MONTHLY_CHORES.reduce((acc, c) => {
-    const checked  = !!m.checks;
-    const assigned = !!m.assign;
+    const checked  = m.checks && m.checks;
+    const assigned = m.assign && m.assign;
     return acc + (checked && assigned ? 1 : 0);
   }, 0);
 
