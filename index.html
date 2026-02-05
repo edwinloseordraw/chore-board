@@ -432,6 +432,68 @@
       min-height:80px;
     }
 
+    /* ---------- Admin (member colors) ---------- */
+    .adminGrid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:10px;
+    }
+    .adminRow{
+      background:var(--panel2);
+      border:1px solid var(--border2);
+      border-radius:12px;
+      padding:12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      min-height:56px;
+    }
+    .adminName{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight:800;
+      font-size:14px;
+    }
+    .dot{
+      width:14px;
+      height:14px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.25);
+      flex:0 0 auto;
+    }
+    .colorInput{
+      width:54px;
+      height:36px;
+      border:none;
+      background:transparent;
+      padding:0;
+      cursor:pointer;
+    }
+    .miniPills{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:8px;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.10);
+      font-size:12px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+    .pill strong{
+      color:var(--text);
+      font-weight:800;
+    }
+
     /* ---------- Simple list pages (biweekly/monthly/maintenance scaffolding) ---------- */
     .listGrid{
       display:grid;
@@ -799,6 +861,24 @@ function jget(k, fallback){
 }
 function jset(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
 
+// Member colors (Admin page)
+function defaultMemberColors(){
+  return {
+    Dad:  "#4caf50",
+    Mom:  "#ffb300",
+    Ethan:"#42a5f5",
+    Celo: "#ab47bc"
+  };
+}
+function loadMemberColors(){
+  const d = defaultMemberColors();
+  const s = jget("memberColors", d);
+  // ensure all keys exist
+  PEOPLE.forEach(p => { if (!s[p]) s[p] = d[p] || "#ffffff"; });
+  return s;
+}
+function saveMemberColors(s){ jset("memberColors", s); }
+
 // Daily state (per day)
 function loadDailyState(){ return jget("dailyState", {}); }
 function saveDailyState(s){ jset("dailyState", s); }
@@ -908,6 +988,12 @@ function renderTopNav(){
   if (r === "maintenance") b3.classList.add("active");
   b3.onclick = () => goto("maintenance");
   nav.appendChild(b3);
+
+  const b4 = document.createElement("button");
+  b4.textContent = "Admin";
+  if (r === "admin") b4.classList.add("active");
+  b4.onclick = () => goto("admin");
+  nav.appendChild(b4);
 }
 
 window.addEventListener("hashchange", renderApp);
@@ -1006,7 +1092,7 @@ function renderDashboard(){
     <div class="dashGrid">
       <div class="panel">
         <h2>Progress Dashboard</h2>
-        <div class="hint">Rings track completion for Semanal, Bi-weekly, and Monthly. (Maintenance not included yet.)</div>
+        <div class="hint">Rings track completion for Daily (Hoy), Semanal, Bi-weekly, and Monthly. (Maintenance not included yet.)</div>
 
         <div class="rings">
           ${ringCard("Daily (Hoy)", d.done, d.total, dp)}
@@ -1014,6 +1100,8 @@ function renderDashboard(){
           ${ringCard("Bi-weekly", b.done, b.total, bp)}
           ${ringCard("Monthly", m.done, m.total, mp)}
         </div>
+
+        <div class="miniPills" id="dailyByPerson"></div>
 
         <div class="dashNav">
           <button onclick="goto('${todayKey()}')">Go to Hoy</button>
@@ -1033,6 +1121,40 @@ function renderDashboard(){
       </div>
     </div>
   `;
+
+  // Daily (Hoy) contribution split by person (uses Admin colors)
+  const pillWrap = document.getElementById("dailyByPerson");
+  if (pillWrap){
+    const colors = loadMemberColors();
+    const day = todayKey();
+    const ds = loadDailyState();
+    const dayObj = ds[day] || { checks:{} };
+    const tasks = getTasksForDay(day);
+
+    const byPerson = {};
+    PEOPLE.forEach(p => { byPerson[p] = { done:0, total:0 }; });
+
+    // Count unique tasks per person (each person gets credit for tasks assigned to them)
+    PEOPLE.forEach(p => {
+      tasks.filter(t => (t.assignees || []).includes(p)).forEach(t => {
+        byPerson[p].total += 1;
+        if (dayObj.checks && dayObj.checks[t.id]) byPerson[p].done += 1;
+      });
+    });
+
+    pillWrap.innerHTML = PEOPLE.map(p => {
+      const c = colors[p] || "#ffffff";
+      const done = byPerson[p].done;
+      const total = byPerson[p].total;
+      return `
+        <div class="pill">
+          <span class="dot" style="background:${c}"></span>
+          <strong>${p}</strong>
+          <span>${done}/${total}</span>
+        </div>
+      `;
+    }).join("");
+  }
 
   // Render notes area based on lock state
   renderPinControlsAndNotes();
@@ -1241,6 +1363,9 @@ function renderDailyColumns(dayKey){
 
     const h = document.createElement("h2");
     h.textContent = person;
+    const colors = loadMemberColors();
+    const pc = colors[person] || "#ffffff";
+    h.style.color = pc;
     col.appendChild(h);
 
     const tasks = getTasksForDay(dayKey).filter(t => (t.assignees || []).includes(person));
@@ -1251,6 +1376,8 @@ function renderDailyColumns(dayKey){
 
       const cb = document.createElement("input");
       cb.type = "checkbox";
+      // Apply member color to checkbox for quick visual association
+      try{ cb.style.accentColor = pc; }catch(e){}
       cb.id = `${t.id}__${person}`;
       cb.checked = !!state[dayKey].checks[t.id];
       cb.onchange = () => {
@@ -1539,6 +1666,70 @@ function renderChecklistPage(kind){
 }
 
 function renderMaintenance(){
+function renderAdmin(){
+  const app = document.getElementById("app");
+  const colors = loadMemberColors();
+
+  app.innerHTML = `
+    <section class="panel">
+      <div class="toolbar">
+        <div class="left">
+          <h2 style="margin:0;">Admin</h2>
+          <div class="hint" style="margin:0;">Pick a color for each person. These colors style the daily columns and the dashboard contribution pills.</div>
+        </div>
+        <div class="right">
+          <button class="danger" id="btnResetColors">Reset Colors</button>
+        </div>
+      </div>
+
+      <div class="adminGrid" id="adminGrid"></div>
+
+      <div class="hint" style="margin-top:10px;">Tip: Think of the colors as each person's "signature". On the dashboard, you'll see today's completion split by person using these colors.</div>
+    </section>
+  `;
+
+  const grid = document.getElementById("adminGrid");
+  grid.innerHTML = "";
+
+  PEOPLE.forEach(person => {
+    const row = document.createElement("div");
+    row.className = "adminRow";
+
+    const left = document.createElement("div");
+    left.className = "adminName";
+
+    const dot = document.createElement("div");
+    dot.className = "dot";
+    dot.style.background = colors[person];
+
+    const name = document.createElement("div");
+    name.textContent = person;
+
+    left.appendChild(dot);
+    left.appendChild(name);
+
+    const picker = document.createElement("input");
+    picker.type = "color";
+    picker.className = "colorInput";
+    picker.value = colors[person] || "#ffffff";
+    picker.oninput = () => {
+      const c = loadMemberColors();
+      c[person] = picker.value;
+      saveMemberColors(c);
+      dot.style.background = picker.value;
+    };
+
+    row.appendChild(left);
+    row.appendChild(picker);
+    grid.appendChild(row);
+  });
+
+  document.getElementById("btnResetColors").onclick = () => {
+    if (!confirm("Reset member colors to defaults?")) return;
+    saveMemberColors(defaultMemberColors());
+    renderAdmin();
+  };
+}
   const app = document.getElementById("app");
   const s = loadMaintState();
   s.entries = s.entries || [];
@@ -1738,6 +1929,7 @@ function renderApp(){
   if (r === "biweekly") return renderChecklistPage("biweekly");
   if (r === "monthly") return renderChecklistPage("monthly");
   if (r === "maintenance") return renderMaintenance();
+  if (r === "admin") return renderAdmin();
 
   // day route
   if (DAYS.includes(r)) return renderDay(r);
