@@ -521,87 +521,144 @@ function makeTask(dayKey, slug, text, assignees, primary){
 
 const DAILY_SCHEDULE = {
   lunes: [
-    makeTask("lunes", "vacuum", "Vacuum (2 people)", ["Dad","Ethan"], "Ethan"),
-    makeTask("lunes", "dishes", "Wash dishes (2 people)", ["Mom","Celo"], "Celo"),
-    makeTask("lunes", "trash", "Take out trash (2 people)", ["Dad","Ethan"], "Ethan"),
+    // Pairing change: Dad+Celo, Mom+Ethan
+    makeTask("lunes", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
+    makeTask("lunes", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
     makeTask("lunes", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
-    makeTask("lunes", "mop", "Mop", ["Mom"], "Mom"),
-    makeTask("lunes", "dust", "Dust", ["Ethan"], "Ethan"),
-    makeTask("lunes", "feedDogs", "Feed dogs", ["Celo"], "Celo"),
-    makeTask("lunes", "read", "Read for 20 min", ["Celo"], "Celo"),
     makeTask("lunes", "brushHarvey", "Brush Harvey", ["Dad"], "Dad"),
-    makeTask("lunes", "walk", "Walk with Celo", ["Mom"], "Mom") // Mom starts Monday
+
+    makeTask("lunes", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
+    makeTask("lunes", "mop", "Mop", ["Mom"], "Mom"),
+    makeTask("lunes", "dining", "Wipe dining table", ["Mom"], "Mom"),
+    makeTask("lunes", "walk", "Walk with Celo (every other day)", ["Mom"], "Mom"),
+
+    makeTask("lunes", "dust", "Dust", ["Ethan"], "Ethan"),
+    makeTask("lunes", "dogPoop", "Dog poop", ["Ethan"], "Ethan"),
+
+    makeTask("lunes", "feedDogs", "Feed dogs", ["Celo"], "Celo"),
+    makeTask("lunes", "cabinets", "Cabinets", ["Celo"], "Celo"),
+    makeTask("lunes", "read", "Read for 20 min", ["Celo"], "Celo"),
+    // Celo-only weekday chores (Mon–Fri)
+    makeTask("lunes", "prepBackpack", "Prepare backpack for tomorrow", ["Celo"], "Celo"),
+    makeTask("lunes", "appleWatch", "Where's your Apple Watch?", ["Celo"], "Celo")
   ],
 
   martes: [
-    makeTask("martes", "vacuum", "Vacuum (2 people)", ["Mom","Celo"], "Celo"),
-    makeTask("martes", "dishes", "Wash dishes (2 people)", ["Dad","Ethan"], "Ethan"),
-    makeTask("martes", "trash", "Take out trash (2 people)", ["Mom","Celo"], "Celo"),
-    makeTask("martes", "dining", "Wipe dining table", ["Mom"], "Mom"),
-    makeTask("martes", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
+    makeTask("martes", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
+    makeTask("martes", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
+    makeTask("martes", "dust", "Dust", ["Dad"], "Dad"),
+    makeTask("martes", "cabinets", "Cabinets", ["Dad"], "Dad"),
+    makeTask("martes", "walk", "Walk with Celo (every other day)", ["Dad"], "Dad"),
+
+    makeTask("martes", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
+    makeTask("martes", "counters", "Wipe kitchen counters", ["Mom"], "Mom"),
+    makeTask("martes", "feedDogs", "Feed dogs", ["Mom"], "Mom"),
+
+    makeTask("martes", "mop", "Mop", ["Ethan"], "Ethan"),
+    makeTask("martes", "dining", "Wipe dining table", ["Ethan"], "Ethan"),
+
     makeTask("martes", "dogPoop", "Dog poop", ["Celo"], "Celo"),
-    makeTask("martes", "cabinets", "Cabinets", ["Ethan"], "Ethan"),
-    makeTask("martes", "read", "Read for 20 min", ["Ethan"], "Ethan"),
-    makeTask("martes", "walk", "Walk with Celo", ["Dad"], "Dad")
+    makeTask("martes", "read", "Read for 20 min", ["Celo"], "Celo"),
+    makeTask("martes", "prepBackpack", "Prepare backpack for tomorrow", ["Celo"], "Celo"),
+    makeTask("martes", "appleWatch", "Where's your Apple Watch?", ["Celo"], "Celo")
   ],
 
   miercoles: [
-    makeTask("miercoles", "vacuum", "Vacuum (2 people)", ["Dad","Celo"], "Celo"),
-    makeTask("miercoles", "dishes", "Wash dishes (2 people)", ["Mom","Ethan"], "Ethan"),
-    makeTask("miercoles", "trash", "Take out trash (2 people)", ["Dad","Celo"], "Celo"),
-    makeTask("miercoles", "mop", "Mop", ["Mom"], "Mom"),
-    makeTask("miercoles", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
-    makeTask("miercoles", "dust", "Dust", ["Celo"], "Celo"),
-    makeTask("miercoles", "feedDogs", "Feed dogs", ["Ethan"], "Ethan"),
+    makeTask("miercoles", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
+    makeTask("miercoles", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
+    makeTask("miercoles", "dining", "Wipe dining table", ["Dad"], "Dad"),
+    makeTask("miercoles", "dogPoop", "Dog poop", ["Dad"], "Dad"),
     makeTask("miercoles", "brushHarvey", "Brush Harvey", ["Dad"], "Dad"),
-    makeTask("miercoles", "walk", "Walk with Celo", ["Mom"], "Mom")
+
+    makeTask("miercoles", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
+    makeTask("miercoles", "dust", "Dust", ["Mom"], "Mom"),
+    makeTask("miercoles", "cabinets", "Cabinets", ["Mom"], "Mom"),
+    makeTask("miercoles", "walk", "Walk with Celo (every other day)", ["Mom"], "Mom"),
+
+    makeTask("miercoles", "counters", "Wipe kitchen counters", ["Ethan"], "Ethan"),
+    makeTask("miercoles", "feedDogs", "Feed dogs", ["Ethan"], "Ethan"),
+
+    makeTask("miercoles", "mop", "Mop", ["Celo"], "Celo"),
+    makeTask("miercoles", "read", "Read for 20 min", ["Celo"], "Celo"),
+    makeTask("miercoles", "prepBackpack", "Prepare backpack for tomorrow", ["Celo"], "Celo"),
+    makeTask("miercoles", "appleWatch", "Where's your Apple Watch?", ["Celo"], "Celo")
   ],
 
   jueves: [
-    makeTask("jueves", "vacuum", "Vacuum (2 people)", ["Mom","Ethan"], "Ethan"),
-    makeTask("jueves", "dishes", "Wash dishes (2 people)", ["Dad","Celo"], "Celo"),
-    makeTask("jueves", "trash", "Take out trash (2 people)", ["Mom","Ethan"], "Ethan"),
+    makeTask("jueves", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
+    makeTask("jueves", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
+    makeTask("jueves", "mop", "Mop", ["Dad"], "Dad"),
+    makeTask("jueves", "walk", "Walk with Celo (every other day)", ["Dad"], "Dad"),
+
     makeTask("jueves", "dining", "Wipe dining table", ["Mom"], "Mom"),
-    makeTask("jueves", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
-    makeTask("jueves", "dogPoop", "Dog poop", ["Ethan"], "Ethan"),
-    makeTask("jueves", "cabinets", "Cabinets", ["Celo"], "Celo"),
+    makeTask("jueves", "dogPoop", "Dog poop", ["Mom"], "Mom"),
+
+    makeTask("jueves", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
+    makeTask("jueves", "cabinets", "Cabinets", ["Ethan"], "Ethan"),
+    makeTask("jueves", "feedDogs", "Feed dogs", ["Ethan"], "Ethan"),
+
+    makeTask("jueves", "dust", "Dust", ["Celo"], "Celo"),
+    makeTask("jueves", "counters", "Wipe kitchen counters", ["Celo"], "Celo"),
     makeTask("jueves", "read", "Read for 20 min", ["Celo"], "Celo"),
-    makeTask("jueves", "walk", "Walk with Celo", ["Dad"], "Dad")
+    makeTask("jueves", "prepBackpack", "Prepare backpack for tomorrow", ["Celo"], "Celo"),
+    makeTask("jueves", "appleWatch", "Where's your Apple Watch?", ["Celo"], "Celo")
   ],
 
   viernes: [
-    makeTask("viernes", "vacuum", "Vacuum (2 people)", ["Dad","Ethan"], "Ethan"),
-    makeTask("viernes", "dishes", "Wash dishes (2 people)", ["Mom","Celo"], "Celo"),
-    makeTask("viernes", "trash", "Take out trash (2 people)", ["Dad","Ethan"], "Ethan"),
+    makeTask("viernes", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
+    makeTask("viernes", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
     makeTask("viernes", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
-    makeTask("viernes", "dining", "Wipe dining table", ["Mom"], "Mom"),
-    makeTask("viernes", "dust", "Dust", ["Ethan"], "Ethan"),
-    makeTask("viernes", "feedDogs", "Feed dogs", ["Celo"], "Celo"),
+    makeTask("viernes", "feedDogs", "Feed dogs", ["Dad"], "Dad"),
     makeTask("viernes", "brushHarvey", "Brush Harvey", ["Dad"], "Dad"),
-    makeTask("viernes", "walk", "Walk with Celo", ["Mom"], "Mom")
+
+    makeTask("viernes", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
+    makeTask("viernes", "dining", "Wipe dining table", ["Mom"], "Mom"),
+    makeTask("viernes", "cabinets", "Cabinets", ["Mom"], "Mom"),
+    makeTask("viernes", "walk", "Walk with Celo (every other day)", ["Mom"], "Mom"),
+
+    makeTask("viernes", "dust", "Dust", ["Ethan"], "Ethan"),
+    makeTask("viernes", "dogPoop", "Dog poop", ["Ethan"], "Ethan"),
+
+    makeTask("viernes", "mop", "Mop", ["Celo"], "Celo"),
+    makeTask("viernes", "read", "Read for 20 min", ["Celo"], "Celo"),
+    makeTask("viernes", "prepBackpack", "Prepare backpack for tomorrow", ["Celo"], "Celo"),
+    makeTask("viernes", "appleWatch", "Where's your Apple Watch?", ["Celo"], "Celo")
   ],
 
   sabado: [
-    makeTask("sabado", "vacuum", "Vacuum (2 people)", ["Mom","Celo"], "Celo"),
-    makeTask("sabado", "dishes", "Wash dishes (2 people)", ["Dad","Ethan"], "Ethan"),
-    makeTask("sabado", "trash", "Take out trash (2 people)", ["Mom","Celo"], "Celo"),
-    makeTask("sabado", "mop", "Mop", ["Mom"], "Mom"),
-    makeTask("sabado", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
-    makeTask("sabado", "dogPoop", "Dog poop", ["Celo"], "Celo"),
-    makeTask("sabado", "read", "Read for 20 min", ["Ethan"], "Ethan"),
-    makeTask("sabado", "walk", "Walk with Celo", ["Dad"], "Dad")
+    makeTask("sabado", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
+    makeTask("sabado", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
+    makeTask("sabado", "cabinets", "Cabinets", ["Dad"], "Dad"),
+    makeTask("sabado", "dogPoop", "Dog poop", ["Dad"], "Dad"),
+    makeTask("sabado", "walk", "Walk with Celo (every other day)", ["Dad"], "Dad"),
+
+    makeTask("sabado", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
+    makeTask("sabado", "dust", "Dust", ["Mom"], "Mom"),
+    makeTask("sabado", "counters", "Wipe kitchen counters", ["Mom"], "Mom"),
+
+    makeTask("sabado", "dining", "Wipe dining table", ["Ethan"], "Ethan"),
+    makeTask("sabado", "mop", "Mop", ["Ethan"], "Ethan"),
+
+    makeTask("sabado", "feedDogs", "Feed dogs", ["Celo"], "Celo"),
+    makeTask("sabado", "read", "Read for 20 min", ["Celo"], "Celo")
   ],
 
   domingo: [
-    makeTask("domingo", "vacuum", "Vacuum (2 people)", ["Dad","Celo"], "Celo"),
-    makeTask("domingo", "dishes", "Wash dishes (2 people)", ["Mom","Ethan"], "Ethan"),
-    makeTask("domingo", "trash", "Take out trash (2 people)", ["Dad","Celo"], "Celo"),
-    makeTask("domingo", "dining", "Wipe dining table", ["Mom"], "Mom"),
-    makeTask("domingo", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
-    makeTask("domingo", "dust", "Dust", ["Celo"], "Celo"),
-    makeTask("domingo", "feedDogs", "Feed dogs", ["Ethan"], "Ethan"),
-    makeTask("domingo", "read", "Read for 20 min", ["Celo"], "Celo"),
-    makeTask("domingo", "walk", "Walk with Celo", ["Mom"], "Mom")
+    makeTask("domingo", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
+    makeTask("domingo", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
+    makeTask("domingo", "mop", "Mop", ["Dad"], "Dad"),
+
+    makeTask("domingo", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
+    makeTask("domingo", "dust", "Dust", ["Mom"], "Mom"),
+    makeTask("domingo", "cabinets", "Cabinets", ["Mom"], "Mom"),
+    makeTask("domingo", "walk", "Walk with Celo (every other day)", ["Mom"], "Mom"),
+
+    makeTask("domingo", "dining", "Wipe dining table", ["Ethan"], "Ethan"),
+    makeTask("domingo", "dogPoop", "Dog poop", ["Ethan"], "Ethan"),
+
+    makeTask("domingo", "feedDogs", "Feed dogs", ["Celo"], "Celo"),
+    makeTask("domingo", "counters", "Wipe kitchen counters", ["Celo"], "Celo"),
+    makeTask("domingo", "read", "Read for 20 min", ["Celo"], "Celo")
   ]
 };
 
@@ -1120,15 +1177,16 @@ function renderDailyColumns(dayKey){
 
       const label = document.createElement("span");
 
-      // Friendly labels for 2-person chores:
-      // Dad sees: "Vacuum (with Ethan)"
-      // Ethan sees: "Vacuum (with Dad)"
+      // Friendly labels for 2-person chores (mirrors v1 text style)
+      // Example: if Dad+Celo are paired on Vacuum:
+      //   Dad sees:  "Vacuum (with Celo)"
+      //   Celo sees: "Vacuum (with Dad)"
       if ((t.assignees || []).length === 2) {
         const other = (t.assignees || []).find(p => p !== person) || "";
-        const base = (t.text || "").replace(/\s*\(2\s*people\)\s*/i, "").trim();
+        const base = (t.text || "").trim();
         label.textContent = other ? `${base} (with ${other})` : base;
       } else {
-        label.textContent = t.text;
+        label.textContent = (t.text || "").trim();
       }
 
       row.appendChild(cb);
@@ -1253,7 +1311,13 @@ function renderYesterday(dayKey){
       items.forEach(task => {
         const line = document.createElement("div");
         line.className = "yLine";
-        line.textContent = `${task.primary} – ${task.text}`;
+        if ((task.assignees || []).length === 2) {
+          const other = (task.assignees || []).find(p => p !== task.primary) || "";
+          const base = (task.text || "").trim();
+          line.textContent = other ? `${task.primary} – ${base} (with ${other})` : `${task.primary} – ${base}`;
+        } else {
+          line.textContent = `${task.primary} – ${(task.text || "").trim()}`;
+        }
         card.appendChild(line);
       });
     }
