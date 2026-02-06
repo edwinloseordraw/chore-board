@@ -323,8 +323,8 @@
       display:flex;
       flex-direction:column;
 
-      /* Match tallest column (Celo) and keep uniform layout */
-      min-height: 420px;
+      /* Let content define height. Grid can still stretch columns evenly without forcing extra blank space. */
+      min-height: 0;
     }
 
     .column h2{
