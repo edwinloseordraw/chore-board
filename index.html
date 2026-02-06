@@ -492,7 +492,7 @@
     }
 
     .notesDay textarea{
-      min-height:80px;
+      min-height:110px;
     }
 
     /* ---------- Admin (member colors) ---------- */
@@ -1425,9 +1425,9 @@ function renderDay(dayKey){
     </section>
 
     <section class="panel notesDay" aria-label="Daily notes">
-      <h3>Notes</h3>
-      <div class="hint">Notes for this day only.</div>
-      <textarea id="dailyNotes" placeholder="Notes for ${dayKey}..."></textarea>
+      <h3>Daily notes</h3>
+      <div class="hint">Notes for this day only. These do not carry over to other days.</div>
+      <textarea id="dailyNotes" placeholder="Type notes for ${dayKey}..."></textarea>
     </section>
   `;
 
