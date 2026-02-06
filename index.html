@@ -975,6 +975,12 @@ window.addEventListener("hashchange", renderApp);
    RING CALCULATIONS
 ========================= */
 
+function emptyContribution(){
+  const byPerson = {};
+  PEOPLE.forEach(p => byPerson[p] = 0);
+  return byPerson;
+}
+
 function calcDailyProgress(){
   const day = todayKey();
   const s = loadDailyState();
@@ -984,57 +990,61 @@ function calcDailyProgress(){
   const total = tasks.length;
 
   let done = 0;
+  const byPerson = emptyContribution();
+
   for (const t of tasks){
-    if (dayObj.checks && dayObj.checks[t.id]) done++;
+    const checked = !!(dayObj.checks && dayObj.checks[t.id]);
+    if (!checked) continue;
+
+    done++;
+
+    // Credit goes to the accountable person (primary). Fallback to first assignee.
+    const who = (t.primary && PEOPLE.includes(t.primary))
+      ? t.primary
+      : ((t.assignees && t.assignees[0]) ? t.assignees[0] : null);
+
+    if (who && byPerson[who] !== undefined) byPerson[who]++;
   }
 
-  return { done, total };
+  return { done, total, byPerson };
 }
 
 /**
- * Semanal ring rule:
- * Weekly chore counts as done ONLY when:
+ * Shared progress calc for list+assignment sections (Semanal/Bi-weekly/Monthly).
+ * A chore counts as done ONLY when:
  *  - assigned to someone AND
  *  - checked complete
+ * Contribution credit goes to the assigned person.
  */
-  
+function calcAssignedListProgress(list, loadFn){
+  const total = list.length;
+  const s = loadFn();
+  const byPerson = emptyContribution();
+
+  let done = 0;
+  list.forEach(item => {
+    const checked  = !!(s.checks && s.checks[item]);
+    const assigned = (s.assign && s.assign[item]) ? s.assign[item] : "";
+
+    if (checked && assigned){
+      done++;
+      if (byPerson[assigned] !== undefined) byPerson[assigned]++;
+    }
+  });
+
+  return { done, total, byPerson };
+}
+
 function calcWeeklyProgress(){
-  const total = WEEKLY_CHORES.length;
-  const w = loadWeeklyState();
-
-  const done = WEEKLY_CHORES.reduce((acc, c) => {
-    const checked  = w.checks && w.checks[c];
-    const assigned = w.assign && w.assign[c];
-    return acc + (checked && assigned ? 1 : 0);
-  }, 0);
-
-  return { done, total };
+  return calcAssignedListProgress(WEEKLY_CHORES, loadWeeklyState);
 }
 
 function calcBiweeklyProgress(){
-  const total = BIWEEKLY_CHORES.length;
-  const b = loadBiweeklyState();
-
-  const done = BIWEEKLY_CHORES.reduce((acc, c) => {
-    const checked  = b.checks && b.checks[c];
-    const assigned = b.assign && b.assign[c];
-    return acc + (checked && assigned ? 1 : 0);
-  }, 0);
-
-  return { done, total };
+  return calcAssignedListProgress(BIWEEKLY_CHORES, loadBiweeklyState);
 }
 
 function calcMonthlyProgress(){
-  const total = MONTHLY_CHORES.length;
-  const m = loadMonthlyState();
-
-  const done = MONTHLY_CHORES.reduce((acc, c) => {
-    const checked  = m.checks && m.checks[c];
-    const assigned = m.assign && m.assign[c];
-    return acc + (checked && assigned ? 1 : 0);
-  }, 0);
-
-  return { done, total };
+  return calcAssignedListProgress(MONTHLY_CHORES, loadMonthlyState);
 }
 
 function pct(done, total){
@@ -1068,10 +1078,10 @@ function renderDashboard(){
         <div class="hint">Rings track completion for Daily (Hoy), Semanal, Bi-weekly, and Monthly. (Maintenance not included yet.)</div>
 
         <div class="rings">
-          ${ringCard("Daily (Hoy)", d.done, d.total, dp)}
-          ${ringCard("Semanal", w.done, w.total, wp)}
-          ${ringCard("Bi-weekly", b.done, b.total, bp)}
-          ${ringCard("Monthly", m.done, m.total, mp)}
+          ${ringCard("Daily (Hoy)", d.done, d.total, dp, d.byPerson)}
+          ${ringCard("Semanal", w.done, w.total, wp, w.byPerson)}
+          ${ringCard("Bi-weekly", b.done, b.total, bp, b.byPerson)}
+          ${ringCard("Monthly", m.done, m.total, mp, m.byPerson)}
         </div>
 
         <div class="dashNav">
@@ -1096,34 +1106,64 @@ function renderDashboard(){
   // Render notes area based on lock state
   renderPinControlsAndNotes();
 }
-function ringSVG(percent){
-  const r = 30;                 // radius
-  const cx = 38, cy = 38;       // center
-  const c = 2 * Math.PI * r;    // circumference
 
-  // clamp 0-100
-  const p = Math.max(0, Math.min(100, Number(percent) || 0));
-  const dash = (p / 100) * c;
+function ringSVG(done, total, byPerson){
+  const r = 30;
+  const cx = 38, cy = 38;
+  const c = 2 * Math.PI * r;
+
+  const safeTotal = Math.max(0, Number(total) || 0);
+  const safeDone  = Math.max(0, Math.min(safeTotal, Number(done) || 0));
+  const p = safeTotal ? (safeDone / safeTotal) : 0;
+
+  const filled = p * c; // how much of the ring is filled overall
+
+  const colors = loadMemberColors();
+
+  // Build ordered segments (stable order: Dad, Mom, Ethan, Celo)
+  const segments = [];
+  PEOPLE.forEach(person => {
+    const count = byPerson && typeof byPerson[person] === "number" ? byPerson[person] : 0;
+    if (count > 0 && safeDone > 0){
+      segments.push({
+        person,
+        count,
+        color: colors[person] || "rgba(255,255,255,0.9)"
+      });
+    }
+  });
+
+  let offset = 0;
+  const segSvgs = segments.map(seg => {
+    const segLen = (seg.count / safeDone) * filled;
+    const svg = `
+      <circle class="chalkStroke" cx="${cx}" cy="${cy}" r="${r}"
+        stroke="${seg.color}" stroke-width="10" fill="none"
+        stroke-linecap="round"
+        stroke-dasharray="${segLen} ${Math.max(0, c - segLen)}"
+        stroke-dashoffset="${-offset}"
+        transform="rotate(-90 ${cx} ${cy})" />
+    `;
+    offset += segLen;
+    return svg;
+  }).join("");
 
   return `
     <svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true">
       <circle class="chalkTrack" cx="${cx}" cy="${cy}" r="${r}"
         stroke="rgba(255,255,255,0.55)" stroke-width="10" fill="none" />
-      <circle class="chalkStroke" cx="${cx}" cy="${cy}" r="${r}"
-        stroke="rgba(255,255,255,0.95)" stroke-width="10" fill="none"
-        stroke-linecap="round"
-        stroke-dasharray="${dash} ${c - dash}"
-        transform="rotate(-90 ${cx} ${cy})" />
+      ${segSvgs}
     </svg>
   `;
 }
-function ringCard(title, done, total, percent, extraHint){
+
+function ringCard(title, done, total, percent, byPerson, extraHint){
   const sub = total ? `${done}/${total} complete` : `0/0 (set up later)`;
   const hint = extraHint ? `<div class="sub">${extraHint}</div>` : "";
   return `
     <div class="ringCard">
       <div class="ringSvgWrap">
-        ${ringSVG(percent)}
+        ${ringSVG(done, total, byPerson)}
         <div class="pct">${percent}%</div>
       </div>
       <div class="ringMeta">
