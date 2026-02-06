@@ -57,6 +57,7 @@
       position:sticky;
       top:0;
       z-index:5;
+      justify-content:flex-start;
     }
 
     header button{
@@ -74,6 +75,75 @@
       background:var(--btnActive);
       color:#000;
       font-weight:700;
+    }
+
+    header select{
+      background:var(--btn);
+      color:#fff;
+      border:none;
+      padding:8px 12px;
+      border-radius:8px;
+      font-size:14px;
+      cursor:pointer;
+      white-space:nowrap;
+      appearance:none;
+      -webkit-appearance:none;
+      line-height:1.2;
+    }
+
+    .menuWrap{
+      position:relative;
+      display:flex;
+      align-items:center;
+    }
+
+    .hamburgerBtn{
+      background:var(--btn);
+      color:#fff;
+      border:none;
+      padding:8px 12px;
+      border-radius:8px;
+      font-size:18px;
+      cursor:pointer;
+      line-height:1;
+      white-space:nowrap;
+    }
+
+    .menuPanel{
+      position:absolute;
+      right:0;
+      top:calc(100% + 8px);
+      background:var(--panel2);
+      border:1px solid var(--border2);
+      border-radius:12px;
+      padding:8px;
+      min-width:180px;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.45);
+      display:none;
+      z-index:50;
+    }
+
+    .menuPanel.open{ display:block; }
+
+    .menuItem{
+      width:100%;
+      text-align:left;
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.10);
+      color:#fff;
+      padding:10px 12px;
+      border-radius:10px;
+      font-size:14px;
+      cursor:pointer;
+      margin:6px 0;
+    }
+
+    .menuItem:hover{ background:rgba(255,255,255,0.06); }
+
+    .menuDivider{
+      height:1px;
+      background:rgba(255,255,255,0.10);
+      margin:8px 2px;
     }
 
     header .spacer{ flex:1; }
@@ -908,56 +978,99 @@ function renderTopNav(){
 
   const r = route();
 
-  // Left: Dashboard + Hoy
+  // Dashboard button (top-left)
   const btnDash = document.createElement("button");
   btnDash.textContent = "Dashboard";
   if (r === "dashboard") btnDash.classList.add("active");
   btnDash.onclick = () => goto("dashboard");
   nav.appendChild(btnDash);
 
+  // Hoy button (top-left)
   const btnHoy = document.createElement("button");
   btnHoy.textContent = "Hoy";
   if (DAYS.includes(r) && r === todayKey()) btnHoy.classList.add("active");
   btnHoy.onclick = () => goto(todayKey());
   nav.appendChild(btnHoy);
 
-  // Day quick buttons (small but usable)
+  // Day-of-week dropdown (replaces 7 day buttons)
+  const daySelect = document.createElement("select");
+
+  // Placeholder
+  const ph = document.createElement("option");
+  ph.value = "";
+  ph.textContent = "Days";
+  daySelect.appendChild(ph);
+
   DAYS.forEach(d => {
-    const b = document.createElement("button");
-    b.textContent = d;
-    if (r === d) b.classList.add("active");
-    b.onclick = () => goto(d);
-    nav.appendChild(b);
+    const opt = document.createElement("option");
+    opt.value = d;
+    opt.textContent = d;
+    daySelect.appendChild(opt);
   });
 
+  // If we're on a day route, reflect it in the dropdown
+  if (DAYS.includes(r)) daySelect.value = r;
+  else daySelect.value = "";
+
+  daySelect.onchange = () => {
+    const v = daySelect.value;
+    if (!v) return;
+    goto(v);
+  };
+
+  nav.appendChild(daySelect);
+
+  // Spacer pushes hamburger to the far right
   const spacer = document.createElement("div");
   spacer.className = "spacer";
   nav.appendChild(spacer);
 
-  // Right: other sections
-  const b1 = document.createElement("button");
-  b1.textContent = "Bi-weekly";
-  if (r === "biweekly") b1.classList.add("active");
-  b1.onclick = () => goto("biweekly");
-  nav.appendChild(b1);
+  // Hamburger menu (top-right)
+  const menuWrap = document.createElement("div");
+  menuWrap.className = "menuWrap";
 
-  const b2 = document.createElement("button");
-  b2.textContent = "Monthly";
-  if (r === "monthly") b2.classList.add("active");
-  b2.onclick = () => goto("monthly");
-  nav.appendChild(b2);
+  const ham = document.createElement("button");
+  ham.className = "hamburgerBtn";
+  ham.type = "button";
+  ham.setAttribute("aria-label", "Menu");
+  ham.textContent = "☰";
 
-  const b3 = document.createElement("button");
-  b3.textContent = "Maintenance";
-  if (r === "maintenance") b3.classList.add("active");
-  b3.onclick = () => goto("maintenance");
-  nav.appendChild(b3);
+  const panel = document.createElement("div");
+  panel.className = "menuPanel";
 
-  const b4 = document.createElement("button");
-  b4.textContent = "Admin";
-  if (r === "admin") b4.classList.add("active");
-  b4.onclick = () => goto("admin");
-  nav.appendChild(b4);
+  function addItem(label, path){
+    const b = document.createElement("button");
+    b.className = "menuItem";
+    b.type = "button";
+    b.textContent = label;
+    b.onclick = () => {
+      panel.classList.remove("open");
+      goto(path);
+    };
+    panel.appendChild(b);
+  }
+
+  addItem("Bi-weekly", "biweekly");
+  addItem("Monthly", "monthly");
+  addItem("Maintenance", "maintenance");
+  addItem("Admin", "admin");
+
+  ham.onclick = (e) => {
+    e.stopPropagation();
+    panel.classList.toggle("open");
+  };
+
+  // Close the menu when clicking outside
+  document.addEventListener("click", () => {
+    panel.classList.remove("open");
+  }, { passive:true });
+
+  // Prevent inside clicks from closing immediately
+  panel.onclick = (e) => e.stopPropagation();
+
+  menuWrap.appendChild(ham);
+  menuWrap.appendChild(panel);
+  nav.appendChild(menuWrap);
 }
 
 window.addEventListener("hashchange", renderApp);
@@ -1925,7 +2038,10 @@ function addContextResetButton(r){
     btn.className = "danger";
     btn.textContent = "Weekly Reset";
     btn.onclick = weeklyReset;
-    nav.appendChild(btn);
+    // Insert before the hamburger menu wrapper if present, otherwise append.
+    const menuWrap = nav.querySelector('.menuWrap');
+    if (menuWrap) nav.insertBefore(btn, menuWrap);
+    else nav.appendChild(btn);
   }
 }
 
