@@ -310,12 +310,9 @@
       gap:10px;
       align-items:stretch;
 
-      /* This section can scroll when it needs to (previous behavior) */
-      flex:1;
-      min-height:0;
-      overflow-x:auto;
-      overflow-y:auto;
-      -webkit-overflow-scrolling: touch;
+      /* No independent scrolling — page scrolls as one */
+      flex:0;
+      overflow:visible;
     }
 
     .column{
@@ -325,7 +322,9 @@
       padding:10px;
       display:flex;
       flex-direction:column;
-      min-height:0;
+
+      /* Match tallest column (Celo) and keep uniform layout */
+      min-height: 420px;
     }
 
     .column h2{
