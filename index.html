@@ -83,7 +83,8 @@
     main{
       flex:1;
       padding:10px;
-      overflow:hidden;
+      overflow-y:auto;
+      overflow-x:hidden;
       display:flex;
       flex-direction:column;
       gap:10px;
@@ -310,7 +311,7 @@
       grid-template-columns:repeat(4, minmax(260px, 1fr));
       gap:10px;
       overflow-x:auto;
-      overflow-y:hidden;
+      overflow-y:visible;
       min-height:0;
       -webkit-overflow-scrolling: touch;
     }
@@ -322,7 +323,7 @@
       padding:10px;
       display:flex;
       flex-direction:column;
-      min-height:0;
+      min-height:auto;
     }
 
     .column h2{
