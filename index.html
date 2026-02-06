@@ -665,6 +665,40 @@
    - applies across the entire app via CSS variables
 ========================= */
 
+const THEME_MEMBER_COLORS = {
+  neonGlass: {
+    Dad:  "#22f0b6", // neon mint
+    Mom:  "#ff4fd8", // neon magenta
+    Ethan:"#5aa7ff", // neon blue
+    Celo: "#ffd166"  // neon amber
+  },
+  auroraNight: {
+    Dad:  "#7df7c6", // aurora mint
+    Mom:  "#b388ff", // soft violet
+    Ethan:"#6aa7ff", // arctic blue
+    Celo: "#ffd54f"  // warm aurora gold
+  },
+  sunsetHeat: {
+    Dad:  "#ff8f00", // sunset orange
+    Mom:  "#ff4081", // hot pink
+    Ethan:"#7c4dff", // deep purple accent
+    Celo: "#ffca28"  // golden sun
+  },
+  grapeSoda: {
+    Dad:  "#7e57c2", // grape purple
+    Mom:  "#ec407a", // berry pink
+    Ethan:"#42a5f5", // soda blue
+    Celo: "#ab47bc"  // violet
+  },
+  paperClean: {
+    // This theme allows editing. These are the starting defaults.
+    Dad:  "#4caf50",
+    Mom:  "#ffb300",
+    Ethan:"#42a5f5",
+    Celo: "#ab47bc"
+  }
+};
+
 const THEMES = {
   neonGlass: {
     name: "Neon Glass",
@@ -932,6 +966,19 @@ function applyTheme(themeId, mode){
   if (meta) meta.setAttribute("content", themeColor);
 
   saveThemeState({ themeId, mode });
+
+  // Lock member colors to the selected theme (except Paper Clean)
+  if (themeId !== "paperClean") {
+    const preset = THEME_MEMBER_COLORS[themeId];
+    if (preset) {
+      saveMemberColors({ ...preset });
+    }
+  } else {
+    // Ensure member colors exist when returning to Paper Clean
+    const current = loadMemberColors();
+    PEOPLE.forEach(p => { if (!current[p]) current[p] = THEME_MEMBER_COLORS.paperClean[p] || "#ffffff"; });
+    saveMemberColors(current);
+  }
 }
 
 function themeLabel(themeId){
@@ -2092,7 +2139,7 @@ function renderAdmin(){
   const app = document.getElementById("app");
   const colors = loadMemberColors();
 
-    app.innerHTML = `
+  app.innerHTML = `
     <section class="panel">
       <div class="toolbar">
         <div class="left">
@@ -2131,7 +2178,18 @@ function renderAdmin(){
 
   const grid = document.getElementById("adminGrid");
   grid.innerHTML = "";
-    // Theme picker wiring
+
+  // --- NEW: Theme lock state and sync ---
+  const tsAtRender = loadThemeState();
+  const colorsLocked = tsAtRender.themeId !== "paperClean";
+
+  // If locked, force the preset colors to be the source of truth
+  if (colorsLocked && THEME_MEMBER_COLORS[tsAtRender.themeId]) {
+    const preset = THEME_MEMBER_COLORS[tsAtRender.themeId];
+    saveMemberColors({ ...preset });
+  }
+
+  // Theme picker wiring
   const ts = loadThemeState();
   const themeSelect = document.getElementById("themeSelect");
 
@@ -2153,18 +2211,21 @@ function renderAdmin(){
   themeSelect.onchange = () => {
     ts.themeId = themeSelect.value;
     applyTheme(ts.themeId, ts.mode);
-    paintModeButtons();
+    // Re-render so member color controls reflect lock/unlock state + preset colors
+    renderAdmin();
   };
 
   btnDark.onclick = () => {
     ts.mode = "dark";
     applyTheme(ts.themeId, ts.mode);
+    // No need to re-render entire page; just repaint buttons
     paintModeButtons();
   };
 
   btnLight.onclick = () => {
     ts.mode = "light";
     applyTheme(ts.themeId, ts.mode);
+    // No need to re-render entire page; just repaint buttons
     paintModeButtons();
   };
 
@@ -2192,7 +2253,12 @@ function renderAdmin(){
     picker.type = "color";
     picker.className = "colorInput";
     picker.value = colors[person] || "#ffffff";
+    picker.disabled = colorsLocked;
+    picker.title = colorsLocked ? "Locked by theme" : "Edit member color";
+    picker.style.opacity = colorsLocked ? "0.55" : "1";
+    picker.style.pointerEvents = colorsLocked ? "none" : "auto";
     picker.oninput = () => {
+      if (colorsLocked) return;
       const c = loadMemberColors();
       c[person] = picker.value;
       saveMemberColors(c);
@@ -2204,9 +2270,20 @@ function renderAdmin(){
     grid.appendChild(row);
   });
 
+  // Disable reset button if locked
+  const resetBtn = document.getElementById("btnResetColors");
+  if (resetBtn) {
+    resetBtn.disabled = colorsLocked;
+    resetBtn.style.opacity = colorsLocked ? "0.55" : "1";
+    resetBtn.style.pointerEvents = colorsLocked ? "none" : "auto";
+    resetBtn.title = colorsLocked ? "Member colors are locked for this theme" : "Reset member colors";
+  }
+
   document.getElementById("btnResetColors").onclick = () => {
+    const tsNow = loadThemeState();
+    if (tsNow.themeId !== "paperClean") return;
     if (!confirm("Reset member colors to defaults?")) return;
-    saveMemberColors(defaultMemberColors());
+    saveMemberColors(THEME_MEMBER_COLORS.paperClean);
     renderAdmin();
   };
 }
