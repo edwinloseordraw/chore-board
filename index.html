@@ -305,14 +305,15 @@
 
     /* ---------- Day view ---------- */
     .columns{
-      flex:1;
       display:grid;
-      /* Slightly wider columns to prevent cramped lists (still iPad-friendly) */
+      /* 4 equal columns; height will match the tallest column (uniform look) */
       grid-template-columns:repeat(4, minmax(260px, 1fr));
       gap:10px;
+      align-items:stretch;
+
+      /* Keep horizontal swipe if needed, but DO NOT create a separate vertical scroll area */
       overflow-x:auto;
       overflow-y:visible;
-      min-height:0;
       -webkit-overflow-scrolling: touch;
     }
 
@@ -323,7 +324,10 @@
       padding:10px;
       display:flex;
       flex-direction:column;
-      min-height:auto;
+
+      /* Make all 4 columns the same height as the tallest one (usually Celo) */
+      height:100%;
+      min-height:0;
     }
 
     .column h2{
