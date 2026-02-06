@@ -1423,6 +1423,12 @@ function renderDay(dayKey){
       <div class="hint">Shows who had what assigned yesterday. Completion does not matter here.</div>
       <div class="yesterdayGrid" id="validationGrid"></div>
     </section>
+
+    <section class="panel notesDay" aria-label="Daily notes">
+      <h3>Notes</h3>
+      <div class="hint">Notes for this day only.</div>
+      <textarea id="dailyNotes" placeholder="Notes for ${dayKey}..."></textarea>
+    </section>
   `;
 
   renderDailyColumns(dayKey);
