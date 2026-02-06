@@ -306,14 +306,15 @@
     /* ---------- Day view ---------- */
     .columns{
       display:grid;
-      /* 4 equal columns; height will match the tallest column (uniform look) */
       grid-template-columns:repeat(4, minmax(260px, 1fr));
       gap:10px;
       align-items:stretch;
 
-      /* Keep horizontal swipe if needed, but DO NOT create a separate vertical scroll area */
+      /* This section can scroll when it needs to (previous behavior) */
+      flex:1;
+      min-height:0;
       overflow-x:auto;
-      overflow-y:visible;
+      overflow-y:auto;
       -webkit-overflow-scrolling: touch;
     }
 
@@ -324,9 +325,6 @@
       padding:10px;
       display:flex;
       flex-direction:column;
-
-      /* Make all 4 columns the same height as the tallest one (usually Celo) */
-      height:100%;
       min-height:0;
     }
 
