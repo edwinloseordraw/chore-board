@@ -40,9 +40,21 @@
       --shadow: 0 14px 28px rgba(0,0,0,0.45);
       --glassBlur: 14px;
 
+      /* Neumorphism shadows (color-agnostic; themes still own colors) */
+      --neuOutShadow: 8px 8px 18px rgba(0,0,0,0.38), -6px -6px 14px rgba(255,255,255,0.06);
+      --neuOutShadowSoft: 6px 6px 14px rgba(0,0,0,0.34), -5px -5px 12px rgba(255,255,255,0.05);
+      --neuInShadow: inset 8px 8px 18px rgba(0,0,0,0.42), inset -6px -6px 14px rgba(255,255,255,0.06);
+      --neuInShadowSoft: inset 6px 6px 14px rgba(0,0,0,0.36), inset -5px -5px 12px rgba(255,255,255,0.05);
+          
       --radius: 12px;
     }
 
+      /* Neumorphism helpers */
+      .neuOut{ box-shadow: var(--neuOutShadow); }
+      .neuOutSoft{ box-shadow: var(--neuOutShadowSoft); }
+      .pressed{ box-shadow: var(--neuInShadow) !important; }
+      .pressedSoft{ box-shadow: var(--neuInShadowSoft) !important; }
+    
     .assignSelect{
       width: 130px;
       padding: 6px 8px;
@@ -78,6 +90,7 @@
       justify-content:flex-start;
       backdrop-filter: blur(var(--glassBlur));
       -webkit-backdrop-filter: blur(var(--glassBlur));
+      box-shadow: var(--neuOutShadowSoft);
     }
 
             header button.active{
@@ -124,6 +137,8 @@
       cursor:pointer;
       line-height:1;
       white-space:nowrap;
+      height:40px;
+      box-shadow: var(--neuOutShadowSoft);
     }
     .hamburgerBtn:hover{ background:var(--btnHover); }
 
@@ -164,6 +179,34 @@
       margin:8px 2px;
     }
 
+    /* Uniform top-nav controls (Dashboard, Hoy, Days, Weekly Reset, Hamburger) */
+    .navBtn{
+      background:var(--btn);
+      color:var(--text);
+      border:1px solid var(--border2);
+      padding:10px 14px;
+      border-radius:12px;
+      font-size:14px;
+      cursor:pointer;
+      white-space:nowrap;
+      height:40px;
+      box-shadow: var(--neuOutShadowSoft);
+    }
+    
+    .navBtn:hover{ background:var(--btnHover); }
+    .navBtn:active{ box-shadow: var(--neuInShadowSoft); }
+
+    .navBtn.danger{
+      background:var(--danger);
+      border-color: rgba(0,0,0,0.25);
+      box-shadow: var(--neuOutShadowSoft);
+    }
+
+    /* Active nav should look pressed in */
+    header button.active{
+      box-shadow: var(--neuInShadowSoft);
+    }
+    
     header .spacer{ flex:1; }
 
     header .danger{ background:var(--danger); }
@@ -197,6 +240,8 @@
   border:1px solid var(--inputBorder);
   background:var(--inputBg);
   color:var(--text);
+  height:40px;
+  box-shadow: var(--neuOutShadowSoft);
 }
 .maintForm .actions button{
   width:100%;
@@ -235,6 +280,7 @@
       border:1px solid var(--border);
       border-radius:var(--radius);
       padding:10px;
+      box-shadow: var(--neuOutShadow);
     }
 
     .panel h2, .panel h3{
@@ -279,6 +325,7 @@
       align-items:center;
       justify-content:flex-start;
       text-align:center;
+      box-shadow: var(--neuOutShadow);
     }
 
     .ringMeta{
@@ -401,6 +448,7 @@
       padding:10px;
       display:flex;
       flex-direction:column;
+      box-shadow: var(--neuOutShadow);
 
       /* Let content define height. Grid can still stretch columns evenly without forcing extra blank space. */
       min-height: 0;
@@ -428,6 +476,7 @@
       cursor:pointer;
       user-select:none;
       -webkit-tap-highlight-color: rgba(255,255,255,0.08);
+      box-shadow: var(--neuOutShadowSoft);
     }
     .choreLabel:active{
       background: rgba(255,255,255,0.06);
@@ -459,6 +508,7 @@
       border-radius:10px;
       padding:8px;
       min-height:44px;
+      box-shadow: var(--neuOutShadowSoft);
     }
 
     .weeklyItem .label{
@@ -599,6 +649,7 @@
       align-items:center;
       gap:10px;
       min-height:48px;
+      box-shadow: var(--neuOutShadowSoft);
     }
     .listItem .name{
       flex:1;
@@ -1364,6 +1415,7 @@ function renderTopNav(){
   // Dashboard button (top-left)
   const btnDash = document.createElement("button");
   btnDash.textContent = "Dashboard";
+  btnDash.className = "navBtn";
   if (r === "dashboard") btnDash.classList.add("active");
   btnDash.onclick = () => goto("dashboard");
   nav.appendChild(btnDash);
@@ -1371,12 +1423,14 @@ function renderTopNav(){
   // Hoy button (top-left)
   const btnHoy = document.createElement("button");
   btnHoy.textContent = "Hoy";
+  btnHoy.className = "navBtn";
   if (DAYS.includes(r) && r === todayKey()) btnHoy.classList.add("active");
   btnHoy.onclick = () => goto(todayKey());
   nav.appendChild(btnHoy);
 
   // Day-of-week dropdown (replaces 7 day buttons)
   const daySelect = document.createElement("select");
+  daySelect.className = "navBtn";
 
   // Placeholder
   const ph = document.createElement("option");
@@ -1862,6 +1916,7 @@ function renderDailyColumns(dayKey){
       // Label wraps checkbox + text so the text is part of the tap target
       const wrap = document.createElement("label");
       wrap.className = "choreLabel";
+      if (cb.checked) wrap.classList.add("pressed");
       wrap.htmlFor = cb.id;
 
       const text = document.createElement("span");
@@ -1910,6 +1965,7 @@ function renderWeekly(){
   WEEKLY_CHORES.forEach(chore => {
     const row = document.createElement("div");
     row.className = "weeklyItem";
+    if (!!w.checks[chore]) row.classList.add("pressed");
 
     const cb = document.createElement("input");
     cb.type = "checkbox";
@@ -1919,6 +1975,7 @@ function renderWeekly(){
       ws.checks = ws.checks || {};
       ws.checks[chore] = cb.checked;
       saveWeeklyState(ws);
+      renderWeekly();
       // update dashboard ring if open later
     };
 
@@ -2071,6 +2128,7 @@ function renderChecklistPage(kind){
     list.forEach(item => {
       const row = document.createElement("div");
       row.className = "listItem";
+      if (!!state.checks[item]) row.classList.add("pressed");
 
       const cb = document.createElement("input");
       cb.type = "checkbox";
@@ -2081,6 +2139,7 @@ function renderChecklistPage(kind){
         s.checks = s.checks || {};
         s.checks[item] = cb.checked;
         isBi ? saveBiweeklyState(s) : saveMonthlyState(s);
+        renderChecklistPage(kind);
       };
 
       const name = document.createElement("label");
@@ -2509,7 +2568,7 @@ function addContextResetButton(r){
   if (DAYS.includes(r)){
     const btn = document.createElement("button");
     btn.id = "ctxReset";
-    btn.className = "danger";
+    btn.className = "navBtn danger";
     btn.textContent = "Weekly Reset";
     btn.onclick = weeklyReset;
     // Insert before the hamburger menu wrapper if present, otherwise append.
