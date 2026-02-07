@@ -910,6 +910,207 @@
       background: rgba(255,255,255,0.06);
     }
 
+    /* ---------- Groceries (persistent panel) ---------- */
+    .groceryBtn{
+      background:var(--btn);
+      color:var(--text);
+      border:1px solid var(--border2);
+      border-radius:12px;
+      padding:10px 12px;
+      cursor:pointer;
+      font-weight:900;
+      box-shadow: var(--neuOutShadowSoft);
+      line-height:1;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:44px;
+      min-height:44px;
+    }
+    .groceryBtn:hover{ background:var(--btnHover); }
+
+    .groceryOverlay{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,0.55);
+      opacity:0;
+      pointer-events:none;
+      transition:opacity 180ms ease;
+      z-index: 9998;
+    }
+    .groceryOverlay.open{
+      opacity:1;
+      pointer-events:auto;
+    }
+
+    .groceryPanel{
+      position:fixed;
+      top:0;
+      right:0;
+      height:100vh;
+      width:min(520px, 92vw);
+      background:var(--headerBg);
+      border-left:1px solid var(--border2);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(var(--glassBlur));
+      transform: translateX(100%);
+      transition: transform 220ms ease;
+      z-index: 9999;
+      display:flex;
+      flex-direction:column;
+    }
+    .groceryPanel.open{ transform: translateX(0); }
+
+    .groceryHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:12px;
+      border-bottom:1px solid var(--border2);
+    }
+    .groceryTitle{
+      font-weight:900;
+      font-size:15px;
+    }
+    .groceryClose{
+      background:var(--btn);
+      color:var(--text);
+      border:1px solid var(--border2);
+      border-radius:12px;
+      padding:10px 12px;
+      cursor:pointer;
+      box-shadow: var(--neuOutShadowSoft);
+      min-width:44px;
+      min-height:44px;
+    }
+    .groceryClose:hover{ background:var(--btnHover); }
+
+    .groceryBody{
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      overflow:auto;
+    }
+
+    .groceryForm{
+      display:grid;
+      grid-template-columns: 1fr 120px 96px;
+      gap:8px;
+      align-items:center;
+    }
+    .groceryForm input,
+    .groceryForm select{
+      background:var(--inputBg);
+      color:var(--text);
+      border:1px solid var(--inputBorder);
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:14px;
+      min-height:44px;
+    }
+    .groceryForm button{
+      background:var(--btnActive);
+      color:#000;
+      border:none;
+      border-radius:12px;
+      padding:10px 12px;
+      cursor:pointer;
+      font-weight:900;
+      min-height:44px;
+    }
+
+    .groceryList{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .groceryRow{
+      background:var(--panel2);
+      border:1px solid var(--border2);
+      border-radius:12px;
+      padding:10px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      box-shadow: var(--neuOutShadowSoft);
+    }
+    .groceryMeta{ flex:1; min-width:0; }
+    .groceryItem{
+      font-size:14px;
+      font-weight:800;
+      line-height:1.2;
+      word-break:break-word;
+    }
+    .grocerySub{
+      margin-top:4px;
+      font-size:12px;
+      color:var(--muted2);
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .groceryTag{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,0.06);
+      font-weight:900;
+      font-size:11px;
+      color:var(--text);
+    }
+    .groceryQty{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid var(--border2);
+      background: rgba(0,0,0,0.18);
+      font-weight:900;
+      font-size:11px;
+      color:var(--text);
+    }
+
+    .groceryRow .remove{
+      background: transparent;
+      border: 1px solid var(--border2);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      min-width:44px;
+      min-height:44px;
+    }
+    .groceryRow .remove:hover{ background: rgba(255,255,255,0.06); }
+
+    .groceryActions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+    .groceryReset{
+      background: var(--danger);
+      color:#fff;
+      border:none;
+      border-radius:12px;
+      padding:10px 12px;
+      cursor:pointer;
+      font-weight:900;
+      min-height:44px;
+    }
+
+    @media (max-width: 520px){
+      .groceryForm{ grid-template-columns: 1fr; }
+    }
+
     /* responsive */
     @media (max-width: 980px){
       .dashGrid{ grid-template-columns:1fr; }
@@ -1659,7 +1860,18 @@ function loadDashState(){
   return s;
 }
 
+
 function saveDashState(s){ jset("dashState", s); }
+
+// Groceries (persistent across all pages)
+function loadGroceriesState(){
+  return jget("groceriesState", { items: [] });
+}
+function saveGroceriesState(s){ jset("groceriesState", s); }
+
+function normItemText(t){
+  return (t || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
 
 /* =========================
    NAV + ROUTING
@@ -1717,6 +1929,14 @@ function renderTopNav(){
   const spacer = document.createElement("div");
   spacer.className = "spacer";
   nav.appendChild(spacer);
+
+  // Groceries button (persistent)
+  const groceryBtn = document.createElement("button");
+  groceryBtn.className = "groceryBtn";
+  groceryBtn.type = "button";
+  groceryBtn.setAttribute("aria-label", "Groceries");
+  groceryBtn.textContent = "🛒";
+  nav.appendChild(groceryBtn);
 
   // Weekly reset button remains contextual on day pages
   // (addContextResetButton handles insertion before the menuWrap in old layout;
@@ -1902,6 +2122,80 @@ function renderTopNav(){
   const notesCloseBtn = document.getElementById("notesCloseBtn");
   if (notesCloseBtn) notesCloseBtn.onclick = closeNotes;
   nOverlay.onclick = closeNotes;
+
+  // --- Groceries overlay (created once) ---
+  let gOverlay = document.getElementById("groceryOverlay");
+  let gPanel = document.getElementById("groceryPanel");
+
+  if (!gOverlay){
+    gOverlay = document.createElement("div");
+    gOverlay.id = "groceryOverlay";
+    gOverlay.className = "groceryOverlay";
+    document.body.appendChild(gOverlay);
+  }
+
+  if (!gPanel){
+    gPanel = document.createElement("div");
+    gPanel.id = "groceryPanel";
+    gPanel.className = "groceryPanel";
+    gPanel.setAttribute("aria-label", "Groceries");
+    gPanel.innerHTML = `
+      <div class="groceryHeader">
+        <div class="groceryTitle">Groceries</div>
+        <button class="groceryClose" type="button" id="groceryCloseBtn" aria-label="Close groceries">✕</button>
+      </div>
+      <div class="groceryBody">
+        <div class="hint" style="margin-top:0;">Add items as you notice them running low. One tap beats arguing later.</div>
+
+        <div class="groceryForm">
+          <input id="groceryText" placeholder="Add item…" />
+          <select id="groceryStore">
+            <option value="Sams">Sam’s</option>
+            <option value="Aldi">Aldi</option>
+            <option value="Publix">Publix</option>
+            <option value="Walmart">Walmart</option>
+            <option value="Other">Other</option>
+          </select>
+          <button id="groceryAdd" type="button">Add</button>
+        </div>
+
+        <div class="groceryActions">
+          <button class="groceryReset" id="groceryReset" type="button">Reset list</button>
+        </div>
+
+        <div class="groceryList" id="groceryList"></div>
+      </div>
+    `;
+    document.body.appendChild(gPanel);
+  }
+
+  function closeGroceries(){
+    gOverlay.classList.remove("open");
+    gPanel.classList.remove("open");
+  }
+
+  function openGroceries(){
+    // Ensure UI is up to date
+    renderGroceriesPanel();
+    gOverlay.classList.add("open");
+    gPanel.classList.add("open");
+
+    // focus input for fast entry
+    const input = document.getElementById("groceryText");
+    if (input) setTimeout(() => input.focus(), 0);
+  }
+
+  window.__openGroceries = openGroceries;
+
+  const gClose = document.getElementById("groceryCloseBtn");
+  if (gClose) gClose.onclick = closeGroceries;
+  gOverlay.onclick = closeGroceries;
+
+  // Wire header button
+  groceryBtn.onclick = (e) => {
+    e.stopPropagation();
+    openGroceries();
+  };
 
   // Escape closes both side menu and notes overlay
   document.onkeydown = (ev) => {
@@ -3042,6 +3336,113 @@ function addContextResetButton(r){
     btn.onclick = weeklyReset;
     nav.appendChild(btn);
   }
+}
+
+
+/* =========================
+   GROCERIES PANEL RENDER
+========================= */
+
+function renderGroceriesPanel(){
+  const listEl = document.getElementById("groceryList");
+  const inputEl = document.getElementById("groceryText");
+  const storeEl = document.getElementById("groceryStore");
+  const addBtn = document.getElementById("groceryAdd");
+  const resetBtn = document.getElementById("groceryReset");
+
+  // Panel may not exist yet (only created by renderTopNav)
+  if (!listEl || !inputEl || !storeEl || !addBtn || !resetBtn) return;
+
+  const state = loadGroceriesState();
+  state.items = Array.isArray(state.items) ? state.items : [];
+
+  function redraw(){
+    const s = loadGroceriesState();
+    const items = Array.isArray(s.items) ? s.items : [];
+
+    if (!items.length){
+      listEl.innerHTML = `<div class="hint" style="margin-top:6px;">List is empty. For once, everyone is innocent.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = items.map(it => {
+      const txt = escapeHtml(it.text || "");
+      const store = escapeHtml(it.store || "Sams");
+      const qty = Number(it.qty || 1);
+      const qtyChip = (qty > 1) ? `<span class="groceryQty">x${qty}</span>` : "";
+      return `
+        <div class="groceryRow">
+          <div class="groceryMeta">
+            <div class="groceryItem">${txt}</div>
+            <div class="grocerySub">
+              <span class="groceryTag">${store}</span>
+              ${qtyChip}
+            </div>
+          </div>
+          <button class="remove" type="button" data-gid="${escapeHtml(it.id || "")}" aria-label="Remove">✕</button>
+        </div>
+      `;
+    }).join("");
+
+    // Remove handlers
+    listEl.querySelectorAll("[data-gid]").forEach(btn => {
+      btn.onclick = () => {
+        const id = (btn.getAttribute("data-gid") || "").trim();
+        if (!id) return;
+        const cur = loadGroceriesState();
+        cur.items = (cur.items || []).filter(x => x.id !== id);
+        saveGroceriesState(cur);
+        redraw();
+      };
+    });
+  }
+
+  // Add handler (dedupe + bump)
+  function addItem(){
+    const text = (inputEl.value || "").trim();
+    const store = (storeEl.value || "Sams").trim();
+    if (!text) return;
+
+    const cur = loadGroceriesState();
+    cur.items = Array.isArray(cur.items) ? cur.items : [];
+
+    const n = normItemText(text);
+    // Dedupe by normalized text + store
+    const existingIdx = cur.items.findIndex(x => normItemText(x.text) === n && (x.store || "Sams") === store);
+
+    if (existingIdx >= 0){
+      const existing = cur.items[existingIdx];
+      existing.qty = Number(existing.qty || 1) + 1;
+      // bump to top
+      cur.items.splice(existingIdx, 1);
+      cur.items.unshift(existing);
+    } else {
+      cur.items.unshift({ id: makeId(), text, store, qty: 1, createdAt: Date.now() });
+    }
+
+    saveGroceriesState(cur);
+    inputEl.value = "";
+    redraw();
+  }
+
+  // Wire once (idempotent)
+  addBtn.onclick = addItem;
+  inputEl.onkeydown = (e) => {
+    if (e.key === "Enter"){
+      e.preventDefault();
+      addItem();
+    }
+  };
+
+  resetBtn.onclick = () => {
+    if (!confirm("Reset groceries list?")) return;
+    localStorage.removeItem("groceriesState");
+    redraw();
+  };
+
+  // Initial draw
+  saveGroceriesState(state);
+  redraw();
 }
 
 /* =========================
