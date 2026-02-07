@@ -495,6 +495,16 @@
       align-items:center;
       justify-content:center;
     }
+    .ringFilter{
+      width:100%;
+      max-width: 180px;
+      background:var(--inputBg);
+      color:var(--text);
+      border:1px solid var(--inputBorder);
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:13px;
+    }
 
     .ringSvgWrap{
       width:128px;
@@ -1606,7 +1616,13 @@ function loadDashState(){
   const s = jget("dashState", {
     dashboardNotes: "",
     viewerDay: "",
-    viewerReadOnly: false
+    viewerReadOnly: false,
+    ringFilters: {
+      daily: "All",
+      weekly: "All",
+      biweekly: "All",
+      monthly: "All"
+    }
   });
 
   // Migration from older dashState.notesByDay (Phase 7) if present
@@ -1624,12 +1640,21 @@ function loadDashState(){
   }
 
   if (!s || typeof s !== "object"){
-    return { dashboardNotes: "", viewerDay: "", viewerReadOnly: false };
+    return { dashboardNotes: "", viewerDay: "", viewerReadOnly: false, ringFilters: { daily:"All", weekly:"All", biweekly:"All", monthly:"All" } };
   }
 
   if (typeof s.dashboardNotes !== "string") s.dashboardNotes = "";
   if (typeof s.viewerDay !== "string") s.viewerDay = "";
   if (typeof s.viewerReadOnly !== "boolean") s.viewerReadOnly = false;
+
+  if (!s.ringFilters || typeof s.ringFilters !== "object"){
+    s.ringFilters = { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
+  }
+  ["daily","weekly","biweekly","monthly"].forEach(k => {
+    if (!s.ringFilters[k] || typeof s.ringFilters[k] !== "string") s.ringFilters[k] = "All";
+    const v = s.ringFilters[k];
+    if (v !== "All" && !PEOPLE.includes(v)) s.ringFilters[k] = "All";
+  });
 
   return s;
 }
@@ -1911,22 +1936,25 @@ function calcDailyProgress(){
   let total = 0;
   let done = 0;
   const byPerson = emptyContribution();
+  const totalByPerson = emptyContribution();
 
   for (const t of tasks){
     const assignees = Array.isArray(t.assignees) ? t.assignees : [];
     for (const person of assignees){
       if (!PEOPLE.includes(person)) continue;
       total++;
+      totalByPerson[person] = (totalByPerson[person] || 0) + 1;
+
       const key = `${t.id}::${person}`;
       const checked = !!(dayObj.checks && dayObj.checks[key]);
       if (checked){
         done++;
-        if (byPerson[person] !== undefined) byPerson[person]++;
+        byPerson[person] = (byPerson[person] || 0) + 1;
       }
     }
   }
 
-  return { done, total, byPerson };
+  return { done, total, byPerson, totalByPerson };
 }
 
 /**
@@ -1940,19 +1968,26 @@ function calcAssignedListProgress(list, loadFn){
   const total = list.length;
   const s = loadFn();
   const byPerson = emptyContribution();
+  const totalByPerson = emptyContribution();
 
   let done = 0;
   list.forEach(item => {
     const checked  = !!(s.checks && s.checks[item]);
     const assigned = (s.assign && s.assign[item]) ? s.assign[item] : "";
 
+    // Per-person totals are based on assignments.
+    if (assigned && totalByPerson[assigned] !== undefined){
+      totalByPerson[assigned] = (totalByPerson[assigned] || 0) + 1;
+    }
+
+    // A chore counts as done ONLY when assigned AND checked.
     if (checked && assigned){
       done++;
-      if (byPerson[assigned] !== undefined) byPerson[assigned]++;
+      if (byPerson[assigned] !== undefined) byPerson[assigned] = (byPerson[assigned] || 0) + 1;
     }
   });
 
-  return { done, total, byPerson };
+  return { done, total, byPerson, totalByPerson };
 }
 
 function calcWeeklyProgress(){
@@ -1975,6 +2010,28 @@ function pct(done, total){
    DASHBOARD RENDER
 ========================= */
 
+function ringFilterOptions(selected){
+  const opts = ["All", ...PEOPLE];
+  return opts.map(v => `<option value="${escapeHtml(v)}" ${v===selected?"selected":""}>${escapeHtml(v)}</option>`).join("");
+}
+
+function applyRingFilter(progressObj, selected){
+  // progressObj: { done,total,byPerson,totalByPerson }
+  if (!progressObj) return { done:0, total:0, byPerson: emptyContribution(), totalByPerson: emptyContribution() };
+  if (!selected || selected === "All") return progressObj;
+
+  const personDone = (progressObj.byPerson && typeof progressObj.byPerson[selected] === "number") ? progressObj.byPerson[selected] : 0;
+  const personTotal = (progressObj.totalByPerson && typeof progressObj.totalByPerson[selected] === "number") ? progressObj.totalByPerson[selected] : 0;
+
+  const by = emptyContribution();
+  by[selected] = personDone;
+
+  const totBy = emptyContribution();
+  totBy[selected] = personTotal;
+
+  return { done: personDone, total: personTotal, byPerson: by, totalByPerson: totBy };
+}
+
 function renderDashboard(){
   const app = document.getElementById("app");
 
@@ -1983,10 +2040,19 @@ function renderDashboard(){
   const m = calcMonthlyProgress();
   const d = calcDailyProgress();
 
-  const wp = pct(w.done, w.total);
-  const bp = pct(b.done, b.total);
-  const mp = pct(m.done, m.total);
-  const dp = pct(d.done, d.total);
+  // Extract filters and apply per-ring
+  const dash = loadDashState();
+  const filters = dash.ringFilters || { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
+
+  const df = applyRingFilter(d, filters.daily);
+  const wf = applyRingFilter(w, filters.weekly);
+  const bf = applyRingFilter(b, filters.biweekly);
+  const mf = applyRingFilter(m, filters.monthly);
+
+  const dpF = pct(df.done, df.total);
+  const wpF = pct(wf.done, wf.total);
+  const bpF = pct(bf.done, bf.total);
+  const mpF = pct(mf.done, mf.total);
 
   app.innerHTML = `
     <div class="dashGrid">
@@ -1998,10 +2064,10 @@ function renderDashboard(){
         <div class="hint">Rings track completion for Daily (Hoy), Semanal, Bi-weekly, and Monthly. (Maintenance not included yet.)</div>
 
         <div class="rings">
-          ${ringCard("Daily (Hoy)", d.done, d.total, dp, d.byPerson)}
-          ${ringCard("Semanal", w.done, w.total, wp, w.byPerson)}
-          ${ringCard("Bi-weekly", b.done, b.total, bp, b.byPerson)}
-          ${ringCard("Monthly", m.done, m.total, mp, m.byPerson)}
+          ${ringCard("Daily (Hoy)", "daily", df, dpF)}
+          ${ringCard("Semanal", "weekly", wf, wpF)}
+          ${ringCard("Bi-weekly", "biweekly", bf, bpF)}
+          ${ringCard("Monthly", "monthly", mf, mpF)}
         </div>
       </div>
 
@@ -2020,13 +2086,13 @@ function renderDashboard(){
   `;
 
   // Wire dashboard notes + day-notes viewer
-  const dash = loadDashState();
+  const dash2 = loadDashState();
   const dashTA = document.getElementById("dashNotes");
   const dayTA = document.getElementById("dayNotes");
   const dayLabel = document.getElementById("dayNotesLabel");
 
   // Dashboard notes (general)
-  dashTA.value = dash.dashboardNotes || "";
+  dashTA.value = dash2.dashboardNotes || "";
   dashTA.oninput = () => {
     const cur = loadDashState();
     cur.dashboardNotes = dashTA.value;
@@ -2034,8 +2100,8 @@ function renderDashboard(){
   };
 
   // Day notes: default to today when arriving normally
-  const selectedDay = (dash.viewerDay && DAYS.includes(dash.viewerDay)) ? dash.viewerDay : todayKey();
-  const ro = !!dash.viewerReadOnly;
+  const selectedDay = (dash2.viewerDay && DAYS.includes(dash2.viewerDay)) ? dash2.viewerDay : todayKey();
+  const ro = !!dash2.viewerReadOnly;
 
   const ds = loadDailyState();
   ds[selectedDay] = ds[selectedDay] || { checks:{}, notes:"" };
@@ -2063,9 +2129,22 @@ function renderDashboard(){
 
   // After rendering the dashboard, reset viewer mode back to normal defaults
   // so the dashboard behaves as “today notes editable” next time unless explicitly invoked.
-  dash.viewerDay = todayKey();
-  dash.viewerReadOnly = false;
-  saveDashState(dash);
+  dash2.viewerDay = todayKey();
+  dash2.viewerReadOnly = false;
+  saveDashState(dash2);
+
+  // Wire ring filter dropdowns
+  document.querySelectorAll(".ringFilter").forEach(sel => {
+    sel.onchange = () => {
+      const key = sel.getAttribute("data-ring");
+      const val = sel.value;
+      const cur = loadDashState();
+      cur.ringFilters = cur.ringFilters || { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
+      if (key) cur.ringFilters[key] = val;
+      saveDashState(cur);
+      renderDashboard();
+    };
+  });
 }
 
 function ringSVG(done, total, byPerson){
@@ -2118,9 +2197,17 @@ function ringSVG(done, total, byPerson){
   `;
 }
 
-function ringCard(title, done, total, percent, byPerson, extraHint){
-  const sub = total ? `${done}/${total} complete` : `0/0 (set up later)`;
-  const hint = extraHint ? `<div class="sub">${extraHint}</div>` : "";
+function ringCard(title, ringKey, prog, percent){
+  const dash = loadDashState();
+  const filters = dash.ringFilters || { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
+  const selected = filters[ringKey] || "All";
+
+  const done = prog ? (prog.done || 0) : 0;
+  const total = prog ? (prog.total || 0) : 0;
+  const byPerson = prog ? (prog.byPerson || emptyContribution()) : emptyContribution();
+
+  const sub = total ? `${done}/${total} complete` : `0/0`;
+
   return `
     <div class="ringCard">
       <div class="ringSvgWrap">
@@ -2129,7 +2216,9 @@ function ringCard(title, done, total, percent, byPerson, extraHint){
       </div>
       <div class="ringMeta">
         <div class="title">${title}</div>
-        ${hint}
+        <select class="ringFilter" data-ring="${escapeHtml(ringKey)}">
+          ${ringFilterOptions(selected)}
+        </select>
         <div class="sub">${sub}</div>
       </div>
     </div>
