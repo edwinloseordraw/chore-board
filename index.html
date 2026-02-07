@@ -257,6 +257,79 @@
       font-size:13px;
     }
 
+    /* Notes overlay (for quick viewing today's notes without leaving the day page) */
+    .notesOverlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.45);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      display:none;
+      z-index:80;
+    }
+    .notesOverlay.open{ display:block; }
+
+    .notesPanel{
+      position:fixed;
+      top:14px;
+      left:50%;
+      transform: translateX(-50%) translateY(-110%);
+      width:min(720px, 92vw);
+      max-height:86vh;
+      background:var(--headerBg);
+      border:1px solid var(--border2);
+      border-radius:14px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+      z-index:90;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      padding:12px;
+      transition: transform 180ms ease;
+    }
+    .notesPanel.open{ transform: translateX(-50%) translateY(0); }
+
+    .notesHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:8px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      box-shadow: var(--neuOutShadowSoft);
+    }
+    .notesTitle{
+      font-weight:900;
+      letter-spacing:0.2px;
+      opacity:0.95;
+      font-size:14px;
+    }
+    .notesClose{
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.14);
+      color:var(--text);
+      border-radius:10px;
+      padding:8px 10px;
+      cursor:pointer;
+      box-shadow: var(--neuOutShadowSoft);
+    }
+    .notesClose:hover{ background: rgba(255,255,255,0.06); }
+    .notesClose:active{ box-shadow: var(--neuInShadowSoft); }
+
+    .notesBody{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      min-height:0;
+    }
+
+    .notesBody textarea{
+      min-height:220px;
+      resize:vertical;
+    }
+
     /* Uniform top-nav controls (Weekly Reset, misc header buttons) */
     .navBtn{
       background:var(--btn);
@@ -1662,9 +1735,71 @@ function renderTopNav(){
 
   overlay.onclick = closeSide;
 
-  // Escape closes the panel
+  // --- Notes overlay (created once) ---
+  let nOverlay = document.getElementById("notesOverlay");
+  let nPanel = document.getElementById("notesPanel");
+
+  if (!nOverlay){
+    nOverlay = document.createElement("div");
+    nOverlay.id = "notesOverlay";
+    nOverlay.className = "notesOverlay";
+    document.body.appendChild(nOverlay);
+  }
+
+  if (!nPanel){
+    nPanel = document.createElement("div");
+    nPanel.id = "notesPanel";
+    nPanel.className = "notesPanel";
+    nPanel.setAttribute("aria-label", "Day notes");
+    nPanel.innerHTML = `
+      <div class="notesHeader">
+        <div class="notesTitle" id="notesPanelTitle">Notas</div>
+        <button class="notesClose" type="button" id="notesCloseBtn" aria-label="Close notes">✕</button>
+      </div>
+      <div class="notesBody">
+        <div class="hint" id="notesPanelHint">Read-only</div>
+        <textarea id="notesPanelText" readonly placeholder="No notes yet..."></textarea>
+      </div>
+    `;
+    document.body.appendChild(nPanel);
+  }
+
+  function closeNotes(){
+    nOverlay.classList.remove("open");
+    nPanel.classList.remove("open");
+  }
+
+  function openNotesForDay(dayKey){
+    const ds = loadDailyState();
+    const note = (ds[dayKey] && typeof ds[dayKey].notes === "string") ? ds[dayKey].notes : "";
+
+    const titleEl = document.getElementById("notesPanelTitle");
+    const hintEl = document.getElementById("notesPanelHint");
+    const taEl = document.getElementById("notesPanelText");
+
+    if (titleEl) titleEl.textContent = `Notas para ${dayKey}`;
+    if (hintEl) hintEl.textContent = "Read-only (edit on Dashboard)";
+    if (taEl){
+      taEl.value = note || "";
+      taEl.placeholder = `Notas para ${dayKey}...`;
+    }
+
+    nOverlay.classList.add("open");
+    nPanel.classList.add("open");
+  }
+
+  window.__openNotesForDay = openNotesForDay;
+
+  const notesCloseBtn = document.getElementById("notesCloseBtn");
+  if (notesCloseBtn) notesCloseBtn.onclick = closeNotes;
+  nOverlay.onclick = closeNotes;
+
+  // Escape closes both side menu and notes overlay
   document.onkeydown = (ev) => {
-    if (ev.key === "Escape") closeSide();
+    if (ev.key === "Escape"){
+      closeSide();
+      closeNotes();
+    }
   };
 }
 
@@ -2653,6 +2788,17 @@ function addContextResetButton(r){
     notesBtn.className = "navBtn";
     notesBtn.textContent = "View notes";
     notesBtn.onclick = () => {
+      // If we're on today's page, show a quick overlay instead of navigating away
+      if (r === todayKey()){
+        // Ensure the notes UI exists (renderTopNav() creates it). Then open it.
+        const openFn = window.__openNotesForDay;
+        if (typeof openFn === "function"){
+          openFn(r);
+          return;
+        }
+      }
+
+      // Otherwise: jump to dashboard and show read-only notes there
       const dash = loadDashState();
       dash.viewerDay = r;
       dash.viewerReadOnly = true;
