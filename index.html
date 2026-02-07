@@ -2101,7 +2101,15 @@ function renderDay(dayKey){
   const dayState = loadDailyState();
   dayState[dayKey] = dayState[dayKey] || { checks:{}, notes:"" };
 
+  const dateStr = formatDateForDay(dayKey);
+
   app.innerHTML = `
+    <section class="panel" style="padding:8px 12px;">
+      <h2 style="margin:0;text-transform:capitalize;">
+        ${dayKey} • ${dateStr}
+      </h2>
+    </section>
+
     <div class="columns" id="columns"></div>
 
     <section class="panel" aria-label="Weekly chores">
@@ -2901,6 +2909,24 @@ function addContextResetButton(r){
 /* =========================
    UTIL
 ========================= */
+
+function formatDateForDay(dayKey){
+  const today = new Date();
+  const todayIdx = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"].indexOf(todayKey());
+  const targetIdx = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"].indexOf(dayKey);
+
+  if (todayIdx === -1 || targetIdx === -1) return "";
+
+  const diff = targetIdx - todayIdx;
+  const d = new Date(today);
+  d.setDate(today.getDate() + diff);
+
+  const mm = String(d.getMonth() + 1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2,"0");
+  const yyyy = d.getFullYear();
+
+  return `${mm}-${dd}-${yyyy}`;
+}
 
 function escapeHtml(str){
   return (str || "")
