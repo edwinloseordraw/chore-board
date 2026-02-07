@@ -1444,26 +1444,33 @@ function saveMonthlyState(s){ jset("monthlyState", s); }
 function loadMaintState(){ return jget("maintState", { entries:[] }); }
 function saveMaintState(s){ jset("maintState", s); }
 
-// Dashboard notes + pin
-function loadDashState(){ return jget("dashState", { pinHash:null, notes:"" }); }
+// Dashboard notes by day (no PIN)
+function defaultDashNotesByDay(){
+  return {
+    lunes: "",
+    martes: "",
+    miercoles: "",
+    jueves: "",
+    viernes: "",
+    sabado: "",
+    domingo: ""
+  };
+}
+
+function loadDashState(){
+  const s = jget("dashState", { notesByDay: defaultDashNotesByDay() });
+  if (!s || typeof s !== "object") return { notesByDay: defaultDashNotesByDay() };
+  if (!s.notesByDay || typeof s.notesByDay !== "object") s.notesByDay = defaultDashNotesByDay();
+
+  // Ensure all day keys exist
+  Object.keys(defaultDashNotesByDay()).forEach(k => {
+    if (typeof s.notesByDay[k] !== "string") s.notesByDay[k] = "";
+  });
+
+  return s;
+}
+
 function saveDashState(s){ jset("dashState", s); }
-
-/* =========================
-   PIN (SHA-256 hash)
-   - Not "bank security", just enough to stop kids from mashing notes.
-========================= */
-
-function bufToHex(buffer){
-  const bytes = new Uint8Array(buffer);
-  return Array.from(bytes).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-async function sha256Hex(str){
-  const enc = new TextEncoder();
-  const data = enc.encode(str);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return bufToHex(hash);
-}
 
 /* =========================
    NAV + ROUTING
@@ -1755,9 +1762,6 @@ function renderDashboard(){
   const mp = pct(m.done, m.total);
   const dp = pct(d.done, d.total);
 
-  const dash = loadDashState();
-  const locked = !!dash.pinHash;
-
   app.innerHTML = `
     <div class="dashGrid">
       <div class="panel">
@@ -1773,18 +1777,15 @@ function renderDashboard(){
       </div>
 
       <div class="panel notesBox">
-        <h2>Dashboard Notes (PIN locked)</h2>
+        <h2>Notas del Dashboard</h2>
         <div class="hint">Lives only here. Not affected by weekly reset. Keep it simple and useful.</div>
 
-        <div class="notesControls" id="pinControls"></div>
-
-        <div id="notesArea"></div>
+        <div id="dashNotesDays"></div>
       </div>
     </div>
   `;
 
-  // Render notes area based on lock state
-  renderPinControlsAndNotes();
+  renderDashboardNotesByDay();
 }
 
 function ringSVG(done, total, byPerson){
@@ -1855,123 +1856,41 @@ function ringCard(title, done, total, percent, byPerson, extraHint){
   `;
 }
 
-function renderPinControlsAndNotes(){
-  const dash = loadDashState();
-  const controls = document.getElementById("pinControls");
-  const area = document.getElementById("notesArea");
 
-  if (!dash.pinHash){
-    controls.innerHTML = `
-      <input id="pinSet" type="password" inputmode="numeric" placeholder="Set new PIN" />
-      <button id="btnSetPin">Set PIN</button>
-      <div class="small">Optional. If you set a PIN, editing requires it.</div>
-    `;
-    area.innerHTML = `
-      <textarea id="dashNotes" placeholder="Write dashboard notes...">${escapeHtml(dash.notes || "")}</textarea>
-    `;
+// Dashboard notes by day rendering
+function renderDashboardNotesByDay(){
+  const wrap = document.getElementById("dashNotesDays");
+  if (!wrap) return;
 
-    document.getElementById("btnSetPin").onclick = async () => {
-      const pin = (document.getElementById("pinSet").value || "").trim();
-      if (pin.length < 4) { alert("PIN must be at least 4 digits."); return; }
-      dash.pinHash = await sha256Hex(pin);
-      saveDashState(dash);
-      // lock immediately
-      dashSessionLock(true);
-      renderPinControlsAndNotes();
+  const s = loadDashState();
+
+  const dayPlaceholders = [
+    { key: "lunes",      ph: "Notas para lunes..." },
+    { key: "martes",     ph: "Notas para martes..." },
+    { key: "miercoles",  ph: "Notas para miércoles..." },
+    { key: "jueves",     ph: "Notas para jueves..." },
+    { key: "viernes",    ph: "Notas para viernes..." },
+    { key: "sabado",     ph: "Notas para sábado..." },
+    { key: "domingo",    ph: "Notas para domingo..." }
+  ];
+
+  wrap.innerHTML = "";
+
+  dayPlaceholders.forEach(d => {
+    const ta = document.createElement("textarea");
+    ta.placeholder = d.ph;
+    ta.value = (s.notesByDay && typeof s.notesByDay[d.key] === "string") ? s.notesByDay[d.key] : "";
+    ta.style.minHeight = "110px";
+
+    ta.oninput = () => {
+      const cur = loadDashState();
+      cur.notesByDay = cur.notesByDay || defaultDashNotesByDay();
+      cur.notesByDay[d.key] = ta.value;
+      saveDashState(cur);
     };
 
-    document.getElementById("dashNotes").oninput = () => {
-      const d = loadDashState();
-      d.notes = document.getElementById("dashNotes").value;
-      saveDashState(d);
-    };
-
-    return;
-  }
-
-  const unlocked = dashSessionUnlocked();
-
-  if (!unlocked){
-    controls.innerHTML = `
-      <input id="pinEnter" type="password" inputmode="numeric" placeholder="Enter PIN" />
-      <button id="btnUnlock">Unlock</button>
-      <button id="btnChangePin">Change PIN</button>
-      <div class="small">Notes are locked. Kids can't edit unless they guess your PIN (good luck).</div>
-    `;
-
-    area.innerHTML = `
-      <div class="lockedOverlay">
-        <div>🔒 Notes locked. Unlock to edit.</div>
-        <div style="opacity:0.8;">(Content is still visible.)</div>
-      </div>
-      <textarea id="dashNotes" readonly>${escapeHtml(dash.notes || "")}</textarea>
-    `;
-
-    document.getElementById("btnUnlock").onclick = async () => {
-      const pin = (document.getElementById("pinEnter").value || "").trim();
-      const h = await sha256Hex(pin);
-      const d = loadDashState();
-      if (h !== d.pinHash){ alert("Wrong PIN."); return; }
-      dashSessionLock(false);
-      renderPinControlsAndNotes();
-    };
-
-    document.getElementById("btnChangePin").onclick = async () => {
-      const oldPin = prompt("Enter current PIN:");
-      if (oldPin === null) return;
-      const oldHash = await sha256Hex(oldPin.trim());
-      const d = loadDashState();
-      if (oldHash !== d.pinHash){ alert("Wrong PIN."); return; }
-      const newPin = prompt("Enter new PIN (min 4 digits):");
-      if (newPin === null) return;
-      if (newPin.trim().length < 4){ alert("PIN must be at least 4 digits."); return; }
-      d.pinHash = await sha256Hex(newPin.trim());
-      saveDashState(d);
-      dashSessionLock(true); // lock after change
-      renderPinControlsAndNotes();
-    };
-
-    return;
-  }
-
-  // unlocked
-  controls.innerHTML = `
-    <button id="btnLock">Lock</button>
-    <button id="btnClearPin">Remove PIN</button>
-    <div class="small">Unlocked for this session only.</div>
-  `;
-
-  area.innerHTML = `
-    <textarea id="dashNotes" placeholder="Write dashboard notes...">${escapeHtml(dash.notes || "")}</textarea>
-  `;
-
-  document.getElementById("dashNotes").oninput = () => {
-    const d = loadDashState();
-    d.notes = document.getElementById("dashNotes").value;
-    saveDashState(d);
-  };
-
-  document.getElementById("btnLock").onclick = () => {
-    dashSessionLock(true);
-    renderPinControlsAndNotes();
-  };
-
-  document.getElementById("btnClearPin").onclick = () => {
-    if (!confirm("Remove PIN protection?")) return;
-    const d = loadDashState();
-    d.pinHash = null;
-    saveDashState(d);
-    dashSessionLock(true);
-    renderPinControlsAndNotes();
-  };
-}
-
-/* Session unlock state (not persisted across devices; this is intentional) */
-function dashSessionUnlocked(){
-  return sessionStorage.getItem("dashUnlocked") === "1";
-}
-function dashSessionLock(lock){
-  sessionStorage.setItem("dashUnlocked", lock ? "0" : "1");
+    wrap.appendChild(ta);
+  });
 }
 
 /* =========================
