@@ -614,6 +614,27 @@
       min-height: 0;
     }
 
+    /* Day header (day name + date) */
+    .dayHeaderBar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+    }
+    .dayHeaderBar .dayTitle{
+      margin:0;
+      font-size:18px;
+      font-weight:900;
+      text-transform:capitalize;
+    }
+    .dayHeaderBar .dayDate{
+      font-size:13px;
+      font-weight:800;
+      color:var(--muted2);
+      white-space:nowrap;
+    }
+
     .column h2{
       margin:0 0 8px 0;
       text-align:center;
@@ -1238,6 +1259,33 @@ function prevDayKey(dayKey){
   const idx = DAYS.indexOf(dayKey);
   if (idx === -1) return "domingo";
   return DAYS[(idx - 1 + DAYS.length) % DAYS.length];
+}
+
+function pad2(n){ return String(n).padStart(2,"0"); }
+
+// Returns a Date for the given dayKey in the CURRENT week (Monday->Sunday).
+// Week is anchored to the user's local time.
+function dateForDayKey(dayKey){
+  const idx = DAYS.indexOf(dayKey);
+  const now = new Date();
+  const dow = now.getDay(); // 0=Sun..6=Sat
+
+  // Start of week = Monday
+  const daysSinceMonday = (dow + 6) % 7; // Mon=0, Tue=1, ... Sun=6
+  const monday = new Date(now);
+  monday.setHours(0,0,0,0);
+  monday.setDate(monday.getDate() - daysSinceMonday);
+
+  const d = new Date(monday);
+  d.setDate(monday.getDate() + (idx >= 0 ? idx : 0));
+  return d;
+}
+
+function formatMMDDYYYY(d){
+  const mm = pad2(d.getMonth() + 1);
+  const dd = pad2(d.getDate());
+  const yyyy = d.getFullYear();
+  return `${mm}-${dd}-${yyyy}`;
 }
 
 /* =========================
@@ -2101,13 +2149,14 @@ function renderDay(dayKey){
   const dayState = loadDailyState();
   dayState[dayKey] = dayState[dayKey] || { checks:{}, notes:"" };
 
-  const dateStr = formatDateForDay(dayKey);
+  const dayDate = formatMMDDYYYY(dateForDayKey(dayKey));
 
   app.innerHTML = `
-    <section class="panel" style="padding:8px 12px;">
-      <h2 style="margin:0;text-transform:capitalize;">
-        ${dayKey} • ${dateStr}
-      </h2>
+    <section class="panel" aria-label="Day header">
+      <div class="dayHeaderBar">
+        <h2 class="dayTitle">${dayKey}</h2>
+        <div class="dayDate">${dayDate}</div>
+      </div>
     </section>
 
     <div class="columns" id="columns"></div>
@@ -2909,24 +2958,6 @@ function addContextResetButton(r){
 /* =========================
    UTIL
 ========================= */
-
-function formatDateForDay(dayKey){
-  const today = new Date();
-  const todayIdx = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"].indexOf(todayKey());
-  const targetIdx = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"].indexOf(dayKey);
-
-  if (todayIdx === -1 || targetIdx === -1) return "";
-
-  const diff = targetIdx - todayIdx;
-  const d = new Date(today);
-  d.setDate(today.getDate() + diff);
-
-  const mm = String(d.getMonth() + 1).padStart(2,"0");
-  const dd = String(d.getDate()).padStart(2,"0");
-  const yyyy = d.getFullYear();
-
-  return `${mm}-${dd}-${yyyy}`;
-}
 
 function escapeHtml(str){
   return (str || "")
