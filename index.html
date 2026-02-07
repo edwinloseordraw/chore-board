@@ -455,6 +455,16 @@
       gap:10px;
       min-height:0;
     }
+    .dashHeaderRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:6px;
+    }
+    .dashHeaderRow h2{
+      margin:0;
+    }
 
     .rings{
       display:grid;
@@ -782,6 +792,32 @@
       background:transparent;
       padding:0;
       cursor:pointer;
+    }
+
+    /* ---------- Admin (pre-write day notes) ---------- */
+    .adminNotesGrid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:10px;
+      margin-top:10px;
+    }
+    .adminNoteCard{
+      background:var(--panel2);
+      border:1px solid var(--border2);
+      border-radius:12px;
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      min-height:120px;
+    }
+    .adminNoteCard .adminNoteTitle{
+      font-weight:900;
+      font-size:13px;
+      opacity:0.95;
+    }
+    .adminNoteCard textarea{
+      min-height:110px;
     }
 
     /* ---------- Simple list pages (biweekly/monthly/maintenance scaffolding) ---------- */
@@ -1907,7 +1943,10 @@ function renderDashboard(){
   app.innerHTML = `
     <div class="dashGrid">
       <div class="panel">
-        <h2>Progress Dashboard</h2>
+        <div class="dashHeaderRow">
+          <h2>Progress Dashboard</h2>
+          <button class="navBtn" type="button" onclick="goto(todayKey())">Hoy</button>
+        </div>
         <div class="hint">Rings track completion for Daily (Hoy), Semanal, Bi-weekly, and Monthly. (Maintenance not included yet.)</div>
 
         <div class="rings">
@@ -2442,6 +2481,12 @@ function renderAdmin(){
       <div class="adminGrid" id="adminGrid"></div>
 
       <div class="hint" style="margin-top:10px;">Tip: Think of member colors as each person's "signature" in the rings.</div>
+
+      <div style="height:10px;"></div>
+
+      <h3 style="margin:0;">Daily Notes (pre-write for the week)</h3>
+      <div class="hint" style="margin-top:4px;">Enter notes ahead of time. These are the same day notes you can still edit on the Dashboard when that day arrives.</div>
+      <div class="adminNotesGrid" id="adminNotesGrid"></div>
     </section>
   `;
 
@@ -2538,6 +2583,43 @@ function renderAdmin(){
     row.appendChild(picker);
     grid.appendChild(row);
   });
+
+  // --- Admin: pre-write day notes for the week (shared with Dashboard day notes) ---
+  const notesGrid = document.getElementById("adminNotesGrid");
+  if (notesGrid){
+    notesGrid.innerHTML = "";
+
+    const ds = loadDailyState();
+
+    DAYS.forEach(dayKey => {
+      ds[dayKey] = ds[dayKey] || { checks:{}, notes:"" };
+
+      const card = document.createElement("div");
+      card.className = "adminNoteCard";
+
+      const title = document.createElement("div");
+      title.className = "adminNoteTitle";
+      title.textContent = `Notas para ${dayKey}...`;
+
+      const ta = document.createElement("textarea");
+      ta.placeholder = `Notas para ${dayKey}...`;
+      ta.value = (typeof ds[dayKey].notes === "string") ? ds[dayKey].notes : "";
+
+      ta.oninput = () => {
+        const cur = loadDailyState();
+        cur[dayKey] = cur[dayKey] || { checks:{}, notes:"" };
+        cur[dayKey].notes = ta.value;
+        saveDailyState(cur);
+      };
+
+      card.appendChild(title);
+      card.appendChild(ta);
+      notesGrid.appendChild(card);
+    });
+
+    // Ensure any missing day buckets are persisted
+    saveDailyState(ds);
+  }
 
   // Disable reset button if locked
   const resetBtn = document.getElementById("btnResetColors");
