@@ -1444,28 +1444,35 @@ function saveMonthlyState(s){ jset("monthlyState", s); }
 function loadMaintState(){ return jget("maintState", { entries:[] }); }
 function saveMaintState(s){ jset("maintState", s); }
 
-// Dashboard notes by day (no PIN)
-function defaultDashNotesByDay(){
-  return {
-    lunes: "",
-    martes: "",
-    miercoles: "",
-    jueves: "",
-    viernes: "",
-    sabado: "",
-    domingo: ""
-  };
-}
-
+// Dashboard notes (no PIN) + dashboard day-notes viewer
 function loadDashState(){
-  const s = jget("dashState", { notesByDay: defaultDashNotesByDay() });
-  if (!s || typeof s !== "object") return { notesByDay: defaultDashNotesByDay() };
-  if (!s.notesByDay || typeof s.notesByDay !== "object") s.notesByDay = defaultDashNotesByDay();
-
-  // Ensure all day keys exist
-  Object.keys(defaultDashNotesByDay()).forEach(k => {
-    if (typeof s.notesByDay[k] !== "string") s.notesByDay[k] = "";
+  const s = jget("dashState", {
+    dashboardNotes: "",
+    viewerDay: "",
+    viewerReadOnly: false
   });
+
+  // Migration from older dashState.notesByDay (Phase 7) if present
+  if (s && typeof s === "object" && s.notesByDay && typeof s.notesByDay === "object"){
+    const lines = [];
+    const order = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
+    order.forEach(k => {
+      const v = (typeof s.notesByDay[k] === "string") ? s.notesByDay[k].trim() : "";
+      if (v) lines.push(`${k}: ${v}`);
+    });
+    if (!s.dashboardNotes && lines.length){
+      s.dashboardNotes = lines.join("\n\n");
+    }
+    delete s.notesByDay;
+  }
+
+  if (!s || typeof s !== "object"){
+    return { dashboardNotes: "", viewerDay: "", viewerReadOnly: false };
+  }
+
+  if (typeof s.dashboardNotes !== "string") s.dashboardNotes = "";
+  if (typeof s.viewerDay !== "string") s.viewerDay = "";
+  if (typeof s.viewerReadOnly !== "boolean") s.viewerReadOnly = false;
 
   return s;
 }
@@ -1777,15 +1784,66 @@ function renderDashboard(){
       </div>
 
       <div class="panel notesBox">
-        <h2>Notas del Dashboard</h2>
-        <div class="hint">Lives only here. Not affected by weekly reset. Keep it simple and useful.</div>
+        <h2>Notas</h2>
+        <div class="hint">Two fields: general dashboard notes, plus day-specific notes viewer.</div>
 
-        <div id="dashNotesDays"></div>
+        <textarea id="dashNotes" placeholder="Write dashboard notes..."></textarea>
+
+        <div style="height:10px;"></div>
+
+        <div class="hint" id="dayNotesLabel"></div>
+        <textarea id="dayNotes" placeholder=""></textarea>
       </div>
     </div>
   `;
 
-  renderDashboardNotesByDay();
+  // Wire dashboard notes + day-notes viewer
+  const dash = loadDashState();
+  const dashTA = document.getElementById("dashNotes");
+  const dayTA = document.getElementById("dayNotes");
+  const dayLabel = document.getElementById("dayNotesLabel");
+
+  // Dashboard notes (general)
+  dashTA.value = dash.dashboardNotes || "";
+  dashTA.oninput = () => {
+    const cur = loadDashState();
+    cur.dashboardNotes = dashTA.value;
+    saveDashState(cur);
+  };
+
+  // Day notes: default to today when arriving normally
+  const selectedDay = (dash.viewerDay && DAYS.includes(dash.viewerDay)) ? dash.viewerDay : todayKey();
+  const ro = !!dash.viewerReadOnly;
+
+  const ds = loadDailyState();
+  ds[selectedDay] = ds[selectedDay] || { checks:{}, notes:"" };
+
+  if (dayLabel) dayLabel.textContent = `Notas para ${selectedDay}...`;
+  dayTA.value = ds[selectedDay].notes || "";
+  dayTA.placeholder = `Notas para ${selectedDay}...`;
+  dayTA.readOnly = ro;
+  dayTA.style.opacity = ro ? "0.85" : "1";
+
+  // Only allow editing when not read-only AND the selected day is today
+  dayTA.oninput = () => {
+    const curDash = loadDashState();
+    const currentSelected = (curDash.viewerDay && DAYS.includes(curDash.viewerDay)) ? curDash.viewerDay : todayKey();
+
+    // Guardrails: only editable when viewerReadOnly is false AND day is today
+    if (curDash.viewerReadOnly) return;
+    if (currentSelected !== todayKey()) return;
+
+    const dss = loadDailyState();
+    dss[currentSelected] = dss[currentSelected] || { checks:{}, notes:"" };
+    dss[currentSelected].notes = dayTA.value;
+    saveDailyState(dss);
+  };
+
+  // After rendering the dashboard, reset viewer mode back to normal defaults
+  // so the dashboard behaves as “today notes editable” next time unless explicitly invoked.
+  dash.viewerDay = todayKey();
+  dash.viewerReadOnly = false;
+  saveDashState(dash);
 }
 
 function ringSVG(done, total, byPerson){
@@ -1857,41 +1915,6 @@ function ringCard(title, done, total, percent, byPerson, extraHint){
 }
 
 
-// Dashboard notes by day rendering
-function renderDashboardNotesByDay(){
-  const wrap = document.getElementById("dashNotesDays");
-  if (!wrap) return;
-
-  const s = loadDashState();
-
-  const dayPlaceholders = [
-    { key: "lunes",      ph: "Notas para lunes..." },
-    { key: "martes",     ph: "Notas para martes..." },
-    { key: "miercoles",  ph: "Notas para miércoles..." },
-    { key: "jueves",     ph: "Notas para jueves..." },
-    { key: "viernes",    ph: "Notas para viernes..." },
-    { key: "sabado",     ph: "Notas para sábado..." },
-    { key: "domingo",    ph: "Notas para domingo..." }
-  ];
-
-  wrap.innerHTML = "";
-
-  dayPlaceholders.forEach(d => {
-    const ta = document.createElement("textarea");
-    ta.placeholder = d.ph;
-    ta.value = (s.notesByDay && typeof s.notesByDay[d.key] === "string") ? s.notesByDay[d.key] : "";
-    ta.style.minHeight = "110px";
-
-    ta.oninput = () => {
-      const cur = loadDashState();
-      cur.notesByDay = cur.notesByDay || defaultDashNotesByDay();
-      cur.notesByDay[d.key] = ta.value;
-      saveDashState(cur);
-    };
-
-    wrap.appendChild(ta);
-  });
-}
 
 /* =========================
    DAY VIEW RENDER
@@ -1918,18 +1941,11 @@ function renderDay(dayKey){
       <div class="hint">Shows who had what assigned yesterday. Completion does not matter here.</div>
       <div class="yesterdayGrid" id="validationGrid"></div>
     </section>
-
-    <section class="panel notesDay" aria-label="Daily notes">
-      <h3>Daily notes</h3>
-      <div class="hint">Notes for this day only. These do not carry over to other days.</div>
-      <textarea id="dailyNotes" placeholder="Type notes for ${dayKey}..."></textarea>
-    </section>
   `;
 
   renderDailyColumns(dayKey);
   renderWeekly();
   renderYesterday(dayKey);
-  renderDayNotes(dayKey);
 }
 
 function renderDailyColumns(dayKey){
@@ -2602,7 +2618,14 @@ function renderApp(){
   // (keeps screen real estate used but avoids clutter on dashboard)
   addContextResetButton(r);
 
-  if (r === "dashboard") return renderDashboard();
+  if (r === "dashboard"){
+    const dash = loadDashState();
+    // If not explicitly invoked, default viewer to today (editable)
+    if (!dash.viewerDay) dash.viewerDay = todayKey();
+    if (dash.viewerReadOnly !== true) dash.viewerReadOnly = false;
+    saveDashState(dash);
+    return renderDashboard();
+  }
   if (r === "biweekly") return renderChecklistPage("biweekly");
   if (r === "monthly") return renderChecklistPage("monthly");
   if (r === "maintenance") return renderMaintenance();
@@ -2624,6 +2647,20 @@ function addContextResetButton(r){
   if (existing) existing.remove();
 
   if (DAYS.includes(r)){
+    // Read-only day-notes viewer shortcut
+    const notesBtn = document.createElement("button");
+    notesBtn.id = "ctxViewNotes";
+    notesBtn.className = "navBtn";
+    notesBtn.textContent = "View notes";
+    notesBtn.onclick = () => {
+      const dash = loadDashState();
+      dash.viewerDay = r;
+      dash.viewerReadOnly = true;
+      saveDashState(dash);
+      goto("dashboard");
+    };
+    nav.appendChild(notesBtn);
+
     const btn = document.createElement("button");
     btn.id = "ctxReset";
     btn.className = "navBtn danger";
