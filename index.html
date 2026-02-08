@@ -1107,6 +1107,96 @@
       min-height:44px;
     }
 
+    /* =========================
+       MEMBER AVATARS
+       - uploaded in Admin
+       - displayed in each member column header on day pages
+    ========================= */
+
+    .memberHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:8px;
+    }
+    .memberHeader h2{ margin:0; }
+
+    .avatarCircle{
+      width:40px;
+      height:40px;
+      border-radius:999px;
+      overflow:hidden;
+      border:1px solid var(--border2);
+      background: rgba(0,0,0,0.20);
+      box-shadow: var(--shadow);
+      flex:0 0 auto;
+    }
+    .avatarCircle img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+    .avatarFallback{
+      width:40px;
+      height:40px;
+      border-radius:999px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      font-size:12px;
+      letter-spacing:0.5px;
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      box-shadow: var(--shadow);
+      flex:0 0 auto;
+    }
+
+    .adminAvatarRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--panel2);
+      box-shadow: var(--shadow);
+      margin-top:10px;
+    }
+    .adminAvatarLeft{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width: 180px;
+    }
+    .adminAvatarName{
+      font-weight:900;
+    }
+    .adminAvatarRight{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .fileInput{
+      max-width: 260px;
+    }
+    .ghostBtn{
+      background: transparent;
+      border: 1px solid var(--border2);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      min-height:44px;
+    }
+    .ghostBtn:hover{ background: rgba(255,255,255,0.06); }
+
     @media (max-width: 520px){
       .groceryForm{ grid-template-columns: 1fr; }
     }
@@ -1991,6 +2081,20 @@ const MONTHLY_CHORES = ["Clean baseboards",
    STORAGE HELPERS
 ========================= */
 
+// Member avatars (Admin page) - stored as data URLs in localStorage
+function defaultMemberPhotos(){
+  const o = {};
+  PEOPLE.forEach(p => o[p] = "");
+  return o;
+}
+function loadMemberPhotos(){
+  const d = defaultMemberPhotos();
+  const s = jget("memberPhotos", d);
+  PEOPLE.forEach(p => { if (typeof s[p] !== "string") s[p] = ""; });
+  return s;
+}
+function saveMemberPhotos(s){ jset("memberPhotos", s); }
+
 function jget(k, fallback){
   try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(fallback)); }
   catch{ return fallback; }
@@ -2789,12 +2893,35 @@ function renderDailyColumns(dayKey){
     const col = document.createElement("div");
     col.className = "column";
 
+    const header = document.createElement("div");
+    header.className = "memberHeader";
+
     const h = document.createElement("h2");
     h.textContent = person;
     const colors = loadMemberColors();
     const pc = colors[person] || "#ffffff";
     h.style.color = pc;
-    col.appendChild(h);
+
+    const photos = loadMemberPhotos();
+    const url = (photos && typeof photos[person] === "string") ? photos[person] : "";
+
+    let avatar;
+    if (url){
+      avatar = document.createElement("div");
+      avatar.className = "avatarCircle";
+      const img = document.createElement("img");
+      img.alt = `${person} avatar`;
+      img.src = url;
+      avatar.appendChild(img);
+    } else {
+      avatar = document.createElement("div");
+      avatar.className = "avatarFallback";
+      avatar.textContent = (person || "").slice(0,2).toUpperCase();
+    }
+
+    header.appendChild(h);
+    header.appendChild(avatar);
+    col.appendChild(header);
 
     const tasks = getTasksForDay(dayKey).filter(t => (t.assignees || []).includes(person));
 
@@ -3238,6 +3365,108 @@ function renderAdmin(){
     row.appendChild(left);
     row.appendChild(picker);
     grid.appendChild(row);
+  });
+
+  // --- Admin: member avatar uploads (stored locally) ---
+  const photos = loadMemberPhotos();
+
+  const avatarTitle = document.createElement("h3");
+  avatarTitle.style.margin = "14px 0 0 0";
+  avatarTitle.textContent = "Member Avatars";
+  app.querySelector(".panel").appendChild(avatarTitle);
+
+  const avatarHint = document.createElement("div");
+  avatarHint.className = "hint";
+  avatarHint.style.marginTop = "4px";
+  avatarHint.textContent = "Upload a photo for each member. Stored on this device (localStorage).";
+  app.querySelector(".panel").appendChild(avatarHint);
+
+  PEOPLE.forEach(person => {
+    const row = document.createElement("div");
+    row.className = "adminAvatarRow";
+
+    const left = document.createElement("div");
+    left.className = "adminAvatarLeft";
+
+    const name = document.createElement("div");
+    name.className = "adminAvatarName";
+    name.textContent = person;
+
+    const previewWrap = document.createElement("div");
+    const url = (photos && typeof photos[person] === "string") ? photos[person] : "";
+
+    if (url){
+      previewWrap.className = "avatarCircle";
+      const img = document.createElement("img");
+      img.alt = `${person} avatar`;
+      img.src = url;
+      previewWrap.appendChild(img);
+    } else {
+      previewWrap.className = "avatarFallback";
+      previewWrap.textContent = (person || "").slice(0,2).toUpperCase();
+    }
+
+    left.appendChild(previewWrap);
+    left.appendChild(name);
+
+    const right = document.createElement("div");
+    right.className = "adminAvatarRight";
+
+    const file = document.createElement("input");
+    file.type = "file";
+    file.accept = "image/*";
+    file.className = "fileInput";
+
+    const clear = document.createElement("button");
+    clear.type = "button";
+    clear.className = "ghostBtn";
+    clear.textContent = "Clear";
+
+    file.onchange = () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const size = 160;
+          const canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext("2d");
+
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          const cur = loadMemberPhotos();
+          cur[person] = dataUrl;
+          saveMemberPhotos(cur);
+          renderAdmin();
+        };
+        img.src = String(reader.result || "");
+      };
+      reader.readAsDataURL(f);
+    };
+
+    clear.onclick = () => {
+      const cur = loadMemberPhotos();
+      cur[person] = "";
+      saveMemberPhotos(cur);
+      renderAdmin();
+    };
+
+    right.appendChild(file);
+    right.appendChild(clear);
+
+    row.appendChild(left);
+    row.appendChild(right);
+
+    app.querySelector(".panel").appendChild(row);
   });
 
   // --- Admin: pre-write day notes for the week (shared with Dashboard day notes) ---
