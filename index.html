@@ -1159,6 +1159,33 @@ const THEME_MEMBER_COLORS = {
     Ethan:"#42a5f5", // soda blue
     Celo: "#ab47bc"  // violet
   },
+
+  // Premium pack (radically different)
+  midnightVelvet: {
+    Dad:  "#25f0b8", // neon mint
+    Mom:  "#ff5cd6", // neon pink
+    Ethan:"#6bb3ff", // cool blue
+    Celo: "#ffd36b"  // warm gold
+  },
+  carbonFiber: {
+    Dad:  "#2af5c0", // teal
+    Mom:  "#ff4f86", // hot rose
+    Ethan:"#4ea1ff", // electric blue
+    Celo: "#ffcf4a"  // amber
+  },
+  royalGold: {
+    Dad:  "#2fe2b8", // emerald-mint
+    Mom:  "#ff6ab1", // pink
+    Ethan:"#6aa7ff", // blue
+    Celo: "#d9b45a"  // gold
+  },
+  frostGlass: {
+    Dad:  "#38f2d0", // aqua
+    Mom:  "#b38cff", // violet
+    Ethan:"#66b5ff", // sky blue
+    Celo: "#ffe08a"  // soft gold
+  },
+
   paperClean: {
     // This theme allows editing. These are the starting defaults.
     Dad:  "#4caf50",
@@ -1358,6 +1385,202 @@ const THEMES = {
       "--shadow": "0 14px 28px rgba(30,20,60,0.14)",
       "--glassBlur": "14px",
       "--radius": "12px"
+    }
+  },
+
+  // =========================
+  // PREMIUM THEMES (textured + shaded)
+  // =========================
+
+  midnightVelvet: {
+    name: "Midnight Velvet",
+    dark: {
+      "--bg": "radial-gradient(1200px 800px at 18% 12%, rgba(55,255,210,0.10), transparent 56%), radial-gradient(900px 700px at 82% 20%, rgba(255,80,210,0.10), transparent 55%), radial-gradient(1200px 900px at 55% 95%, rgba(120,140,255,0.08), transparent 60%), linear-gradient(180deg, #07080c 0%, #05060a 100%)",
+      "--headerBg": "rgba(10,10,14,0.86)",
+      "--panel": "rgba(255,255,255,0.055)",
+      "--panel2": "rgba(255,255,255,0.075)",
+      "--panel3": "rgba(0,0,0,0.30)",
+      "--border": "rgba(255,255,255,0.10)",
+      "--border2": "rgba(255,255,255,0.13)",
+      "--text": "#f6f7fb",
+      "--muted": "rgba(246,247,251,0.76)",
+      "--muted2": "rgba(246,247,251,0.60)",
+      "--btn": "rgba(255,255,255,0.095)",
+      "--btnHover": "rgba(255,255,255,0.14)",
+      "--btnActive": "#25f0b8",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.34)",
+      "--inputBorder": "rgba(255,255,255,0.16)",
+      "--ringTrack": "rgba(255,255,255,0.22)",
+      "--shadow": "0 18px 34px rgba(0,0,0,0.56)",
+      "--glassBlur": "18px",
+      "--radius": "14px"
+    },
+    light: {
+      "--bg": "radial-gradient(1100px 800px at 22% 12%, rgba(35,210,180,0.18), transparent 55%), radial-gradient(900px 700px at 78% 18%, rgba(255,90,205,0.16), transparent 55%), radial-gradient(900px 800px at 55% 92%, rgba(120,140,255,0.14), transparent 60%), linear-gradient(180deg, #f8fbff 0%, #eef2f7 100%)",
+      "--headerBg": "rgba(255,255,255,0.82)",
+      "--panel": "rgba(255,255,255,0.72)",
+      "--panel2": "rgba(255,255,255,0.82)",
+      "--panel3": "rgba(255,255,255,0.64)",
+      "--border": "rgba(10,20,30,0.10)",
+      "--border2": "rgba(10,20,30,0.13)",
+      "--text": "#0e1116",
+      "--muted": "rgba(14,17,22,0.70)",
+      "--muted2": "rgba(14,17,22,0.55)",
+      "--btn": "rgba(10,20,30,0.075)",
+      "--btnHover": "rgba(10,20,30,0.115)",
+      "--btnActive": "#18caa1",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.84)",
+      "--inputBorder": "rgba(10,20,30,0.16)",
+      "--ringTrack": "rgba(10,20,30,0.18)",
+      "--shadow": "0 16px 30px rgba(20,30,40,0.18)",
+      "--glassBlur": "16px",
+      "--radius": "14px"
+    }
+  },
+
+  carbonFiber: {
+    name: "Carbon Fiber",
+    dark: {
+      "--bg": "repeating-linear-gradient(135deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 2px, rgba(0,0,0,0.0) 2px, rgba(0,0,0,0.0) 10px), radial-gradient(1100px 900px at 22% 16%, rgba(40,255,200,0.10), transparent 55%), radial-gradient(900px 700px at 82% 24%, rgba(80,120,255,0.10), transparent 55%), linear-gradient(180deg, #070a0f 0%, #04060b 100%)",
+      "--headerBg": "rgba(9,12,18,0.88)",
+      "--panel": "rgba(255,255,255,0.055)",
+      "--panel2": "rgba(255,255,255,0.075)",
+      "--panel3": "rgba(0,0,0,0.32)",
+      "--border": "rgba(255,255,255,0.10)",
+      "--border2": "rgba(255,255,255,0.14)",
+      "--text": "#f5f7fb",
+      "--muted": "rgba(245,247,251,0.74)",
+      "--muted2": "rgba(245,247,251,0.58)",
+      "--btn": "rgba(255,255,255,0.085)",
+      "--btnHover": "rgba(255,255,255,0.13)",
+      "--btnActive": "#2af5c0",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.36)",
+      "--inputBorder": "rgba(255,255,255,0.17)",
+      "--ringTrack": "rgba(255,255,255,0.22)",
+      "--shadow": "0 18px 34px rgba(0,0,0,0.58)",
+      "--glassBlur": "14px",
+      "--radius": "12px"
+    },
+    light: {
+      "--bg": "repeating-linear-gradient(135deg, rgba(0,0,0,0.045) 0px, rgba(0,0,0,0.045) 2px, rgba(255,255,255,0.0) 2px, rgba(255,255,255,0.0) 10px), radial-gradient(1100px 900px at 22% 16%, rgba(40,210,180,0.16), transparent 55%), radial-gradient(900px 700px at 82% 24%, rgba(80,120,255,0.14), transparent 55%), linear-gradient(180deg, #fbfcff 0%, #eef2f6 100%)",
+      "--headerBg": "rgba(255,255,255,0.84)",
+      "--panel": "rgba(255,255,255,0.76)",
+      "--panel2": "rgba(255,255,255,0.85)",
+      "--panel3": "rgba(255,255,255,0.66)",
+      "--border": "rgba(10,20,30,0.10)",
+      "--border2": "rgba(10,20,30,0.13)",
+      "--text": "#0e1218",
+      "--muted": "rgba(14,18,24,0.70)",
+      "--muted2": "rgba(14,18,24,0.55)",
+      "--btn": "rgba(10,20,30,0.07)",
+      "--btnHover": "rgba(10,20,30,0.11)",
+      "--btnActive": "#17caa1",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.86)",
+      "--inputBorder": "rgba(10,20,30,0.16)",
+      "--ringTrack": "rgba(10,20,30,0.18)",
+      "--shadow": "0 16px 30px rgba(20,30,40,0.18)",
+      "--glassBlur": "12px",
+      "--radius": "12px"
+    }
+  },
+
+  royalGold: {
+    name: "Royal Gold",
+    dark: {
+      "--bg": "radial-gradient(1200px 900px at 18% 18%, rgba(217,180,90,0.14), transparent 58%), radial-gradient(900px 700px at 80% 22%, rgba(40,255,210,0.08), transparent 55%), linear-gradient(180deg, #0a0a0c 0%, #060607 100%)",
+      "--headerBg": "rgba(12,12,13,0.88)",
+      "--panel": "rgba(255,255,255,0.055)",
+      "--panel2": "rgba(255,255,255,0.075)",
+      "--panel3": "rgba(0,0,0,0.30)",
+      "--border": "rgba(255,255,255,0.10)",
+      "--border2": "rgba(255,255,255,0.14)",
+      "--text": "#fbfaf6",
+      "--muted": "rgba(251,250,246,0.74)",
+      "--muted2": "rgba(251,250,246,0.58)",
+      "--btn": "rgba(255,255,255,0.085)",
+      "--btnHover": "rgba(255,255,255,0.13)",
+      "--btnActive": "#d9b45a",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.34)",
+      "--inputBorder": "rgba(255,255,255,0.17)",
+      "--ringTrack": "rgba(255,255,255,0.22)",
+      "--shadow": "0 18px 34px rgba(0,0,0,0.56)",
+      "--glassBlur": "16px",
+      "--radius": "14px"
+    },
+    light: {
+      "--bg": "radial-gradient(1100px 900px at 18% 18%, rgba(217,180,90,0.18), transparent 58%), radial-gradient(900px 700px at 80% 22%, rgba(40,210,180,0.14), transparent 55%), linear-gradient(180deg, #ffffff 0%, #f2f4f7 100%)",
+      "--headerBg": "rgba(255,255,255,0.86)",
+      "--panel": "rgba(255,255,255,0.78)",
+      "--panel2": "rgba(255,255,255,0.86)",
+      "--panel3": "rgba(255,255,255,0.68)",
+      "--border": "rgba(10,20,30,0.10)",
+      "--border2": "rgba(10,20,30,0.13)",
+      "--text": "#121314",
+      "--muted": "rgba(18,19,20,0.70)",
+      "--muted2": "rgba(18,19,20,0.55)",
+      "--btn": "rgba(10,20,30,0.07)",
+      "--btnHover": "rgba(10,20,30,0.11)",
+      "--btnActive": "#b89133",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.88)",
+      "--inputBorder": "rgba(10,20,30,0.16)",
+      "--ringTrack": "rgba(10,20,30,0.18)",
+      "--shadow": "0 16px 30px rgba(20,30,40,0.18)",
+      "--glassBlur": "12px",
+      "--radius": "14px"
+    }
+  },
+
+  frostGlass: {
+    name: "Frost Glass",
+    dark: {
+      "--bg": "radial-gradient(1000px 800px at 22% 18%, rgba(80,190,255,0.12), transparent 55%), radial-gradient(1000px 900px at 78% 22%, rgba(160,120,255,0.10), transparent 58%), radial-gradient(1200px 900px at 50% 110%, rgba(255,255,255,0.06), transparent 60%), linear-gradient(180deg, #070b12 0%, #05070c 100%)",
+      "--headerBg": "rgba(10,12,18,0.82)",
+      "--panel": "rgba(255,255,255,0.055)",
+      "--panel2": "rgba(255,255,255,0.08)",
+      "--panel3": "rgba(0,0,0,0.26)",
+      "--border": "rgba(255,255,255,0.11)",
+      "--border2": "rgba(255,255,255,0.14)",
+      "--text": "#f6f8ff",
+      "--muted": "rgba(246,248,255,0.76)",
+      "--muted2": "rgba(246,248,255,0.60)",
+      "--btn": "rgba(255,255,255,0.09)",
+      "--btnHover": "rgba(255,255,255,0.14)",
+      "--btnActive": "#38f2d0",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.28)",
+      "--inputBorder": "rgba(255,255,255,0.17)",
+      "--ringTrack": "rgba(255,255,255,0.22)",
+      "--shadow": "0 18px 34px rgba(0,0,0,0.52)",
+      "--glassBlur": "22px",
+      "--radius": "16px"
+    },
+    light: {
+      "--bg": "radial-gradient(1000px 800px at 22% 18%, rgba(80,190,255,0.18), transparent 55%), radial-gradient(1000px 900px at 78% 22%, rgba(160,120,255,0.16), transparent 58%), radial-gradient(1200px 900px at 50% 110%, rgba(255,255,255,0.75), transparent 60%), linear-gradient(180deg, #fbfdff 0%, #eef3f9 100%)",
+      "--headerBg": "rgba(255,255,255,0.84)",
+      "--panel": "rgba(255,255,255,0.78)",
+      "--panel2": "rgba(255,255,255,0.86)",
+      "--panel3": "rgba(255,255,255,0.68)",
+      "--border": "rgba(10,20,30,0.10)",
+      "--border2": "rgba(10,20,30,0.13)",
+      "--text": "#0f1218",
+      "--muted": "rgba(15,18,24,0.70)",
+      "--muted2": "rgba(15,18,24,0.55)",
+      "--btn": "rgba(10,20,30,0.07)",
+      "--btnHover": "rgba(10,20,30,0.11)",
+      "--btnActive": "#19caa6",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.90)",
+      "--inputBorder": "rgba(10,20,30,0.16)",
+      "--ringTrack": "rgba(10,20,30,0.18)",
+      "--shadow": "0 16px 30px rgba(20,30,40,0.18)",
+      "--glassBlur": "20px",
+      "--radius": "16px"
     }
   },
 
