@@ -3174,10 +3174,10 @@ function renderDailyColumns(dayKey){
 
     const header = document.createElement("div");
     header.className = "memberHeader";
-
-    const h = document.createElement("h2");
-    h.textContent = person;
-    h.style.color = pc;
+    header.style.display = "flex";
+    header.style.flexDirection = "column";
+    header.style.alignItems = "center";
+    header.style.gap = "8px";
 
     const photos = loadMemberPhotos();
     const url = (photos && typeof photos[person] === "string") ? photos[person] : "";
@@ -3186,18 +3186,36 @@ function renderDailyColumns(dayKey){
     if (url){
       avatar = document.createElement("div");
       avatar.className = "avatarCircle";
+      avatar.style.width = "72px";
+      avatar.style.height = "72px";
+
       const img = document.createElement("img");
       img.alt = `${person} avatar`;
       img.src = url;
+      img.style.width = "100%";
+      img.style.height = "100%";
+      img.style.objectFit = "cover";
       avatar.appendChild(img);
     } else {
       avatar = document.createElement("div");
       avatar.className = "avatarFallback";
+      avatar.style.width = "72px";
+      avatar.style.height = "72px";
+      avatar.style.display = "flex";
+      avatar.style.alignItems = "center";
+      avatar.style.justifyContent = "center";
       avatar.textContent = (person || "").slice(0,2).toUpperCase();
     }
 
-    header.appendChild(h);
+    const h = document.createElement("h2");
+    h.textContent = person;
+    h.style.color = pc;
+    h.style.margin = "0";
+    h.style.fontSize = "18px";
+    h.style.textAlign = "center";
+
     header.appendChild(avatar);
+    header.appendChild(h);
     col.appendChild(header);
 
     const tasks = getTasksForDay(dayKey).filter(t => (t.assignees || []).includes(person));
