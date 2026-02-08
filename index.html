@@ -1275,7 +1275,37 @@ const THEME_MEMBER_COLORS = {
     Ethan:"#66b5ff", // sky blue
     Celo: "#ffe08a"  // soft gold
   },
-
+  // Insert additional themes before paperClean:
+  noirVelvet: {
+    Dad: "#ff3c8c",
+    Mom: "#ffcc66",
+    Ethan: "#6a5cff",
+    Celo: "#38f2d0"
+  },
+  blueprintGrid: {
+    Dad: "#5ab4ff",
+    Mom: "#35e6c5",
+    Ethan: "#ff5a7a",
+    Celo: "#ffd166"
+  },
+  warmClay: {
+    Dad: "#ff7f50",
+    Mom: "#ffb86b",
+    Ethan: "#6aa7ff",
+    Celo: "#c07cff"
+  },
+  retroTerminal: {
+    Dad: "#00ff82",
+    Mom: "#a7ff4f",
+    Ethan: "#5ab4ff",
+    Celo: "#ff4fe0"
+  },
+  comicPop: {
+    Dad: "#ffe600",
+    Mom: "#ff5a1f",
+    Ethan: "#00beff",
+    Celo: "#b6ff2e"
+  },
   paperClean: {
     // This theme allows editing. These are the starting defaults.
     Dad:  "#4caf50",
@@ -2351,45 +2381,7 @@ function defaultMemberColors(){
   };
 }
 
-// Theme member color presets
-const THEME_MEMBER_COLORS = {
-  paperClean: {
-    Dad: "#4caf50",
-    Mom: "#ffb300",
-    Ethan: "#42a5f5",
-    Celo: "#ab47bc"
-  },
-  noirVelvet: {
-    Dad: "#ff3c8c",
-    Mom: "#ffcc66",
-    Ethan: "#6a5cff",
-    Celo: "#38f2d0"
-  },
-  blueprintGrid: {
-    Dad: "#5ab4ff",
-    Mom: "#35e6c5",
-    Ethan: "#ff5a7a",
-    Celo: "#ffd166"
-  },
-  warmClay: {
-    Dad: "#ff7f50",
-    Mom: "#ffb86b",
-    Ethan: "#6aa7ff",
-    Celo: "#c07cff"
-  },
-  retroTerminal: {
-    Dad: "#00ff82",
-    Mom: "#a7ff4f",
-    Ethan: "#5ab4ff",
-    Celo: "#ff4fe0"
-  },
-  comicPop: {
-    Dad: "#ffe600",
-    Mom: "#ff5a1f",
-    Ethan: "#00beff",
-    Celo: "#b6ff2e"
-  }
-};
+// Theme member color presets are defined above in THEME_MEMBER_COLORS.
 function loadMemberColors(){
   const d = defaultMemberColors();
   const s = jget("memberColors", d);
