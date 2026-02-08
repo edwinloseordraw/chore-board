@@ -2149,13 +2149,6 @@ function renderTopNav(){
 
         <div class="groceryForm">
           <input id="groceryText" placeholder="Add item…" />
-          <select id="groceryStore">
-            <option value="Sams">Sam’s</option>
-            <option value="Aldi">Aldi</option>
-            <option value="Publix">Publix</option>
-            <option value="Walmart">Walmart</option>
-            <option value="Other">Other</option>
-          </select>
           <button id="groceryAdd" type="button">Add</button>
         </div>
 
@@ -3346,12 +3339,11 @@ function addContextResetButton(r){
 function renderGroceriesPanel(){
   const listEl = document.getElementById("groceryList");
   const inputEl = document.getElementById("groceryText");
-  const storeEl = document.getElementById("groceryStore");
   const addBtn = document.getElementById("groceryAdd");
   const resetBtn = document.getElementById("groceryReset");
 
   // Panel may not exist yet (only created by renderTopNav)
-  if (!listEl || !inputEl || !storeEl || !addBtn || !resetBtn) return;
+  if (!listEl || !inputEl || !addBtn || !resetBtn) return;
 
   const state = loadGroceriesState();
   state.items = Array.isArray(state.items) ? state.items : [];
@@ -3367,7 +3359,6 @@ function renderGroceriesPanel(){
 
     listEl.innerHTML = items.map(it => {
       const txt = escapeHtml(it.text || "");
-      const store = escapeHtml(it.store || "Sams");
       const qty = Number(it.qty || 1);
       const qtyChip = (qty > 1) ? `<span class="groceryQty">x${qty}</span>` : "";
       return `
@@ -3375,7 +3366,6 @@ function renderGroceriesPanel(){
           <div class="groceryMeta">
             <div class="groceryItem">${txt}</div>
             <div class="grocerySub">
-              <span class="groceryTag">${store}</span>
               ${qtyChip}
             </div>
           </div>
@@ -3400,15 +3390,14 @@ function renderGroceriesPanel(){
   // Add handler (dedupe + bump)
   function addItem(){
     const text = (inputEl.value || "").trim();
-    const store = (storeEl.value || "Sams").trim();
     if (!text) return;
 
     const cur = loadGroceriesState();
     cur.items = Array.isArray(cur.items) ? cur.items : [];
 
     const n = normItemText(text);
-    // Dedupe by normalized text + store
-    const existingIdx = cur.items.findIndex(x => normItemText(x.text) === n && (x.store || "Sams") === store);
+    // Dedupe by normalized text only
+    const existingIdx = cur.items.findIndex(x => normItemText(x.text) === n);
 
     if (existingIdx >= 0){
       const existing = cur.items[existingIdx];
@@ -3417,7 +3406,7 @@ function renderGroceriesPanel(){
       cur.items.splice(existingIdx, 1);
       cur.items.unshift(existing);
     } else {
-      cur.items.unshift({ id: makeId(), text, store, qty: 1, createdAt: Date.now() });
+      cur.items.unshift({ id: makeId(), text, qty: 1, createdAt: Date.now() });
     }
 
     saveGroceriesState(cur);
