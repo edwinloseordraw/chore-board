@@ -1225,7 +1225,7 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBdyYuUBWiZQCGvd4pWdUy5i6lMKHV53Y8",
@@ -1249,12 +1249,34 @@ window.fbDb = fbDb;
 
 // Anonymous sign-in (needed for your Firestore rule: request.auth != null)
 signInAnonymously(fbAuth).catch((err) => {
-  console.error("Firebase anonymous sign-in failed:", err);
+  console.error("Firebase anonymous sign-in failed:", {
+    code: err?.code,
+    message: err?.message,
+    err
+  });
 });
 
-onAuthStateChanged(fbAuth, (user) => {
+onAuthStateChanged(fbAuth, async (user) => {
   if (user) {
     console.log("Firebase initialized and ready.", { uid: user.uid });
+
+    // One-time sanity check: prove Firestore writes work.
+    // You should see a `debug/init` document appear in Firestore.
+    try {
+      await setDoc(
+        doc(fbDb, "debug", "init"),
+        { uid: user.uid, time: serverTimestamp() },
+        { merge: true }
+      );
+      console.log("Firestore test write OK");
+    } catch (err) {
+      console.error("Firestore test write FAILED", {
+        code: err?.code,
+        message: err?.message,
+        err
+      });
+    }
+
   } else {
     console.log("Firebase auth state: signed out");
   }
@@ -4278,12 +4300,13 @@ if ("serviceWorker" in navigator) {
   import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyBdyYuUBWizQCGvd4pWdy5i6LMKHV53Y8",
+    apiKey: "AIzaSyBdyYUuBWizQCGvd4pWdUy5i6lMKHV53Y8",
     authDomain: "family-chore-board-666c7.firebaseapp.com",
     projectId: "family-chore-board-666c7",
     storageBucket: "family-chore-board-666c7.firebasestorage.app",
     messagingSenderId: "803382955236",
-    appId: "1:803382955236:web:506b7776453fd04da9670f1"
+    appId: "1:803382955236:web:506b776453fd04da9670f1",
+    measurementId: "G-JJLD3HG7GY"
   };
 
   const app = initializeApp(firebaseConfig);
