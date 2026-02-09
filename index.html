@@ -4298,6 +4298,7 @@ if ("serviceWorker" in navigator) {
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { getAnalytics, isSupported as analyticsIsSupported } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBdyYUuBWizQCGvd4pWdUy5i6lMKHV53Y8",
@@ -4310,6 +4311,19 @@ if ("serviceWorker" in navigator) {
   };
 
   const app = initializeApp(firebaseConfig);
+
+  // Analytics is optional and can break in some environments (especially Safari / privacy modes).
+  // Initialize it only when supported, and never let it crash the app.
+  let analytics = null;
+  try {
+    analyticsIsSupported()
+      .then((ok) => {
+        if (ok) analytics = getAnalytics(app);
+      })
+      .catch(() => { /* ignore */ });
+  } catch (e) {
+    // ignore
+  }
 
   const auth = getAuth(app);
   signInAnonymously(auth).catch((err) => {
