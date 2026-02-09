@@ -4228,5 +4228,40 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./service-worker.js");
 }
 </script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBdyYuUBWizQCGvd4pWdy5i6LMKHV53Y8",
+    authDomain: "family-chore-board-666c7.firebaseapp.com",
+    projectId: "family-chore-board-666c7",
+    storageBucket: "family-chore-board-666c7.firebasestorage.app",
+    messagingSenderId: "803382955236",
+    appId: "1:803382955236:web:506b7776453fd04da9670f1"
+  };
+
+  const app = initializeApp(firebaseConfig);
+
+  const auth = getAuth(app);
+  signInAnonymously(auth).catch((err) => {
+    console.error("Firebase auth failed:", err);
+  });
+
+  const db = getFirestore(app);
+
+  // Expose Firebase helpers globally for later sync steps
+  window.FirebaseSync = {
+    db,
+    doc,
+    getDoc,
+    setDoc,
+    onSnapshot
+  };
+
+  console.log("Firebase initialized and ready.");
+</script>
 </body>
 </html>
