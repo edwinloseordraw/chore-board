@@ -1216,7 +1216,50 @@
 <header id="topNav"></header>
 <main id="app"></main>
 
-<script>
+<script type="module">
+/* =========================
+   FIREBASE (Auth + Firestore)
+   - Using CDN modular SDK (no build tools)
+   - Anonymous Auth enabled in console
+========================= */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBdyYuUBWiZQCGvd4pWdUy5i6lMKHV53Y8",
+  authDomain: "family-chore-board-666c7.firebaseapp.com",
+  projectId: "family-chore-board-666c7",
+  storageBucket: "family-chore-board-666c7.firebasestorage.app",
+  messagingSenderId: "803382955236",
+  appId: "1:803382955236:web:506b776453fd04da9670f1",
+  measurementId: "G-JJLD3HG7GY"
+};
+
+// Init Firebase
+const fbApp = initializeApp(firebaseConfig);
+const fbAuth = getAuth(fbApp);
+const fbDb = getFirestore(fbApp);
+
+// Expose for debugging in DevTools
+window.fbApp = fbApp;
+window.fbAuth = fbAuth;
+window.fbDb = fbDb;
+
+// Anonymous sign-in (needed for your Firestore rule: request.auth != null)
+signInAnonymously(fbAuth).catch((err) => {
+  console.error("Firebase anonymous sign-in failed:", err);
+});
+
+onAuthStateChanged(fbAuth, (user) => {
+  if (user) {
+    console.log("Firebase initialized and ready.", { uid: user.uid });
+  } else {
+    console.log("Firebase auth state: signed out");
+  }
+});
+
 /* =========================
    THEME SYSTEM (Admin)
    - 5 preconfigured themes
