@@ -1539,6 +1539,7 @@ if (typeof __appEl !== 'undefined' && __appEl) {
     + '</div>');
 }
 
+console.log('Debug: DATA script tag started');
 try {
 
 /* =========================
@@ -1874,3 +1875,20 @@ const WEEKLY_CHORES = [
   console.error('Debug: DATA crashed', e);
   if (typeof __showFatal === 'function') __showFatal('data', e);
 }
+
+</script>
+
+<script>
+console.log('Debug: Stage F script tag executed (after DATA script tag)');
+(function(){
+  try {
+    const html = '<div style="margin-top:10px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:920px;margin-left:auto;margin-right:auto;">'
+      + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Debug: Stage F reached</div>'
+      + '<div style="font-size:13px;opacity:.9;line-height:1.35;">Browser reached a new script tag after DATA. If Stage E did not appear, DATA likely has a syntax error (script never ran) or the DATA script tag never closed.</div>'
+      + '</div>';
+    const el = document.getElementById('app');
+    if (el) el.insertAdjacentHTML('beforeend', html);
+    else document.body.insertAdjacentHTML('afterbegin', html);
+  } catch(_) {}
+})();
+</script>
