@@ -1539,6 +1539,8 @@ if (typeof __appEl !== 'undefined' && __appEl) {
     + '</div>');
 }
 
+try {
+
 /* =========================
    ROUTES + CONSTANTS
 ========================= */
@@ -1592,6 +1594,12 @@ function formatMMDDYYYY(d){
   const dd = pad2(d.getDate());
   const yyyy = d.getFullYear();
   return `${mm}-${dd}-${yyyy}`;
+}
+
+  console.log('Debug: Routes + Constants reached end');
+} catch (e) {
+  console.error('Debug: Routes + Constants crashed', e);
+  if (typeof __showFatal === 'function') __showFatal('routes/constants', e);
 }
 
 </script>
