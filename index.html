@@ -1605,17 +1605,30 @@ function formatMMDDYYYY(d){
 </script>
 
 <script>
+console.log('Debug: Stage D script tag executed');
+
 // --- DEBUG STAGE MARKER ---
 // If you can see this message, ROUTES + CONSTANTS parsed successfully and we're entering DATA.
-if (typeof document !== 'undefined') {
-  const el = document.getElementById('app');
-  if (el) {
-    el.insertAdjacentHTML('beforeend', '<div style="margin-top:10px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:920px;margin-left:auto;margin-right:auto;">'
+(function(){
+  try {
+    const el = document.getElementById('app');
+    const html = '<div style="margin-top:10px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:920px;margin-left:auto;margin-right:auto;">'
       + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Debug: Stage D reached</div>'
       + '<div style="font-size:13px;opacity:.9;line-height:1.35;">Now parsing the DATA section (daily schedule, helpers, weekly chores).</div>'
-      + '</div>');
+      + '</div>';
+
+    // Try to append to #app first
+    if (el) {
+      el.insertAdjacentHTML('beforeend', html);
+      return;
+    }
+
+    // Fallback: append to <body> so we can see it even if #app is missing/overwritten
+    document.body.insertAdjacentHTML('afterbegin', html);
+  } catch (e) {
+    console.error('Debug: Stage D marker failed', e);
   }
-}
+})();
 
 /* =========================
    DATA (still placeholders)
