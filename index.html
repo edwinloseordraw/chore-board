@@ -1526,7 +1526,19 @@ function applyTheme(themeId, mode){
 function themeLabel(themeId){
   return THEMES[themeId] ? THEMES[themeId].name : themeId;
 }
-  
+
+</script>
+
+<script>
+// --- DEBUG STAGE MARKER ---
+// If you can see this message, everything through theme helpers parsed & executed.
+if (typeof __appEl !== 'undefined' && __appEl) {
+  __appEl.insertAdjacentHTML('beforeend', '<div style="margin-top:10px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:920px;margin-left:auto;margin-right:auto;">'
+    + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Debug: Stage C reached</div>'
+    + '<div style="font-size:13px;opacity:.9;line-height:1.35;">Now parsing the Routes/Constants/Data section (split into its own script tag).</div>'
+    + '</div>');
+}
+
 /* =========================
    ROUTES + CONSTANTS
 ========================= */
