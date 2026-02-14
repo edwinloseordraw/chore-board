@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2316,6 +2315,64 @@ const KIDS = ["Ethan", "Celo"];
 function isParent(p){ return PARENTS.includes(p); }
 function isKid(p){ return KIDS.includes(p); }
 
+// =========================
+// FAIR DAILY VARIETY
+// =========================
+// Rotate which *pair* gets which tandem chore so no one is stuck with the same thing daily.
+// Pairs are fixed:
+//   - Dad + Celo
+//   - Mom + Ethan
+// Tandem chores are identified by their slug (the part after `dayKey::`).
+// Rotation pattern (cycles every 3 days):
+//   0: Dad+Celo => vacuum+trash,   Mom+Ethan => dishes
+//   1: Dad+Celo => vacuum+dishes,  Mom+Ethan => trash
+//   2: Dad+Celo => trash+dishes,   Mom+Ethan => vacuum
+const TANDEM_SLUGS = ["vacuum", "trash", "dishes"];
+
+function tandemSlugFromTask(task){
+  // task.id format: `${dayKey}::${slug}`
+  try {
+    const parts = String(task.id || "").split("::");
+    return parts[1] || "";
+  } catch(e){
+    return "";
+  }
+}
+
+function assignPair(task, pairName){
+  // pairName: "dadCelo" | "momEthan"
+  if (!task) return task;
+  if (pairName === "dadCelo"){
+    return { ...task, assignees: ["Dad","Celo"], primary: "Celo" };
+  }
+  // default mom+ethan
+  return { ...task, assignees: ["Mom","Ethan"], primary: "Ethan" };
+}
+
+function applyTandemRotation(tasks, dayKey){
+  // Only touches tandem chores (vacuum/trash/dishes) and only when they are 2-person chores.
+  // Keeps everything else exactly as-is.
+  const idx = DAYS.indexOf(dayKey);
+  const rot = (idx >= 0 ? idx : 0) % 3;
+
+  // Which slugs should Dad+Celo own today?
+  const dadSet = (rot === 0)
+    ? new Set(["vacuum","trash"])
+    : (rot === 1)
+      ? new Set(["vacuum","dishes"])
+      : new Set(["trash","dishes"]);
+
+  return tasks.map(t => {
+    // Only rotate true tandem chores
+    const slug = tandemSlugFromTask(t);
+    if (!TANDEM_SLUGS.includes(slug)) return t;
+    if (!t.assignees || !Array.isArray(t.assignees) || t.assignees.length !== 2) return t;
+
+    // Assign based on today's rotation
+    return dadSet.has(slug) ? assignPair(t, "dadCelo") : assignPair(t, "momEthan");
+  });
+}
+
 // Phase 8.4: Walk alternates every other day. Mom starts on lunes.
 function walkAssigneeForDay(dayKey){
   const idx = DAYS.indexOf(dayKey);
@@ -2375,8 +2432,11 @@ function getTasksForDay(dayKey){
 
   withoutWalk.push(buildWalkTask(dayKey));
 
+  // Apply fair rotation for tandem chores (vacuum/trash/dishes)
+  const rotated = applyTandemRotation(withoutWalk, dayKey);
+
   // Phase 8.3: enforce 2-person pairing guardrails.
-  return withoutWalk.map(t => normalizeTwoPersonTask(t));
+  return rotated.map(t => normalizeTwoPersonTask(t));
 }
 const WEEKLY_CHORES = [
   "Sweep backyard",
