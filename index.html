@@ -1216,6 +1216,30 @@
 <main id="app"></main>
 
 <script type="module">
+// --- Boot diagnostics: prevent silent blank page ---
+const __appEl = document.getElementById('app');
+if (__appEl && !__appEl.innerHTML.trim()) {
+  __appEl.innerHTML = '<div style="padding:14px;max-width:820px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#f5f5f5;opacity:.9;">Loading…</div>';
+}
+function __showFatal(label, err){
+  try{
+    const e = err && (err.error || err.reason || err);
+    const msg = (e && (e.message || String(e))) || String(err);
+    const stack = (e && e.stack) ? e.stack : '';
+    const html = `
+      <div style="padding:14px;max-width:920px;margin:14px auto;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.35);">
+        <div style="font-weight:900;font-size:16px;margin-bottom:6px;">App crashed (${label})</div>
+        <div style="font-size:13px;opacity:.9;line-height:1.35;">${String(msg).replace(/</g,'&lt;')}</div>
+        ${stack ? `<pre style="margin-top:10px;white-space:pre-wrap;font-size:12px;opacity:.85;">${String(stack).replace(/</g,'&lt;')}</pre>` : ''}
+        <div style="margin-top:10px;font-size:12px;opacity:.85;">Open DevTools Console for details. If you see Firebase/Google 403 or API-key errors, fix Google Cloud API key restrictions (allowed referrers AND allowed APIs: Identity Toolkit, Firestore API, Firebase Installations).</div>
+      </div>`;
+    const a = document.getElementById('app');
+    if (a) a.innerHTML = html;
+  } catch(_){}
+}
+window.addEventListener('error', (ev) => __showFatal('error', ev));
+window.addEventListener('unhandledrejection', (ev) => __showFatal('promise', ev));
+// --- End diagnostics ---
 /* =========================
    FIREBASE (Auth + Firestore)
    - Using CDN modular SDK (no build tools)
@@ -2124,6 +2148,10 @@ function nextDayKey(dayKey){
   return DAYS[(idx + 1) % DAYS.length];
 }
 
+function goToDayKey(dayKey){
+  location.hash = "#/" + dayKey;
+}
+
 function pad2(n){ return String(n).padStart(2,"0"); }
 
 // Returns a Date for the given dayKey in the CURRENT week (Monday->Sunday).
@@ -2443,6 +2471,45 @@ function getTasksForDay(dayKey){
 
   // Phase 8.3: enforce 2-person pairing guardrails.
   return rotated.map(t => normalizeTwoPersonTask(t));
+// Find the day rendering function and patch it:
+// (Below is a minimal search/replace for the relevant lines.)
+
+// ...snip... (rest of the code) ...
+
+// The following patch must be applied to the day rendering function.
+// Since we do not have the full function here, provide the code block to be inserted after the line that sets app.innerHTML:
+// (Insert this into the day rendering function after setting app.innerHTML)
+/*
+// Inject day quick-nav buttons (ayer/mañana) into the day header
+const __hdr = document.querySelector('.dayHeaderBar');
+if (__hdr && !__hdr.querySelector('[data-nav="prev"]')){
+  const wrap = document.createElement('div');
+  wrap.style.display = 'flex';
+  wrap.style.gap = '8px';
+  wrap.style.alignItems = 'center';
+
+  const bPrev = document.createElement('button');
+  bPrev.className = 'navBtn';
+  bPrev.type = 'button';
+  bPrev.textContent = 'ayer';
+  bPrev.setAttribute('data-nav','prev');
+
+  const bNext = document.createElement('button');
+  bNext.className = 'navBtn';
+  bNext.type = 'button';
+  bNext.textContent = 'mañana';
+  bNext.setAttribute('data-nav','next');
+
+  wrap.appendChild(bPrev);
+  wrap.appendChild(bNext);
+
+  // Put buttons on the right side of the header
+  __hdr.appendChild(wrap);
+
+  bPrev.addEventListener('click', () => goToDayKey(prevDayKey(dayKey)));
+  bNext.addEventListener('click', () => goToDayKey(nextDayKey(dayKey)));
+}
+*/
 }
 const WEEKLY_CHORES = [
   "Sweep backyard",
