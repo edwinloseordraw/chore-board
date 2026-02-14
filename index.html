@@ -1234,166 +1234,6 @@
 </script>
 
 <script>
-/* =========================
-   MINIMAL APP BOOTSTRAP (RECOVERY MODE)
-   - This file currently stops after debug markers, so the real UI/router code is missing.
-   - This block restores a basic working Day view using the DATA you already have.
-   - Uses localStorage only.
-========================= */
-
-// ----- Storage helpers (required by theme code, and by this recovery UI)
-function jget(key, fallback){
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw == null) return fallback;
-    return JSON.parse(raw);
-  } catch(_) {
-    return fallback;
-  }
-}
-function jset(key, value){
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch(_) {}
-}
-
-// ----- Completion state
-function taskDoneKey(taskId){ return 'done::' + taskId; }
-function isTaskDone(taskId){ return !!jget(taskDoneKey(taskId), false); }
-function setTaskDone(taskId, v){ jset(taskDoneKey(taskId), !!v); }
-
-// ----- UI helpers
-function esc(s){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function renderTopNav(dayKey){
-  const top = document.getElementById('topNav');
-  if (!top) return;
-
-  // simple day buttons + today
-  const btns = DAYS.map(d => {
-    const active = d === dayKey ? 'active' : '';
-    const label = d.charAt(0).toUpperCase() + d.slice(1);
-    return `<button class="navBtn ${active}" data-day="${d}">${label}</button>`;
-  }).join('');
-
-  top.innerHTML = `
-    <div class="menuWrap">
-      <button class="navBtn" id="goToday">Today</button>
-    </div>
-    ${btns}
-    <div class="spacer"></div>
-    <button class="navBtn" id="resetDay">Reset Day</button>
-  `;
-
-  top.querySelectorAll('button[data-day]').forEach(b => {
-    b.addEventListener('click', () => {
-      const dk = b.getAttribute('data-day');
-      location.hash = '#/' + dk;
-    });
-  });
-
-  const todayBtn = document.getElementById('goToday');
-  if (todayBtn) todayBtn.addEventListener('click', () => {
-    location.hash = '#/' + todayKey();
-  });
-
-  const resetBtn = document.getElementById('resetDay');
-  if (resetBtn) resetBtn.addEventListener('click', () => {
-    const tasks = getTasksForDay(dayKey);
-    tasks.forEach(t => setTaskDone(t.id, false));
-    renderDay(dayKey);
-  });
-}
-
-function renderDay(dayKey){
-  const app = document.getElementById('app');
-  if (!app) return;
-
-  renderTopNav(dayKey);
-
-  const d = dateForDayKey(dayKey);
-  const dateStr = formatMMDDYYYY(d);
-
-  const tasks = getTasksForDay(dayKey);
-
-  // bucket tasks by person (show shared chores in both assignee columns)
-  const buckets = {};
-  PEOPLE.forEach(p => buckets[p] = []);
-  tasks.forEach(t => {
-    (t.assignees || []).forEach(p => {
-      if (buckets[p]) buckets[p].push(t);
-    });
-  });
-
-  const cols = PEOPLE.map(p => {
-    const list = (buckets[p] || []).map(t => {
-      const checked = isTaskDone(t.id) ? 'checked' : '';
-      const label = esc(t.text);
-      return `
-        <div class="chore">
-          <label class="choreLabel">
-            <input type="checkbox" data-task="${esc(t.id)}" ${checked} />
-            <span>${label}</span>
-          </label>
-        </div>
-      `;
-    }).join('');
-
-    return `
-      <section class="column">
-        <div class="dayHeaderBar">
-          <h2 class="dayTitle">${esc(p)}</h2>
-          <div class="dayDate">${esc(dateStr)}</div>
-        </div>
-        ${list || '<div class="hint">No tasks.</div>'}
-      </section>
-    `;
-  }).join('');
-
-  app.innerHTML = `
-    <div class="panel">
-      <div style="font-weight:900;font-size:16px;">Recovery Mode: Day View</div>
-      <div class="hint">This is a minimal renderer to get you unstuck. Once the full UI/router code is restored, we can remove this block and the debug markers.</div>
-    </div>
-    <div class="columns">${cols}</div>
-  `;
-
-  // wire checkboxes
-  app.querySelectorAll('input[type="checkbox"][data-task]').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const id = cb.getAttribute('data-task');
-      setTaskDone(id, cb.checked);
-    });
-  });
-}
-
-function currentRouteDayKey(){
-  const h = location.hash || '';
-  const m = h.match(/^#\/\/(.+)$/);
-  const dk = m ? m[1] : '';
-  return DAYS.includes(dk) ? dk : todayKey();
-}
-
-function boot(){
-  // Apply default theme safely (now that jget/jset exist)
-  try {
-    const s = loadThemeState();
-    applyTheme(s.themeId, s.mode);
-  } catch(_) {}
-
-  renderDay(currentRouteDayKey());
-}
-
-window.addEventListener('hashchange', () => renderDay(currentRouteDayKey()));
-
-// Go.
-boot();
-</script>
-
-</body>
-</html>
-
-<script>
 // --- Boot diagnostics: prevent silent blank page ---
 console.log("Chore Board script started");
 const __appEl = document.getElementById('app');
@@ -2039,32 +1879,202 @@ const WEEKLY_CHORES = [
 </script>
 
 <script>
-console.log('Debug: Stage F script tag executed (after DATA script tag)');
-(function(){
-  try {
-    const html = '<div style="margin-top:10px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:920px;margin-left:auto;margin-right:auto;">'
-      + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Debug: Stage F reached</div>'
-      + '<div style="font-size:13px;opacity:.9;line-height:1.35;">Browser reached a new script tag after DATA.</div>'
-      + '</div>';
-    const el = document.getElementById('app');
-    if (el) el.insertAdjacentHTML('beforeend', html);
-    else document.body.insertAdjacentHTML('afterbegin', html);
-  } catch(_) {}
-})();
-</script>
-
-<script>
 console.log('Debug: Recovery script tag executed');
 (function(){
   try {
     const html = '<div style="margin:14px auto;max-width:920px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">'
-      + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Debug: Stage G reached</div>'
-      + '<div style="font-size:13px;opacity:.9;line-height:1.35;">Recovery bootstrap script tag executed. If you still only see Stage B-F, this block is not in the served HTML (cache or commit mismatch).</div>'
+      + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Recovery Mode enabled</div>'
+      + '<div style="font-size:13px;opacity:.9;line-height:1.35;">Minimal day-view renderer (local-only). Debug markers can be removed once the full UI is restored.</div>'
       + '</div>';
     document.body.insertAdjacentHTML('afterbegin', html);
   } catch(_) {}
 })();
 
-/* =========================
-   MINIMAL APP BOOTSTRAP (RECOVERY MODE)
+// ------------------------------
+// Storage helpers (local-only)
+// ------------------------------
+function jget(key, fallback){
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null) return fallback;
+    return JSON.parse(raw);
+  } catch(_) {
+    return fallback;
+  }
+}
+function jset(key, value){
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch(_) {}
+}
+
+// ------------------------------
+// Recovery constants/helpers
+// (do NOT rely on the earlier try/catch block scope)
+// ------------------------------
+const __DAYS_RECOVERY = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
+const __PEOPLE_RECOVERY = ["Dad","Mom","Ethan","Celo"];
+
+function __todayKey(){
+  const map = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+  return map[new Date().getDay()];
+}
+
+function __pad2(n){ return String(n).padStart(2,"0"); }
+
+function __dateForDayKey(dayKey){
+  const idx = __DAYS_RECOVERY.indexOf(dayKey);
+  const now = new Date();
+  const dow = now.getDay(); // 0=Sun..6=Sat
+
+  // Start of week = Monday
+  const daysSinceMonday = (dow + 6) % 7; // Mon=0..Sun=6
+  const monday = new Date(now);
+  monday.setHours(0,0,0,0);
+  monday.setDate(monday.getDate() - daysSinceMonday);
+
+  const d = new Date(monday);
+  d.setDate(monday.getDate() + (idx >= 0 ? idx : 0));
+  return d;
+}
+
+function __formatMMDDYYYY(d){
+  const mm = __pad2(d.getMonth() + 1);
+  const dd = __pad2(d.getDate());
+  const yyyy = d.getFullYear();
+  return `${mm}-${dd}-${yyyy}`;
+}
+
+function __esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ------------------------------
+// Completion state
+// ------------------------------
+function __taskDoneKey(taskId){ return 'done::' + taskId; }
+function __isTaskDone(taskId){ return !!jget(__taskDoneKey(taskId), false); }
+function __setTaskDone(taskId, v){ jset(__taskDoneKey(taskId), !!v); }
+
+// ------------------------------
+// Minimal UI
+// ------------------------------
+function __renderTopNav(dayKey){
+  const top = document.getElementById('topNav');
+  if (!top) return;
+
+  const btns = __DAYS_RECOVERY.map(d => {
+    const active = d === dayKey ? 'active' : '';
+    const label = d.charAt(0).toUpperCase() + d.slice(1);
+    return `<button class="navBtn ${active}" data-day="${d}">${label}</button>`;
+  }).join('');
+
+  top.innerHTML = `
+    <button class="navBtn" id="goToday">Today</button>
+    ${btns}
+    <div class="spacer"></div>
+    <button class="navBtn" id="resetDay">Reset Day</button>
+  `;
+
+  top.querySelectorAll('button[data-day]').forEach(b => {
+    b.addEventListener('click', () => {
+      const dk = b.getAttribute('data-day');
+      location.hash = '#/' + dk;
+    });
+  });
+
+  const todayBtn = document.getElementById('goToday');
+  if (todayBtn) todayBtn.addEventListener('click', () => {
+    location.hash = '#/' + __todayKey();
+  });
+
+  const resetBtn = document.getElementById('resetDay');
+  if (resetBtn) resetBtn.addEventListener('click', () => {
+    const tasks = (typeof getTasksForDay === 'function') ? getTasksForDay(dayKey) : [];
+    tasks.forEach(t => __setTaskDone(t.id, false));
+    __renderDay(dayKey);
+  });
+}
+
+function __renderDay(dayKey){
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  __renderTopNav(dayKey);
+
+  const d = __dateForDayKey(dayKey);
+  const dateStr = __formatMMDDYYYY(d);
+
+  const tasks = (typeof getTasksForDay === 'function') ? getTasksForDay(dayKey) : [];
+
+  // bucket tasks by person (shared chores appear in both columns)
+  const buckets = {};
+  __PEOPLE_RECOVERY.forEach(p => buckets[p] = []);
+  tasks.forEach(t => {
+    (t.assignees || []).forEach(p => {
+      if (buckets[p]) buckets[p].push(t);
+    });
+  });
+
+  const cols = __PEOPLE_RECOVERY.map(p => {
+    const list = (buckets[p] || []).map(t => {
+      const checked = __isTaskDone(t.id) ? 'checked' : '';
+      const label = __esc(t.text);
+      return `
+        <div class="chore">
+          <label class="choreLabel">
+            <input type="checkbox" data-task="${__esc(t.id)}" ${checked} />
+            <span>${label}</span>
+          </label>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <section class="column">
+        <div class="dayHeaderBar">
+          <h2 class="dayTitle">${__esc(p)}</h2>
+          <div class="dayDate">${__esc(dateStr)}</div>
+        </div>
+        ${list || '<div class="hint">No tasks.</div>'}
+      </section>
+    `;
+  }).join('');
+
+  app.innerHTML = `
+    <div class="panel">
+      <div style="font-weight:900;font-size:16px;">Recovery Mode: Day View</div>
+      <div class="hint">This is a minimal renderer to get you unstuck. Once the full UI/router code is restored, we can remove this block and the debug markers.</div>
+    </div>
+    <div class="columns">${cols}</div>
+  `;
+
+  // wire checkboxes
+  app.querySelectorAll('input[type="checkbox"][data-task]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const id = cb.getAttribute('data-task');
+      __setTaskDone(id, cb.checked);
+    });
+  });
+}
+
+function __currentRouteDayKey(){
+  const h = location.hash || '';
+  const m = h.match(/^#\/(.+)$/);
+  const dk = m ? m[1] : '';
+  return __DAYS_RECOVERY.includes(dk) ? dk : __todayKey();
+}
+
+function __bootRecovery(){
+  // Apply default theme if possible (theme functions expect jget/jset)
+  try {
+    if (typeof loadThemeState === 'function' && typeof applyTheme === 'function') {
+      const s = loadThemeState();
+      applyTheme(s.themeId, s.mode);
+    }
+  } catch(_) {}
+
+  __renderDay(__currentRouteDayKey());
+}
+
+window.addEventListener('hashchange', () => __renderDay(__currentRouteDayKey()));
+__bootRecovery();
 </script>
