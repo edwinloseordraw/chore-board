@@ -2118,6 +2118,12 @@ function prevDayKey(dayKey){
   return DAYS[(idx - 1 + DAYS.length) % DAYS.length];
 }
 
+function nextDayKey(dayKey){
+  const idx = DAYS.indexOf(dayKey);
+  if (idx === -1) return "lunes";
+  return DAYS[(idx + 1) % DAYS.length];
+}
+
 function pad2(n){ return String(n).padStart(2,"0"); }
 
 // Returns a Date for the given dayKey in the CURRENT week (Monday->Sunday).
@@ -3253,8 +3259,18 @@ function renderDay(dayKey){
   app.innerHTML = `
     <section class="panel" aria-label="Day header">
       <div class="dayHeaderBar">
-        <h2 class="dayTitle">${dayKey}</h2>
-        <div class="dayDate">${dayDate}</div>
+        <div class="dayNav">
+          <button class="navBtn" type="button" onclick="goto(prevDayKey('${dayKey}'))">Ayer</button>
+        </div>
+
+        <div class="dayCenter">
+          <h2 class="dayTitle">${dayKey}</h2>
+          <div class="dayDate">${dayDate}</div>
+        </div>
+
+        <div class="dayNav">
+          <button class="navBtn" type="button" onclick="goto(nextDayKey('${dayKey}'))">Mañana</button>
+        </div>
       </div>
     </section>
 
@@ -4350,6 +4366,34 @@ renderApp();
 ========================= */
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./service-worker.js");
+}
+/* =========================
+   DAY HEADER NAVIGATION STYLES
+========================= */
+.dayHeaderBar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.dayNav{
+  display:flex;
+  align-items:center;
+  min-width:110px;
+}
+.dayNav:last-child{
+  justify-content:flex-end;
+}
+.dayCenter{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+.dayCenter .dayTitle{
+  margin:0;
 }
 </script>
 
