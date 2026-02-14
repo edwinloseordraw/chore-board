@@ -1249,7 +1249,7 @@ function __showFatal(label, err){
         <div style="font-weight:900;font-size:16px;margin-bottom:6px;">App crashed (${label})</div>
         <div style="font-size:13px;opacity:.9;line-height:1.35;">${String(msg).replace(/</g,'&lt;')}</div>
         ${stack ? `<pre style="margin-top:10px;white-space:pre-wrap;font-size:12px;opacity:.85;">${String(stack).replace(/</g,'&lt;')}</pre>` : ''}
-        <div style="margin-top:10px;font-size:12px;opacity:.85;">Open DevTools Console for details. If you see Firebase/Google 403 or API-key errors, fix Google Cloud API key restrictions (allowed referrers AND allowed APIs: Identity Toolkit, Firestore API, Firebase Installations).</div>
+        <div style="margin-top:10px;font-size:12px;opacity:.85;">Open DevTools Console for details.</div>
       </div>`;
     const a = document.getElementById('app');
     if (a) a.innerHTML = html;
@@ -1258,69 +1258,12 @@ function __showFatal(label, err){
 window.addEventListener('error', (ev) => __showFatal('error', ev));
 window.addEventListener('unhandledrejection', (ev) => __showFatal('promise', ev));
 // --- End diagnostics ---
+
 /* =========================
-   FIREBASE (Auth + Firestore)
-   - Using CDN modular SDK (no build tools)
-   - Anonymous Auth enabled in console
+   SYNC (TEMP DISABLED)
+   - Firebase/Auth/Firestore removed for now to restore a stable offline/local-only app.
+   - When you're ready to re-enable sync, we can re-add Firebase behind a feature flag.
 ========================= */
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBdyYUuBWizQCGvd4pWdUy5i6lMKHV53Y8",
-  authDomain: "family-chore-board-666c7.firebaseapp.com",
-  projectId: "family-chore-board-666c7",
-  storageBucket: "family-chore-board-666c7.firebasestorage.app",
-  messagingSenderId: "803382955236",
-  appId: "1:803382955236:web:506b776453fd04da9670f1"
-};
-
-// Init Firebase
-const fbApp = initializeApp(firebaseConfig);
-const fbAuth = getAuth(fbApp);
-const fbDb = getFirestore(fbApp);
-
-// Expose for debugging in DevTools
-window.fbApp = fbApp;
-window.fbAuth = fbAuth;
-window.fbDb = fbDb;
-
-// Anonymous sign-in (needed for your Firestore rule: request.auth != null)
-signInAnonymously(fbAuth).catch((err) => {
-  console.error("Firebase anonymous sign-in failed:", {
-    code: err?.code,
-    message: err?.message,
-    err
-  });
-});
-
-onAuthStateChanged(fbAuth, async (user) => {
-  if (user) {
-    console.log("Firebase initialized and ready.", { uid: user.uid });
-
-    // One-time sanity check: prove Firestore writes work.
-    // You should see a `debug/init` document appear in Firestore.
-    try {
-      await setDoc(
-        doc(fbDb, "debug", "init"),
-        { uid: user.uid, time: serverTimestamp() },
-        { merge: true }
-      );
-      console.log("Firestore test write OK");
-    } catch (err) {
-      console.error("Firestore test write FAILED", {
-        code: err?.code,
-        message: err?.message,
-        err
-      });
-    }
-
-  } else {
-    console.log("Firebase auth state: signed out");
-  }
-});
 
 /* =========================
    THEME SYSTEM (Admin)
