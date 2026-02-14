@@ -2471,45 +2471,6 @@ function getTasksForDay(dayKey){
 
   // Phase 8.3: enforce 2-person pairing guardrails.
   return rotated.map(t => normalizeTwoPersonTask(t));
-// Find the day rendering function and patch it:
-// (Below is a minimal search/replace for the relevant lines.)
-
-// ...snip... (rest of the code) ...
-
-// The following patch must be applied to the day rendering function.
-// Since we do not have the full function here, provide the code block to be inserted after the line that sets app.innerHTML:
-// (Insert this into the day rendering function after setting app.innerHTML)
-/*
-// Inject day quick-nav buttons (ayer/mañana) into the day header
-const __hdr = document.querySelector('.dayHeaderBar');
-if (__hdr && !__hdr.querySelector('[data-nav="prev"]')){
-  const wrap = document.createElement('div');
-  wrap.style.display = 'flex';
-  wrap.style.gap = '8px';
-  wrap.style.alignItems = 'center';
-
-  const bPrev = document.createElement('button');
-  bPrev.className = 'navBtn';
-  bPrev.type = 'button';
-  bPrev.textContent = 'ayer';
-  bPrev.setAttribute('data-nav','prev');
-
-  const bNext = document.createElement('button');
-  bNext.className = 'navBtn';
-  bNext.type = 'button';
-  bNext.textContent = 'mañana';
-  bNext.setAttribute('data-nav','next');
-
-  wrap.appendChild(bPrev);
-  wrap.appendChild(bNext);
-
-  // Put buttons on the right side of the header
-  __hdr.appendChild(wrap);
-
-  bPrev.addEventListener('click', () => goToDayKey(prevDayKey(dayKey)));
-  bNext.addEventListener('click', () => goToDayKey(nextDayKey(dayKey)));
-}
-*/
 }
 const WEEKLY_CHORES = [
   "Sweep backyard",
