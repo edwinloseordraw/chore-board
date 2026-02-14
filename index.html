@@ -1602,6 +1602,19 @@ function formatMMDDYYYY(d){
   if (typeof __showFatal === 'function') __showFatal('routes/constants', e);
 }
 
+console.log('Debug: After ROUTES script end');
+(function(){
+  try {
+    const html = '<div style="margin-top:10px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:920px;margin-left:auto;margin-right:auto;">'
+      + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Debug: Stage C2 reached</div>'
+      + '<div style="font-size:13px;opacity:.9;line-height:1.35;">Reached the end of the ROUTES + CONSTANTS script tag. If you still do not see Stage D, the next script tag is not being executed.</div>'
+      + '</div>';
+    const el = document.getElementById('app');
+    if (el) el.insertAdjacentHTML('beforeend', html);
+    else document.body.insertAdjacentHTML('afterbegin', html);
+  } catch(_) {}
+})();
+
 </script>
 
 <script>
