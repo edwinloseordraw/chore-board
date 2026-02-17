@@ -1985,6 +1985,62 @@ function __isTaskDone(taskId){ return !!jget(__taskDoneKey(taskId), false); }
 function __setTaskDone(taskId, v){ jset(__taskDoneKey(taskId), !!v); }
 
 // ------------------------------
+// Notes state (local-only)
+// ------------------------------
+function __notesKey(dayKey){ return 'notes::' + dayKey; }
+function __getNotes(dayKey){ return jget(__notesKey(dayKey), ''); }
+function __setNotes(dayKey, text){ jset(__notesKey(dayKey), String(text || '')); }
+
+// ------------------------------
+// Completion helpers
+// ------------------------------
+function __tasksForDaySafe(dayKey){
+  return (typeof getTasksForDay === 'function') ? (getTasksForDay(dayKey) || []) : [];
+}
+
+function __completionForPerson(dayKey, person){
+  const tasks = __tasksForDaySafe(dayKey);
+  const mine = tasks.filter(t => (t.assignees || []).includes(person));
+  const total = mine.length;
+  const done = mine.reduce((acc, t) => acc + (__isTaskDone(t.id) ? 1 : 0), 0);
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  return { total, done, pct };
+}
+
+function __completionOverall(dayKey){
+  const tasks = __tasksForDaySafe(dayKey);
+  // Tasks can appear in multiple columns (shared chores), but completion is keyed by task.id.
+  const uniq = {};
+  tasks.forEach(t => { if (t && t.id) uniq[t.id] = t; });
+  const ids = Object.keys(uniq);
+  const total = ids.length;
+  const done = ids.reduce((acc, id) => acc + (__isTaskDone(id) ? 1 : 0), 0);
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  return { total, done, pct };
+}
+
+function __ringSvg(pct, colorVar){
+  const r = 52;
+  const c = 2 * Math.PI * r;
+  const dash = Math.max(0, Math.min(c, (pct/100) * c));
+  const gap = c - dash;
+  const stroke = `var(${colorVar})`;
+  return `
+    <div class="ringSvgWrap">
+      <svg width="128" height="128" viewBox="0 0 128 128" aria-hidden="true">
+        <g transform="translate(64 64)">
+          <circle class="chalkTrack" r="${r}" cx="0" cy="0" fill="none" stroke="var(--ringTrack)" stroke-width="12" />
+          <circle class="chalkStroke" r="${r}" cx="0" cy="0" fill="none" stroke="${stroke}" stroke-width="12"
+            stroke-linecap="round" transform="rotate(-90)"
+            stroke-dasharray="${dash} ${gap}" />
+        </g>
+      </svg>
+      <div class="pct">${pct}%</div>
+    </div>
+  `;
+}
+
+// ------------------------------
 // Minimal UI
 // ------------------------------
 function __renderTopNav(routeKey){
@@ -2165,6 +2221,7 @@ function __renderSideMenu(activeRoute){
   if (closeBtn) closeBtn.onclick = __closeSideMenu;
 }
 
+
 function __renderPlaceholder(title){
   const app = document.getElementById('app');
   if (!app) return;
@@ -2176,6 +2233,98 @@ function __renderPlaceholder(title){
   `;
 }
 
+function __renderDashboard(){
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  const dayKey = __todayKey();
+  const d = __dateForDayKey(dayKey);
+  const dateStr = __formatMMDDYYYY(d);
+
+  const overall = __completionOverall(dayKey);
+  const dad = __completionForPerson(dayKey, 'Dad');
+  const mom = __completionForPerson(dayKey, 'Mom');
+  const ethan = __completionForPerson(dayKey, 'Ethan');
+  const celo = __completionForPerson(dayKey, 'Celo');
+
+  const noteVal = __getNotes(dayKey);
+
+  app.innerHTML = `
+    <div class="dashGrid">
+      <section class="panel">
+        <div class="dashHeaderRow">
+          <h2>Dashboard</h2>
+          <div class="hint">Today: <b>${__esc(dayKey)}</b> (${__esc(dateStr)})</div>
+        </div>
+
+        <div class="rings">
+          <div class="ringCard">
+            <div class="ringMeta">
+              <div style="font-weight:900;">Overall</div>
+              <div class="hint">${overall.done}/${overall.total} tasks</div>
+            </div>
+            ${__ringSvg(overall.pct, '--btnActive')}
+            <button class="navBtn" id="dashGoToday" type="button">Go to Today</button>
+          </div>
+
+          <div class="ringCard">
+            <div class="ringMeta">
+              <div style="font-weight:900;">Dad</div>
+              <div class="hint">${dad.done}/${dad.total}</div>
+            </div>
+            ${__ringSvg(dad.pct, '--btnActive')}
+          </div>
+
+          <div class="ringCard">
+            <div class="ringMeta">
+              <div style="font-weight:900;">Mom</div>
+              <div class="hint">${mom.done}/${mom.total}</div>
+            </div>
+            ${__ringSvg(mom.pct, '--btnActive')}
+          </div>
+
+          <div class="ringCard">
+            <div class="ringMeta">
+              <div style="font-weight:900;">Ethan</div>
+              <div class="hint">${ethan.done}/${ethan.total}</div>
+            </div>
+            ${__ringSvg(ethan.pct, '--btnActive')}
+          </div>
+
+          <div class="ringCard">
+            <div class="ringMeta">
+              <div style="font-weight:900;">Celo</div>
+              <div class="hint">${celo.done}/${celo.total}</div>
+            </div>
+            ${__ringSvg(celo.pct, '--btnActive')}
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="dashHeaderRow">
+          <h2>Notes (Today)</h2>
+          <div class="hint">Saved automatically on this device</div>
+        </div>
+        <div class="notesBox">
+          <textarea id="dashNotes" placeholder="Add notes for today...">${__esc(noteVal)}</textarea>
+          <div class="hint">Notes are stored locally for now (sync can come later).</div>
+        </div>
+      </section>
+    </div>
+  `;
+
+  const btn = document.getElementById('dashGoToday');
+  if (btn) btn.onclick = () => { location.hash = '#/' + dayKey; };
+
+  const ta = document.getElementById('dashNotes');
+  if (ta) {
+    ta.addEventListener('input', () => {
+      __setNotes(dayKey, ta.value);
+    });
+  }
+}
+
 function __renderRoute(routeKey){
   __renderSideMenu(routeKey);
   __renderTopNav(routeKey);
@@ -2185,7 +2334,7 @@ function __renderRoute(routeKey){
     return;
   }
 
-  if (routeKey === 'dashboard') return __renderPlaceholder('Dashboard');
+  if (routeKey === 'dashboard') return __renderDashboard();
   if (routeKey === 'admin') return __renderPlaceholder('Admin');
   if (routeKey === 'weekly') return __renderPlaceholder('Weekly');
   if (routeKey === 'maintenance') return __renderPlaceholder('Maintenance');
