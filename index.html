@@ -2342,6 +2342,21 @@ function __renderPlaceholder(title){
   `;
 }
 
+function __getWeeklyChores(){
+  // Prefer the global list (set in the DATA script tag). If it’s missing/empty,
+  // fall back to a sane default so Weekly never renders as “nothing”.
+  const list = (typeof window !== 'undefined' && Array.isArray(window.WEEKLY_CHORES)) ? window.WEEKLY_CHORES : [];
+  if (list && list.length) return list;
+  return [
+    "Sweep",
+    "Mop",
+    "Vacuum",
+    "Trash",
+    "Wipe kitchen counters",
+    "Wipe dining table"
+  ];
+}
+
 function __renderWeekly(){
   const app = document.getElementById('app');
   if (!app) return;
@@ -2349,7 +2364,7 @@ function __renderWeekly(){
   __renderTopNav('weekly');
 
   const weekKey = __weekKeyForNow();
-  const chores = (typeof window !== 'undefined' && Array.isArray(window.WEEKLY_CHORES)) ? window.WEEKLY_CHORES : [];
+  const chores = __getWeeklyChores();
 
   const rows = chores.map(name => {
     const slug = __slugify(name);
@@ -2364,8 +2379,10 @@ function __renderWeekly(){
 
     return `
       <div class="weeklyItem">
-        <input type="checkbox" data-weekly="${__esc(slug)}" ${checked} />
-        <div class="label">${__esc(name)}</div>
+        <label class="choreLabel" style="margin:0; padding:0; box-shadow:none; background:transparent; display:grid; grid-template-columns:18px 1fr; align-items:center; gap:8px;">
+          <input type="checkbox" data-weekly="${__esc(slug)}" ${checked} />
+          <span class="label" style="padding:0; box-shadow:none;">${__esc(name)}</span>
+        </label>
         <select class="assignSelect" data-weekly-assign="${__esc(slug)}">${opts}</select>
       </div>
     `;
