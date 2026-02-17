@@ -2142,6 +2142,7 @@ function __renderDay(dayKey){
   const dateStr = __formatMMDDYYYY(d);
 
   const tasks = (typeof getTasksForDay === 'function') ? getTasksForDay(dayKey) : [];
+  const colors = __getMemberColors();
 
   // bucket tasks by person (shared chores appear in both columns)
   const buckets = {};
@@ -2167,10 +2168,10 @@ function __renderDay(dayKey){
     }).join('');
 
     return `
-      <section class="column">
+      <section class="column" style="border-top:4px solid ${__esc(colors[p] || 'var(--btnActive)')};">
         <div class="dayHeaderBar">
           <h2 class="dayTitle">${__esc(p)}</h2>
-          <div class="dayDate">${__esc(dateStr)}</div>
+          <div class="dayDate">${__esc(dateStr)} · ${(() => { const c = __completionForPerson(dayKey, p); return `${c.done}/${c.total}`; })()}</div>
         </div>
         ${list || '<div class="hint">No tasks.</div>'}
       </section>
