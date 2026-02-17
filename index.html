@@ -1995,14 +1995,7 @@ function __setNotes(dayKey, text){ jset(__notesKey(dayKey), String(text || ''));
 // Member colors (local-only)
 // ------------------------------
 function __getMemberColors(){
-  // Prefer explicit saved colors if they exist.
-  const saved = jget('memberColors', null);
-  if (saved && typeof saved === 'object') {
-    const out = { Dad: saved.Dad, Mom: saved.Mom, Ethan: saved.Ethan, Celo: saved.Celo };
-    if (out.Dad && out.Mom && out.Ethan && out.Celo) return out;
-  }
-
-  // Otherwise fall back to current theme preset.
+  // Determine active theme.
   let themeId = 'neonGlass';
   try {
     if (typeof loadThemeState === 'function') {
@@ -2011,6 +2004,16 @@ function __getMemberColors(){
     }
   } catch(_) {}
 
+  // Only honor saved custom colors when theme is Paper Clean.
+  if (themeId === 'paperClean') {
+    const saved = jget('memberColors', null);
+    if (saved && typeof saved === 'object') {
+      const out = { Dad: saved.Dad, Mom: saved.Mom, Ethan: saved.Ethan, Celo: saved.Celo };
+      if (out.Dad && out.Mom && out.Ethan && out.Celo) return out;
+    }
+  }
+
+  // Otherwise fall back to current theme preset.
   const presets = (typeof THEME_MEMBER_COLORS !== 'undefined') ? THEME_MEMBER_COLORS : {};
   const base = presets[themeId] || presets.neonGlass || {};
 
@@ -2369,6 +2372,7 @@ function __renderAdmin(){
 
   const themeId = state.themeId || 'neonGlass';
   const mode = (state.mode === 'light') ? 'light' : 'dark';
+  const canEditColors = (themeId === 'paperClean');
 
   // Theme options
   const themeKeys = (typeof THEMES !== 'undefined') ? Object.keys(THEMES) : ['neonGlass','paperClean'];
@@ -2383,17 +2387,19 @@ function __renderAdmin(){
 
   const colorRows = __PEOPLE_RECOVERY.map(p => {
     const v = colors[p] || '#ffffff';
+    const dis = canEditColors ? '' : 'disabled';
+    const rowStyle = canEditColors ? '' : 'style="opacity:0.65;"';
     return `
-      <div class="adminRow">
+      <div class="adminRow" ${rowStyle}>
         <div class="adminName">${__esc(p)}</div>
-        <input class="colorInput" type="color" data-person="${__esc(p)}" value="${__esc(v)}" />
+        <input class="colorInput" type="color" data-person="${__esc(p)}" value="${__esc(v)}" ${dis} />
       </div>
     `;
   }).join('');
 
   const paperHint = (themeId === 'paperClean')
-    ? 'Edits here stick. Paper Clean is the “customizable” theme.'
-    : 'Note: switching themes will likely overwrite custom member colors (by design).';
+    ? 'Paper Clean: member colors are editable and will persist on this device.'
+    : 'Member colors are locked on this theme. Switch to Paper Clean to customize.';
 
   app.innerHTML = `
     <div class="panel">
@@ -2469,9 +2475,19 @@ function __renderAdmin(){
   // Member color pickers
   app.querySelectorAll('input[type="color"][data-person]').forEach(inp => {
     inp.addEventListener('input', () => {
+      // Only save custom colors on Paper Clean.
+      let t = 'neonGlass';
+      try {
+        if (typeof loadThemeState === 'function') {
+          const s = loadThemeState();
+          if (s && s.themeId) t = s.themeId;
+        }
+      } catch(_) {}
+      if (t !== 'paperClean') return;
+
       const person = inp.getAttribute('data-person');
       const next = inp.value;
-      const current = __getMemberColors();
+      const current = jget('memberColors', __getMemberColors());
       current[person] = next;
       jset('memberColors', current);
       // Stay on admin; rings update next time dashboard is rendered.
