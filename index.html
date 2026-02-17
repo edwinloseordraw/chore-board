@@ -2190,26 +2190,38 @@ function __renderDay(dayKey){
     <div class="columns">${cols}</div>
   `;
 
-  // PATCH 2: wire checkboxes with live-update of count + mini bar
+  // PATCH 2: wire checkboxes with live-update of counts + mini bars (including shared chores)
   app.querySelectorAll('input[type="checkbox"][data-task]').forEach(cb => {
     cb.addEventListener('change', () => {
       const id = cb.getAttribute('data-task');
-      __setTaskDone(id, cb.checked);
+      const checked = !!cb.checked;
+      __setTaskDone(id, checked);
 
-      // Live update: update the completion count + mini bar for any person column that contains this task.
-      const col = cb.closest('section.column');
-      if (!col) return;
-      const person = col.getAttribute('data-person');
-      if (!person) return;
+      // If this task appears in multiple columns (shared chore), sync the other checkboxes visually.
+      app.querySelectorAll(`input[type="checkbox"][data-task="${id}"]`).forEach(other => {
+        if (other !== cb) other.checked = checked;
+      });
 
-      const c = __completionForPerson(dayKey, person);
-      const pct = c.total ? Math.round((c.done / c.total) * 100) : 0;
+      // Find the task object to know which people are affected.
+      const tasks = (typeof getTasksForDay === 'function') ? (getTasksForDay(dayKey) || []) : [];
+      const t = tasks.find(x => x && x.id === id);
+      const affected = (t && Array.isArray(t.assignees) && t.assignees.length) ? t.assignees : [];
 
-      const countEl = app.querySelector(`.dayCount[data-person="${person}"]`);
-      if (countEl) countEl.textContent = `${c.done}/${c.total}`;
+      // If we can't find assignees, fall back to updating just the column we clicked.
+      const fallbackCol = cb.closest('section.column');
+      const fallbackPerson = fallbackCol ? fallbackCol.getAttribute('data-person') : null;
+      const peopleToUpdate = affected.length ? affected : (fallbackPerson ? [fallbackPerson] : []);
 
-      const fillEl = app.querySelector(`.miniFill[data-person="${person}"]`);
-      if (fillEl) fillEl.style.width = pct + '%';
+      peopleToUpdate.forEach(person => {
+        const c = __completionForPerson(dayKey, person);
+        const pct = c.total ? Math.round((c.done / c.total) * 100) : 0;
+
+        const countEl = app.querySelector(`.dayCount[data-person="${person}"]`);
+        if (countEl) countEl.textContent = `${c.done}/${c.total}`;
+
+        const fillEl = app.querySelector(`.miniFill[data-person="${person}"]`);
+        if (fillEl) fillEl.style.width = pct + '%';
+      });
     });
   });
 }
