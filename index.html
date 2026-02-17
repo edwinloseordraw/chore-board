@@ -1546,8 +1546,10 @@ try {
    ROUTES + CONSTANTS
 ========================= */
 
-const DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
-const PEOPLE = ["Dad","Mom","Ethan","Celo"];
+window.DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
+window.PEOPLE = ["Dad","Mom","Ethan","Celo"];
+const DAYS = window.DAYS;
+const PEOPLE = window.PEOPLE;
 
 function todayKey(){
   const map = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
@@ -1627,6 +1629,9 @@ if (typeof document !== 'undefined') {
    - Bi-weekly/monthly/maintenance lists stay mostly empty until Phase 5-7.
 ========================= */
 try {
+// Ensure DAYS/PEOPLE exist in this script scope even if the Routes/Constants section is wrapped in a try/catch.
+const DAYS = (typeof window !== 'undefined' && Array.isArray(window.DAYS)) ? window.DAYS : ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
+const PEOPLE = (typeof window !== 'undefined' && Array.isArray(window.PEOPLE)) ? window.PEOPLE : ["Dad","Mom","Ethan","Celo"];
 
 // Daily chores are scheduled per day (lunes → domingo).
 // Tasks are shared objects so 2-person chores have ONE completion state.
