@@ -1978,6 +1978,44 @@ function __esc(s){
 }
 
 // ------------------------------
+// Weekly state (local-only)
+// ------------------------------
+function __weekKeyForNow(){
+  // Monday-anchored week key in local time: YYYY-MM-DD (date of Monday)
+  const now = new Date();
+  const dow = now.getDay(); // 0=Sun..6=Sat
+  const daysSinceMonday = (dow + 6) % 7;
+  const monday = new Date(now);
+  monday.setHours(0,0,0,0);
+  monday.setDate(monday.getDate() - daysSinceMonday);
+  const yyyy = monday.getFullYear();
+  const mm = __pad2(monday.getMonth() + 1);
+  const dd = __pad2(monday.getDate());
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function __weeklyDoneKey(weekKey, slug){ return `weekly::${weekKey}::${slug}`; }
+function __weeklyAssignKey(weekKey, slug){ return `weeklyAssign::${weekKey}::${slug}`; }
+
+function __weeklyIsDone(weekKey, slug){ return !!jget(__weeklyDoneKey(weekKey, slug), false); }
+function __weeklySetDone(weekKey, slug, v){ jset(__weeklyDoneKey(weekKey, slug), !!v); }
+
+function __weeklyGetAssign(weekKey, slug){
+  const v = jget(__weeklyAssignKey(weekKey, slug), '');
+  return (typeof v === 'string') ? v : '';
+}
+function __weeklySetAssign(weekKey, slug, person){
+  jset(__weeklyAssignKey(weekKey, slug), String(person || ''));
+}
+
+function __slugify(s){
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,'-')
+    .replace(/(^-|-$)/g,'');
+}
+
+// ------------------------------
 // Completion state
 // ------------------------------
 function __taskDoneKey(taskId){ return 'done::' + taskId; }
@@ -2292,6 +2330,7 @@ function __renderSideMenu(activeRoute){
 }
 
 
+
 function __renderPlaceholder(title){
   const app = document.getElementById('app');
   if (!app) return;
@@ -2301,6 +2340,81 @@ function __renderPlaceholder(title){
       <div class="hint">This page is a placeholder while we restore the full UI. The Day pages are stable.</div>
     </div>
   `;
+}
+
+function __renderWeekly(){
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  __renderTopNav('weekly');
+
+  const weekKey = __weekKeyForNow();
+  const chores = (typeof WEEKLY_CHORES !== 'undefined' && Array.isArray(WEEKLY_CHORES)) ? WEEKLY_CHORES : [];
+
+  const rows = chores.map(name => {
+    const slug = __slugify(name);
+    const checked = __weeklyIsDone(weekKey, slug) ? 'checked' : '';
+    const assigned = __weeklyGetAssign(weekKey, slug);
+
+    const opts = ['','Dad','Mom','Ethan','Celo'].map(p => {
+      const label = p ? p : 'Unassigned';
+      const sel = (p === assigned) ? 'selected' : '';
+      return `<option value="${__esc(p)}" ${sel}>${__esc(label)}</option>`;
+    }).join('');
+
+    return `
+      <div class="weeklyItem">
+        <input type="checkbox" data-weekly="${__esc(slug)}" ${checked} />
+        <div class="label">${__esc(name)}</div>
+        <select class="assignSelect" data-weekly-assign="${__esc(slug)}">${opts}</select>
+      </div>
+    `;
+  }).join('');
+
+  app.innerHTML = `
+    <div class="panel">
+      <div class="toolbar">
+        <div class="left">
+          <h2 style="margin:0;">Weekly</h2>
+          <div class="hint" style="margin:0;">Week of <b>${__esc(weekKey)}</b></div>
+        </div>
+        <div class="right">
+          <button class="navBtn danger" id="weeklyResetBtn" type="button">Reset Weekly</button>
+        </div>
+      </div>
+
+      <div class="hint">Weekly chores are tracked per-week on this device (local only).</div>
+      <div class="weeklyGrid">
+        ${rows || '<div class="hint">No weekly chores configured.</div>'}
+      </div>
+    </div>
+  `;
+
+  // Wire done toggles
+  app.querySelectorAll('input[type="checkbox"][data-weekly]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const slug = cb.getAttribute('data-weekly');
+      __weeklySetDone(weekKey, slug, !!cb.checked);
+    });
+  });
+
+  // Wire assignee dropdowns
+  app.querySelectorAll('select[data-weekly-assign]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const slug = sel.getAttribute('data-weekly-assign');
+      __weeklySetAssign(weekKey, slug, sel.value);
+    });
+  });
+
+  // Reset button
+  const rb = document.getElementById('weeklyResetBtn');
+  if (rb) rb.addEventListener('click', () => {
+    chores.forEach(name => {
+      const slug = __slugify(name);
+      __weeklySetDone(weekKey, slug, false);
+    });
+    __renderWeekly();
+  });
 }
 
 function __renderDashboard(){
@@ -2542,7 +2656,7 @@ function __renderRoute(routeKey){
 
   if (routeKey === 'dashboard') return __renderDashboard();
   if (routeKey === 'admin') return __renderAdmin();
-  if (routeKey === 'weekly') return __renderPlaceholder('Weekly');
+  if (routeKey === 'weekly') return __renderWeekly();
   if (routeKey === 'maintenance') return __renderPlaceholder('Maintenance');
 
   // fallback
