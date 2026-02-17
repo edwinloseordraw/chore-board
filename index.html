@@ -1212,7 +1212,17 @@
 </head>
 
 <body>
+
 <header id="topNav"></header>
+
+<div id="sideOverlay" class="sideOverlay"></div>
+<div id="sidePanel" class="sidePanel" aria-hidden="true">
+  <div class="sideHeader">
+    <div class="sideTitle">Chore Board</div>
+    <button class="sideClose" id="sideCloseBtn" type="button">Close</button>
+  </div>
+  <div class="sideNav" id="sideNav"></div>
+</div>
 
 <main id="app"></main>
 <script>
@@ -1977,23 +1987,30 @@ function __setTaskDone(taskId, v){ jset(__taskDoneKey(taskId), !!v); }
 // ------------------------------
 // Minimal UI
 // ------------------------------
-function __renderTopNav(dayKey){
+function __renderTopNav(routeKey){
   const top = document.getElementById('topNav');
   if (!top) return;
 
+  const isDay = __DAYS_RECOVERY.includes(routeKey);
+  const activeDay = isDay ? routeKey : __todayKey();
+
   const btns = __DAYS_RECOVERY.map(d => {
-    const active = d === dayKey ? 'active' : '';
+    const active = d === activeDay ? 'active' : '';
     const label = d.charAt(0).toUpperCase() + d.slice(1);
     return `<button class="navBtn ${active}" data-day="${d}">${label}</button>`;
   }).join('');
 
   top.innerHTML = `
-    <button class="navBtn" id="goToday">Today</button>
+    <div class="menuWrap">
+      <button class="hamburgerBtn" id="menuBtn" type="button">☰</button>
+    </div>
+    <button class="navBtn" id="goToday" type="button">Today</button>
     ${btns}
     <div class="spacer"></div>
-    <button class="navBtn" id="resetDay">Reset Day</button>
+    <button class="navBtn" id="resetDay" type="button">Reset Day</button>
   `;
 
+  // Day buttons
   top.querySelectorAll('button[data-day]').forEach(b => {
     b.addEventListener('click', () => {
       const dk = b.getAttribute('data-day');
@@ -2001,17 +2018,28 @@ function __renderTopNav(dayKey){
     });
   });
 
+  // Today
   const todayBtn = document.getElementById('goToday');
   if (todayBtn) todayBtn.addEventListener('click', () => {
     location.hash = '#/' + __todayKey();
   });
 
+  // Reset only makes sense on day routes
   const resetBtn = document.getElementById('resetDay');
-  if (resetBtn) resetBtn.addEventListener('click', () => {
-    const tasks = (typeof getTasksForDay === 'function') ? getTasksForDay(dayKey) : [];
-    tasks.forEach(t => __setTaskDone(t.id, false));
-    __renderDay(dayKey);
-  });
+  if (resetBtn) {
+    resetBtn.disabled = !isDay;
+    resetBtn.style.opacity = isDay ? '1' : '.55';
+    resetBtn.style.pointerEvents = isDay ? 'auto' : 'none';
+    resetBtn.addEventListener('click', () => {
+      const tasks = (typeof getTasksForDay === 'function') ? getTasksForDay(activeDay) : [];
+      tasks.forEach(t => __setTaskDone(t.id, false));
+      __renderDay(activeDay);
+    });
+  }
+
+  // Menu wiring
+  const menuBtn = document.getElementById('menuBtn');
+  if (menuBtn) menuBtn.addEventListener('click', __openSideMenu);
 }
 
 function __renderDay(dayKey){
@@ -2072,11 +2100,102 @@ function __renderDay(dayKey){
   });
 }
 
-function __currentRouteDayKey(){
+// ------------------------------
+// Simple router + side menu (restoring "full UI" one page at a time)
+// ------------------------------
+const __EXTRA_ROUTES = ["dashboard","admin","weekly","maintenance"];
+
+function __routeFromHash(){
   const h = location.hash || '';
   const m = h.match(/^#\/(.+)$/);
-  const dk = m ? m[1] : '';
-  return __DAYS_RECOVERY.includes(dk) ? dk : __todayKey();
+  const rk = m ? m[1] : '';
+  if (__DAYS_RECOVERY.includes(rk)) return rk;
+  if (__EXTRA_ROUTES.includes(rk)) return rk;
+  return __todayKey();
+}
+
+function __closeSideMenu(){
+  const ov = document.getElementById('sideOverlay');
+  const pn = document.getElementById('sidePanel');
+  if (ov) ov.classList.remove('open');
+  if (pn) {
+    pn.classList.remove('open');
+    pn.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function __openSideMenu(){
+  const ov = document.getElementById('sideOverlay');
+  const pn = document.getElementById('sidePanel');
+  if (ov) ov.classList.add('open');
+  if (pn) {
+    pn.classList.add('open');
+    pn.setAttribute('aria-hidden', 'false');
+  }
+}
+
+function __renderSideMenu(activeRoute){
+  const nav = document.getElementById('sideNav');
+  if (!nav) return;
+
+  const items = [
+    { key: 'dashboard', label: 'Dashboard' },
+    { key: 'admin', label: 'Admin' },
+    { key: 'weekly', label: 'Weekly' },
+    { key: 'maintenance', label: 'Maintenance' },
+  ];
+
+  nav.innerHTML = items.map(it => {
+    const active = (activeRoute === it.key) ? 'active' : '';
+    return `<button class="sideBtn ${active}" type="button" data-route="${it.key}"><span>${it.label}</span><span class="sideChevron">›</span></button>`;
+  }).join('');
+
+  nav.querySelectorAll('button[data-route]').forEach(b => {
+    b.addEventListener('click', () => {
+      const rk = b.getAttribute('data-route');
+      location.hash = '#/' + rk;
+      __closeSideMenu();
+    });
+  });
+
+  // overlay/close wiring
+  const ov = document.getElementById('sideOverlay');
+  if (ov) ov.onclick = __closeSideMenu;
+  const closeBtn = document.getElementById('sideCloseBtn');
+  if (closeBtn) closeBtn.onclick = __closeSideMenu;
+}
+
+function __renderPlaceholder(title){
+  const app = document.getElementById('app');
+  if (!app) return;
+  app.innerHTML = `
+    <div class="panel">
+      <h2>${__esc(title)}</h2>
+      <div class="hint">This page is a placeholder while we restore the full UI. The Day pages are stable.</div>
+    </div>
+  `;
+}
+
+function __renderRoute(routeKey){
+  __renderSideMenu(routeKey);
+  __renderTopNav(routeKey);
+
+  if (__DAYS_RECOVERY.includes(routeKey)) {
+    __renderDay(routeKey);
+    return;
+  }
+
+  if (routeKey === 'dashboard') return __renderPlaceholder('Dashboard');
+  if (routeKey === 'admin') return __renderPlaceholder('Admin');
+  if (routeKey === 'weekly') return __renderPlaceholder('Weekly');
+  if (routeKey === 'maintenance') return __renderPlaceholder('Maintenance');
+
+  // fallback
+  __renderDay(__todayKey());
+}
+
+function __currentRouteDayKey(){
+  return __routeFromHash();
 }
 
 function __bootRecovery(){
@@ -2088,9 +2207,9 @@ function __bootRecovery(){
     }
   } catch(_) {}
 
-  __renderDay(__currentRouteDayKey());
+  __renderRoute(__currentRouteDayKey());
 }
 
-window.addEventListener('hashchange', () => __renderDay(__currentRouteDayKey()));
+window.addEventListener('hashchange', () => __renderRoute(__currentRouteDayKey()));
 __bootRecovery();
 </script>
