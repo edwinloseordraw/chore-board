@@ -705,7 +705,7 @@
       font-size:13px;
       opacity:0.95;
       line-height:1.15;
-      word-break:break-word;
+      overflow-wrap:anywhere;
     }
 
         .weeklyItem select{
@@ -2377,12 +2377,12 @@ function __renderWeekly(){
       return `<option value="${__esc(p)}" ${sel}>${__esc(label)}</option>`;
     }).join('');
 
+    // weeklyItem is a 3-col grid: checkbox | label | assignee
+    // So we must output exactly 3 direct children.
     return `
       <div class="weeklyItem">
-        <label class="choreLabel" style="margin:0; padding:0; box-shadow:none; background:transparent; display:grid; grid-template-columns:18px 1fr; align-items:center; gap:8px;">
-          <input type="checkbox" data-weekly="${__esc(slug)}" ${checked} />
-          <span class="label" style="padding:0; box-shadow:none;">${__esc(name)}</span>
-        </label>
+        <input type="checkbox" id="weekly_${__esc(slug)}" data-weekly="${__esc(slug)}" ${checked} />
+        <label class="label" for="weekly_${__esc(slug)}">${__esc(name)}</label>
         <select class="assignSelect" data-weekly-assign="${__esc(slug)}">${opts}</select>
       </div>
     `;
