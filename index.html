@@ -2357,6 +2357,128 @@ function __renderDashboard(){
   }
 }
 
+function __renderAdmin(){
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  // Current theme state
+  let state = { themeId: 'neonGlass', mode: 'dark' };
+  try {
+    if (typeof loadThemeState === 'function') state = loadThemeState();
+  } catch(_) {}
+
+  const themeId = state.themeId || 'neonGlass';
+  const mode = (state.mode === 'light') ? 'light' : 'dark';
+
+  // Theme options
+  const themeKeys = (typeof THEMES !== 'undefined') ? Object.keys(THEMES) : ['neonGlass','paperClean'];
+  const themeOptions = themeKeys.map(k => {
+    const label = (typeof themeLabel === 'function') ? themeLabel(k) : k;
+    const sel = (k === themeId) ? 'selected' : '';
+    return `<option value="${__esc(k)}" ${sel}>${__esc(label)}</option>`;
+  }).join('');
+
+  // Member colors
+  const colors = __getMemberColors();
+
+  const colorRows = __PEOPLE_RECOVERY.map(p => {
+    const v = colors[p] || '#ffffff';
+    return `
+      <div class="adminRow">
+        <div class="adminName">${__esc(p)}</div>
+        <input class="colorInput" type="color" data-person="${__esc(p)}" value="${__esc(v)}" />
+      </div>
+    `;
+  }).join('');
+
+  const paperHint = (themeId === 'paperClean')
+    ? 'Edits here stick. Paper Clean is the “customizable” theme.'
+    : 'Note: switching themes will likely overwrite custom member colors (by design).';
+
+  app.innerHTML = `
+    <div class="panel">
+      <div class="dashHeaderRow">
+        <h2>Admin</h2>
+        <div class="hint">Local-only settings (sync is disabled).</div>
+      </div>
+
+      <div class="themeGrid">
+        <div class="themeRow">
+          <label>Theme</label>
+          <select id="adminThemeSel">${themeOptions}</select>
+          <div class="hint">${__esc(paperHint)}</div>
+        </div>
+
+        <div class="themeRow">
+          <label>Mode</label>
+          <div class="modeBtns">
+            <button class="navBtn ${mode === 'dark' ? 'active' : ''}" id="adminModeDark" type="button">Dark</button>
+            <button class="navBtn ${mode === 'light' ? 'active' : ''}" id="adminModeLight" type="button">Light</button>
+          </div>
+          <div class="hint">Applies immediately across the app.</div>
+        </div>
+      </div>
+
+      <div style="height:10px"></div>
+
+      <h3>Member Colors</h3>
+      <div class="hint">These colors drive the Dashboard rings (and later, column accents).</div>
+
+      <div class="adminGrid">
+        ${colorRows}
+      </div>
+
+      <div class="dashNav" style="margin-top:12px;">
+        <button class="navBtn" id="adminGoDashboard" type="button">Go to Dashboard</button>
+        <button class="navBtn" id="adminGoToday" type="button">Go to Today</button>
+      </div>
+    </div>
+  `;
+
+  // Wire buttons
+  const goDash = document.getElementById('adminGoDashboard');
+  if (goDash) goDash.onclick = () => { location.hash = '#/dashboard'; };
+
+  const goToday = document.getElementById('adminGoToday');
+  if (goToday) goToday.onclick = () => { location.hash = '#/' + __todayKey(); };
+
+  // Theme selection
+  const sel = document.getElementById('adminThemeSel');
+  if (sel) {
+    sel.addEventListener('change', () => {
+      const nextTheme = sel.value;
+      try {
+        if (typeof applyTheme === 'function') applyTheme(nextTheme, mode);
+      } catch(_) {}
+      __renderRoute('admin');
+    });
+  }
+
+  // Mode buttons
+  const bDark = document.getElementById('adminModeDark');
+  const bLight = document.getElementById('adminModeLight');
+  if (bDark) bDark.onclick = () => {
+    try { if (typeof applyTheme === 'function') applyTheme(themeId, 'dark'); } catch(_) {}
+    __renderRoute('admin');
+  };
+  if (bLight) bLight.onclick = () => {
+    try { if (typeof applyTheme === 'function') applyTheme(themeId, 'light'); } catch(_) {}
+    __renderRoute('admin');
+  };
+
+  // Member color pickers
+  app.querySelectorAll('input[type="color"][data-person]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const person = inp.getAttribute('data-person');
+      const next = inp.value;
+      const current = __getMemberColors();
+      current[person] = next;
+      jset('memberColors', current);
+      // Stay on admin; rings update next time dashboard is rendered.
+    });
+  });
+}
+
 function __renderRoute(routeKey){
   __renderSideMenu(routeKey);
   __renderTopNav(routeKey);
@@ -2367,7 +2489,7 @@ function __renderRoute(routeKey){
   }
 
   if (routeKey === 'dashboard') return __renderDashboard();
-  if (routeKey === 'admin') return __renderPlaceholder('Admin');
+  if (routeKey === 'admin') return __renderAdmin();
   if (routeKey === 'weekly') return __renderPlaceholder('Weekly');
   if (routeKey === 'maintenance') return __renderPlaceholder('Maintenance');
 
