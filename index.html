@@ -2437,6 +2437,157 @@ function __renderWeekly(){
   });
 }
 
+  // ------------------------------
+// Maintenance (local-only)
+// ------------------------------
+function __maintKey(){ return 'maintenanceItems'; }
+function __loadMaint(){
+  const v = jget(__maintKey(), []);
+  return Array.isArray(v) ? v : [];
+}
+function __saveMaint(list){ jset(__maintKey(), Array.isArray(list) ? list : []); }
+
+function __renderMaintenance(){
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  __renderTopNav('maintenance');
+
+  const items = __loadMaint();
+  const open = items.filter(x => x && !x.done);
+  const done = items.filter(x => x && x.done);
+
+  const rowHtml = (x) => {
+    const who = x.who || '';
+    const freq = x.freq || '';
+    const when = x.createdAt ? new Date(x.createdAt).toLocaleDateString() : '';
+    const meta = [freq && `Freq: ${freq}`, who && `Who: ${who}`, when && `Added: ${when}`].filter(Boolean).join(' · ');
+    return `
+      <div class="maintRow" data-mid="${__esc(x.id)}">
+        <div>
+          <div class="maintTask">${__esc(x.name || '')}</div>
+          <div class="maintSub">${__esc(meta || ' ')}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <label class="choreLabel" style="margin:0;padding:6px 10px;box-shadow:var(--neuOutShadowSoft);">
+            <input type="checkbox" data-maint-done="${__esc(x.id)}" ${x.done ? 'checked' : ''} />
+            <span>${x.done ? 'Done' : 'Mark done'}</span>
+          </label>
+          <button class="ghost" type="button" data-maint-del="${__esc(x.id)}">Delete</button>
+        </div>
+      </div>
+    `;
+  };
+
+  app.innerHTML = `
+    <div class="panel">
+      <div class="toolbar">
+        <div class="left">
+          <h2 style="margin:0;">Maintenance</h2>
+          <div class="hint" style="margin:0;">Local-only list on this device (for now).</div>
+        </div>
+        <div class="right">
+          <button class="navBtn danger" id="maintResetBtn" type="button">Clear Completed</button>
+        </div>
+      </div>
+
+      <div class="maintForm">
+        <div class="field">
+          <label>Task</label>
+          <input id="maintName" type="text" placeholder="e.g., Replace AC filter" />
+        </div>
+        <div class="field">
+          <label>Frequency</label>
+          <select id="maintFreq">
+            <option value="">(none)</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Who</label>
+          <select id="maintWho">
+            <option value="">Unassigned</option>
+            <option value="Dad">Dad</option>
+            <option value="Mom">Mom</option>
+            <option value="Ethan">Ethan</option>
+            <option value="Celo">Celo</option>
+          </select>
+        </div>
+        <div class="actions">
+          <button class="navBtn" id="maintAddBtn" type="button">Add</button>
+        </div>
+      </div>
+
+      <div style="height:10px"></div>
+
+      <div class="maintList">
+        ${open.length ? open.map(rowHtml).join('') : '<div class="hint">No open maintenance items.</div>'}
+        ${done.length ? '<div class="hint" style="margin-top:10px;">Completed</div>' + done.map(rowHtml).join('') : ''}
+      </div>
+    </div>
+  `;
+
+  // Add
+  const addBtn = document.getElementById('maintAddBtn');
+  if (addBtn) addBtn.addEventListener('click', () => {
+    const nameEl = document.getElementById('maintName');
+    const freqEl = document.getElementById('maintFreq');
+    const whoEl = document.getElementById('maintWho');
+    const name = (nameEl && nameEl.value) ? nameEl.value.trim() : '';
+    const freq = (freqEl && freqEl.value) ? String(freqEl.value) : '';
+    const who = (whoEl && whoEl.value) ? String(whoEl.value) : '';
+    if (!name) return;
+
+    const list = __loadMaint();
+    list.unshift({ id: String(Date.now()), name, freq, who, done: false, createdAt: Date.now() });
+    __saveMaint(list);
+    __renderMaintenance();
+  });
+
+  // Enter key adds
+  const nameEl = document.getElementById('maintName');
+  if (nameEl) nameEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const btn = document.getElementById('maintAddBtn');
+      if (btn) btn.click();
+    }
+  });
+
+  // Done toggles
+  app.querySelectorAll('input[type="checkbox"][data-maint-done]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const id = cb.getAttribute('data-maint-done');
+      const list = __loadMaint();
+      const x = list.find(it => it && it.id === id);
+      if (x) x.done = !!cb.checked;
+      __saveMaint(list);
+      __renderMaintenance();
+    });
+  });
+
+  // Delete
+  app.querySelectorAll('button[data-maint-del]').forEach(b => {
+    b.addEventListener('click', () => {
+      const id = b.getAttribute('data-maint-del');
+      const list = __loadMaint().filter(it => it && it.id !== id);
+      __saveMaint(list);
+      __renderMaintenance();
+    });
+  });
+
+  // Clear completed
+  const resetBtn = document.getElementById('maintResetBtn');
+  if (resetBtn) resetBtn.addEventListener('click', () => {
+    const list = __loadMaint().filter(it => it && !it.done);
+    __saveMaint(list);
+    __renderMaintenance();
+  });
+}
+  
 function __renderDashboard(){
   const app = document.getElementById('app');
   if (!app) return;
