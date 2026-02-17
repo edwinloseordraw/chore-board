@@ -690,7 +690,7 @@
 
     .weeklyItem{
       display:grid;
-      grid-template-columns:18px 1fr 120px;
+      grid-template-columns:18px minmax(0, 1fr) 130px;
       align-items:center;
       gap:8px;
       background:var(--panel3);
@@ -705,6 +705,9 @@
       font-size:13px;
       opacity:0.95;
       line-height:1.15;
+      min-width:0;
+      white-space:normal;
+      word-break:normal;
       overflow-wrap:anywhere;
     }
 
@@ -715,7 +718,7 @@
       border-radius:10px;
       padding:6px 8px;
       font-size:13px;
-      width:120px;
+      width:130px;
     }
 
     /* Yesterday summary */
