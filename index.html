@@ -1991,6 +1991,37 @@ function __notesKey(dayKey){ return 'notes::' + dayKey; }
 function __getNotes(dayKey){ return jget(__notesKey(dayKey), ''); }
 function __setNotes(dayKey, text){ jset(__notesKey(dayKey), String(text || '')); }
 
+  // ------------------------------
+// Member colors (local-only)
+// ------------------------------
+function __getMemberColors(){
+  // Prefer explicit saved colors if they exist.
+  const saved = jget('memberColors', null);
+  if (saved && typeof saved === 'object') {
+    const out = { Dad: saved.Dad, Mom: saved.Mom, Ethan: saved.Ethan, Celo: saved.Celo };
+    if (out.Dad && out.Mom && out.Ethan && out.Celo) return out;
+  }
+
+  // Otherwise fall back to current theme preset.
+  let themeId = 'neonGlass';
+  try {
+    if (typeof loadThemeState === 'function') {
+      const s = loadThemeState();
+      if (s && s.themeId) themeId = s.themeId;
+    }
+  } catch(_) {}
+
+  const presets = (typeof THEME_MEMBER_COLORS !== 'undefined') ? THEME_MEMBER_COLORS : {};
+  const base = presets[themeId] || presets.neonGlass || {};
+
+  return {
+    Dad: base.Dad || '#22f0b6',
+    Mom: base.Mom || '#ff4fd8',
+    Ethan: base.Ethan || '#5aa7ff',
+    Celo: base.Celo || '#ffd166'
+  };
+}
+
 // ------------------------------
 // Completion helpers
 // ------------------------------
@@ -2019,12 +2050,13 @@ function __completionOverall(dayKey){
   return { total, done, pct };
 }
 
-function __ringSvg(pct, colorVar){
+function __ringSvg(pct, colorVarOrHex){
   const r = 52;
   const c = 2 * Math.PI * r;
   const dash = Math.max(0, Math.min(c, (pct/100) * c));
   const gap = c - dash;
-  const stroke = `var(${colorVar})`;
+  const raw = String(colorVarOrHex || '--btnActive');
+  const stroke = raw.startsWith('--') ? `var(${raw})` : raw;
   return `
     <div class="ringSvgWrap">
       <svg width="128" height="128" viewBox="0 0 128 128" aria-hidden="true">
@@ -2039,7 +2071,6 @@ function __ringSvg(pct, colorVar){
     </div>
   `;
 }
-
 // ------------------------------
 // Minimal UI
 // ------------------------------
@@ -2248,6 +2279,7 @@ function __renderDashboard(){
   const celo = __completionForPerson(dayKey, 'Celo');
 
   const noteVal = __getNotes(dayKey);
+  const colors = __getMemberColors();
 
   app.innerHTML = `
     <div class="dashGrid">
@@ -2272,7 +2304,7 @@ function __renderDashboard(){
               <div style="font-weight:900;">Dad</div>
               <div class="hint">${dad.done}/${dad.total}</div>
             </div>
-            ${__ringSvg(dad.pct, '--btnActive')}
+            ${__ringSvg(dad.pct, colors.Dad)}
           </div>
 
           <div class="ringCard">
@@ -2280,7 +2312,7 @@ function __renderDashboard(){
               <div style="font-weight:900;">Mom</div>
               <div class="hint">${mom.done}/${mom.total}</div>
             </div>
-            ${__ringSvg(mom.pct, '--btnActive')}
+            ${__ringSvg(mom.pct, colors.Mom)}
           </div>
 
           <div class="ringCard">
@@ -2288,7 +2320,7 @@ function __renderDashboard(){
               <div style="font-weight:900;">Ethan</div>
               <div class="hint">${ethan.done}/${ethan.total}</div>
             </div>
-            ${__ringSvg(ethan.pct, '--btnActive')}
+            ${__ringSvg(ethan.pct, colors.Ethan)}
           </div>
 
           <div class="ringCard">
@@ -2296,7 +2328,7 @@ function __renderDashboard(){
               <div style="font-weight:900;">Celo</div>
               <div class="hint">${celo.done}/${celo.total}</div>
             </div>
-            ${__ringSvg(celo.pct, '--btnActive')}
+            ${__ringSvg(celo.pct, colors.Celo)}
           </div>
         </div>
       </section>
