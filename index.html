@@ -1961,22 +1961,132 @@ function __setTaskDone(taskId, v){ jset(__taskDoneKey(taskId), !!v); }
 // ------------------------------
 // Minimal UI
 // ------------------------------
+// ------------------------------
+// Minimal router + sidebar shell
+// ------------------------------
+function __route(){
+  const h = location.hash || '';
+  const m = h.match(/^#\/(.+)$/);
+  const r = m ? (m[1] || '') : '';
+  if (!r) return __todayKey();
+  return r;
+}
+
+function __isDayKey(r){
+  return __DAYS_RECOVERY.includes(r);
+}
+
+function __ensureSideShell(){
+  // One-time DOM for sidebar + overlays.
+  if (document.getElementById('sideOverlay')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'sideOverlay';
+  overlay.className = 'sideOverlay';
+
+  const panel = document.createElement('div');
+  panel.id = 'sidePanel';
+  panel.className = 'sidePanel';
+  panel.innerHTML = `
+    <div class="sideHeader">
+      <div class="sideTitle">Chore Board</div>
+      <button class="sideClose" id="sideCloseBtn" type="button">Close</button>
+    </div>
+
+    <div class="sideNav">
+      <button class="sideBtn" data-route="dashboard" type="button">Dashboard <span class="sideChevron">›</span></button>
+      <button class="sideBtn" data-route="admin" type="button">Admin <span class="sideChevron">›</span></button>
+      <button class="sideBtn" data-route="weekly" type="button">Weekly <span class="sideChevron">›</span></button>
+      <button class="sideBtn" data-route="maintenance" type="button">Maintenance <span class="sideChevron">›</span></button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  document.body.appendChild(panel);
+
+  function close(){
+    overlay.classList.remove('open');
+    panel.classList.remove('open');
+  }
+
+  overlay.addEventListener('click', close);
+  panel.querySelector('#sideCloseBtn').addEventListener('click', close);
+
+  panel.querySelectorAll('button[data-route]').forEach(b => {
+    b.addEventListener('click', () => {
+      const r = b.getAttribute('data-route');
+      close();
+      location.hash = '#/' + r;
+    });
+  });
+}
+
+function __openSide(){
+  __ensureSideShell();
+  const overlay = document.getElementById('sideOverlay');
+  const panel = document.getElementById('sidePanel');
+  if (overlay) overlay.classList.add('open');
+  if (panel) panel.classList.add('open');
+}
+
+function __setActiveHeaderButton(dayKey){
+  const top = document.getElementById('topNav');
+  if (!top) return;
+  top.querySelectorAll('button[data-day]').forEach(b => {
+    const dk = b.getAttribute('data-day');
+    if (dk === dayKey) b.classList.add('active');
+    else b.classList.remove('active');
+  });
+}
+
 function __renderTopNav(dayKey){
   const top = document.getElementById('topNav');
   if (!top) return;
 
+  __ensureSideShell();
+
+  // Theme controls (safe if THEMES missing)
+  const themeState = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
+  const themeOptions = (typeof THEMES === 'object' && THEMES)
+    ? Object.keys(THEMES).map(id => {
+        const name = (THEMES[id] && THEMES[id].name) ? THEMES[id].name : id;
+        const sel = (themeState.themeId === id) ? 'selected' : '';
+        return `<option value="${__esc(id)}" ${sel}>${__esc(name)}</option>`;
+      }).join('')
+    : `<option value="neonGlass" selected>Neon Glass</option>`;
+
+  const mode = (themeState && themeState.mode === 'light') ? 'light' : 'dark';
+
   const btns = __DAYS_RECOVERY.map(d => {
     const active = d === dayKey ? 'active' : '';
     const label = d.charAt(0).toUpperCase() + d.slice(1);
-    return `<button class="navBtn ${active}" data-day="${d}">${label}</button>`;
+    return `<button class="navBtn ${active}" data-day="${d}" type="button">${label}</button>`;
   }).join('');
 
   top.innerHTML = `
-    <button class="navBtn" id="goToday">Today</button>
+    <div class="menuWrap">
+      <button class="hamburgerBtn" id="hamburgerBtn" type="button">≡</button>
+    </div>
+
+    <button class="navBtn" id="goToday" type="button">Today</button>
     ${btns}
+
     <div class="spacer"></div>
-    <button class="navBtn" id="resetDay">Reset Day</button>
+
+    <select id="themeSelect" aria-label="Theme">
+      ${themeOptions}
+    </select>
+
+    <select id="modeSelect" aria-label="Mode">
+      <option value="dark" ${mode === 'dark' ? 'selected' : ''}>Dark</option>
+      <option value="light" ${mode === 'light' ? 'selected' : ''}>Light</option>
+    </select>
+
+    <button class="navBtn" id="resetDay" type="button">Reset Day</button>
   `;
+
+  const ham = document.getElementById('hamburgerBtn');
+  if (ham) ham.addEventListener('click', __openSide);
 
   top.querySelectorAll('button[data-day]').forEach(b => {
     b.addEventListener('click', () => {
@@ -1996,6 +2106,22 @@ function __renderTopNav(dayKey){
     tasks.forEach(t => __setTaskDone(t.id, false));
     __renderDay(dayKey);
   });
+
+  const themeSel = document.getElementById('themeSelect');
+  const modeSel = document.getElementById('modeSelect');
+
+  function apply(){
+    try {
+      if (typeof applyTheme === 'function') {
+        const tid = themeSel ? themeSel.value : (themeState.themeId || 'neonGlass');
+        const md = modeSel ? modeSel.value : (themeState.mode || 'dark');
+        applyTheme(tid, md);
+      }
+    } catch(_) {}
+  }
+
+  if (themeSel) themeSel.addEventListener('change', apply);
+  if (modeSel) modeSel.addEventListener('change', apply);
 }
 
 function __renderDay(dayKey){
@@ -2060,11 +2186,257 @@ function __renderDay(dayKey){
   });
 }
 
+
+function __renderDashboard(){
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  const dayKey = __currentRouteDayKey();
+  __renderTopNav(dayKey);
+
+  const tasks = (typeof getTasksForDay === 'function') ? getTasksForDay(dayKey) : [];
+  const totals = {};
+  const dones = {};
+  __PEOPLE_RECOVERY.forEach(p => { totals[p] = 0; dones[p] = 0; });
+
+  // Count per-person (shared chores count for each assignee, matching what the day view shows)
+  tasks.forEach(t => {
+    (t.assignees || []).forEach(p => {
+      if (totals[p] == null) return;
+      totals[p] += 1;
+      if (__isTaskDone(t.id)) dones[p] += 1;
+    });
+  });
+
+  const overallTotal = Object.values(totals).reduce((a,b) => a + b, 0);
+  const overallDone = Object.values(dones).reduce((a,b) => a + b, 0);
+  const pct = (overallTotal ? Math.round((overallDone/overallTotal)*100) : 0);
+
+  const cards = __PEOPLE_RECOVERY.map(p => {
+    const t = totals[p] || 0;
+    const d = dones[p] || 0;
+    const pctx = t ? Math.round((d/t)*100) : 0;
+    return `
+      <div class="ringCard">
+        <div class="ringMeta">
+          <div style="font-weight:900;font-size:16px;">${__esc(p)}</div>
+          <div style="font-size:12px;opacity:.8;">${d}/${t}</div>
+        </div>
+        <div class="ringSvgWrap">
+          <div class="pct">${pctx}%</div>
+          <svg viewBox="0 0 120 120" width="128" height="128" aria-hidden="true">
+            <circle cx="60" cy="60" r="46" fill="none" stroke="var(--ringTrack)" stroke-width="12" class="chalkTrack" />
+            <circle cx="60" cy="60" r="46" fill="none" stroke="var(--btnActive)" stroke-width="12" stroke-linecap="round"
+              stroke-dasharray="${Math.round(2*Math.PI*46)}" stroke-dashoffset="${Math.round((1-(pctx/100))*2*Math.PI*46)}" class="chalkStroke" />
+          </svg>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const notesKey = 'notes::' + dayKey;
+  const notesVal = jget(notesKey, '');
+
+  app.innerHTML = `
+    <div class="dashGrid">
+      <div class="panel">
+        <div class="dashHeaderRow">
+          <h2>Dashboard</h2>
+          <div style="font-size:12px;opacity:.8;">Today: ${__esc(dayKey)} (${__esc(__formatMMDDYYYY(__dateForDayKey(dayKey)))})</div>
+        </div>
+
+        <div class="rings">
+          <div class="ringCard">
+            <div class="ringMeta">
+              <div style="font-weight:900;font-size:16px;">Overall</div>
+              <div style="font-size:12px;opacity:.8;">${overallDone}/${overallTotal} tasks</div>
+            </div>
+            <div class="ringSvgWrap">
+              <div class="pct">${pct}%</div>
+              <svg viewBox="0 0 120 120" width="128" height="128" aria-hidden="true">
+                <circle cx="60" cy="60" r="46" fill="none" stroke="var(--ringTrack)" stroke-width="12" class="chalkTrack" />
+                <circle cx="60" cy="60" r="46" fill="none" stroke="var(--btnActive)" stroke-width="12" stroke-linecap="round"
+                  stroke-dasharray="${Math.round(2*Math.PI*46)}" stroke-dashoffset="${Math.round((1-(pct/100))*2*Math.PI*46)}" class="chalkStroke" />
+              </svg>
+            </div>
+            <div class="dashNav">
+              <button class="navBtn" id="dashGoDay" type="button">Go to Today</button>
+            </div>
+          </div>
+
+          ${cards}
+        </div>
+      </div>
+
+      <div class="panel notesBox">
+        <div class="dashHeaderRow">
+          <h2>Notes (Today)</h2>
+          <div style="font-size:12px;opacity:.8;">Saved automatically on this device</div>
+        </div>
+        <textarea id="dashNotes" placeholder="Add notes for today...">${__esc(notesVal)}</textarea>
+        <div class="hint">Notes are stored locally for now (sync can come later).</div>
+      </div>
+    </div>
+  `;
+
+  const go = document.getElementById('dashGoDay');
+  if (go) go.addEventListener('click', () => { location.hash = '#/' + dayKey; });
+
+  const ta = document.getElementById('dashNotes');
+  if (ta) ta.addEventListener('input', () => { jset(notesKey, ta.value); });
+}
+
+function __weeklyKey(){
+  // key for the current week, anchored to Monday
+  const now = new Date();
+  const dow = now.getDay();
+  const daysSinceMonday = (dow + 6) % 7;
+  const monday = new Date(now);
+  monday.setHours(0,0,0,0);
+  monday.setDate(monday.getDate() - daysSinceMonday);
+  const yyyy = monday.getFullYear();
+  const mm = __pad2(monday.getMonth()+1);
+  const dd = __pad2(monday.getDate());
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function __renderWeekly(){
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  const dayKey = __currentRouteDayKey();
+  __renderTopNav(dayKey);
+
+  const wk = __weeklyKey();
+  const list = Array.isArray(WEEKLY_CHORES) ? WEEKLY_CHORES : [];
+
+  const state = jget('weekly::' + wk, {});
+  const assigned = jget('weeklyAssign::' + wk, {});
+
+  const items = list.map((name, idx) => {
+    const id = `w::${wk}::${idx}`;
+    const done = !!state[id];
+    const who = assigned[id] || '';
+    const peopleOpts = ['','Dad','Mom','Ethan','Celo'].map(p => {
+      const label = p ? p : 'Unassigned';
+      const sel = (who === p) ? 'selected' : '';
+      return `<option value="${__esc(p)}" ${sel}>${__esc(label)}</option>`;
+    }).join('');
+
+    return `
+      <div class="weeklyItem">
+        <input type="checkbox" data-wid="${__esc(id)}" ${done ? 'checked' : ''} />
+        <div class="label">${__esc(name)}</div>
+        <select class="assignSelect" data-wassign="${__esc(id)}">${peopleOpts}</select>
+      </div>
+    `;
+  }).join('');
+
+  app.innerHTML = `
+    <div class="panel">
+      <div class="toolbar">
+        <div class="left">
+          <h2 style="margin:0;">Weekly</h2>
+          <div class="hint" style="margin:0;">Week of ${__esc(wk)}. Weekly chores are tracked per-week on this device (local only).</div>
+        </div>
+        <div class="right">
+          <button class="navBtn danger" id="resetWeekly" type="button">Reset Weekly</button>
+        </div>
+      </div>
+      <div class="weeklyGrid">${items || '<div class="hint">No weekly chores configured.</div>'}</div>
+    </div>
+  `;
+
+  app.querySelectorAll('input[type="checkbox"][data-wid]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const id = cb.getAttribute('data-wid');
+      const cur = jget('weekly::' + wk, {});
+      cur[id] = !!cb.checked;
+      jset('weekly::' + wk, cur);
+    });
+  });
+
+  app.querySelectorAll('select[data-wassign]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const id = sel.getAttribute('data-wassign');
+      const cur = jget('weeklyAssign::' + wk, {});
+      cur[id] = sel.value;
+      jset('weeklyAssign::' + wk, cur);
+    });
+  });
+
+  const reset = document.getElementById('resetWeekly');
+  if (reset) reset.addEventListener('click', () => {
+    jset('weekly::' + wk, {});
+    jset('weeklyAssign::' + wk, {});
+    __renderWeekly();
+  });
+}
+
+function __renderAdmin(){
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  const dayKey = __currentRouteDayKey();
+  __renderTopNav(dayKey);
+
+  const s = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
+
+  app.innerHTML = `
+    <div class="panel">
+      <h2>Admin</h2>
+      <div class="hint">Recovery Admin: theme is controlled from the header for now. Member color editing and avatars can be restored once the full UI is stable.</div>
+      <div class="themeGrid">
+        <div class="themeRow">
+          <label>Current Theme</label>
+          <div style="font-weight:900;">${__esc((typeof themeLabel === 'function') ? themeLabel(s.themeId) : s.themeId)}</div>
+        </div>
+        <div class="themeRow">
+          <label>Mode</label>
+          <div style="font-weight:900;">${__esc(s.mode || 'dark')}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function __renderMaintenance(){
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  const dayKey = __currentRouteDayKey();
+  __renderTopNav(dayKey);
+
+  app.innerHTML = `
+    <div class="panel">
+      <h2>Maintenance</h2>
+      <div class="hint">Placeholder while we restore the full UI. Day pages, Dashboard, and Weekly are the current priorities.</div>
+    </div>
+  `;
+}
+
+function __renderRoute(){
+  const r = __route();
+
+  // Day routes
+  if (__isDayKey(r)) {
+    __renderDay(r);
+    return;
+  }
+
+  // Non-day routes
+  if (r === 'dashboard') { __renderDashboard(); return; }
+  if (r === 'weekly') { __renderWeekly(); return; }
+  if (r === 'admin') { __renderAdmin(); return; }
+  if (r === 'maintenance') { __renderMaintenance(); return; }
+
+  // Unknown route -> dashboard (safe)
+  location.hash = '#/dashboard';
+}
+
 function __currentRouteDayKey(){
-  const h = location.hash || '';
-  const m = h.match(/^#\/(.+)$/);
-  const dk = m ? m[1] : '';
-  return __DAYS_RECOVERY.includes(dk) ? dk : __todayKey();
+  const r = __route();
+  return __isDayKey(r) ? r : __todayKey();
 }
 
 function __bootRecovery(){
@@ -2076,9 +2448,14 @@ function __bootRecovery(){
     }
   } catch(_) {}
 
-  __renderDay(__currentRouteDayKey());
+  // Default landing page: dashboard (unless the hash is already a valid route)
+  if (!location.hash || location.hash === '#/' || location.hash === '#') {
+    location.hash = '#/dashboard';
+    return;
+  }
+  __renderRoute();
 }
 
-window.addEventListener('hashchange', () => __renderDay(__currentRouteDayKey()));
+window.addEventListener('hashchange', __renderRoute);
 __bootRecovery();
 </script>
