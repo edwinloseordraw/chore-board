@@ -690,7 +690,7 @@
 
     .weeklyItem{
       display:grid;
-      grid-template-columns:18px minmax(0, 1fr) 130px;
+      grid-template-columns:18px 1fr 120px;
       align-items:center;
       gap:8px;
       background:var(--panel3);
@@ -705,10 +705,7 @@
       font-size:13px;
       opacity:0.95;
       line-height:1.15;
-      min-width:0;
-      white-space:normal;
-      word-break:normal;
-      overflow-wrap:anywhere;
+      word-break:break-word;
     }
 
         .weeklyItem select{
@@ -718,7 +715,7 @@
       border-radius:10px;
       padding:6px 8px;
       font-size:13px;
-      width:130px;
+      width:120px;
     }
 
     /* Yesterday summary */
@@ -1215,17 +1212,7 @@
 </head>
 
 <body>
-
 <header id="topNav"></header>
-
-<div id="sideOverlay" class="sideOverlay"></div>
-<div id="sidePanel" class="sidePanel" aria-hidden="true">
-  <div class="sideHeader">
-    <div class="sideTitle">Chore Board</div>
-    <button class="sideClose" id="sideCloseBtn" type="button">Close</button>
-  </div>
-  <div class="sideNav" id="sideNav"></div>
-</div>
 
 <main id="app"></main>
 <script>
@@ -1249,12 +1236,6 @@
 <script>
 // --- Boot diagnostics: prevent silent blank page ---
 console.log("Chore Board script started");
-
-// ------------------------------
-// Feature flags
-// ------------------------------
-const DEBUG_MARKERS = false; // set true temporarily when troubleshooting
-const SHOW_RECOVERY_BANNER = false; // keep false for normal use
 const __appEl = document.getElementById('app');
 if (__appEl && !__appEl.innerHTML.trim()) {
   __appEl.innerHTML = '<div style="padding:14px;max-width:820px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#f5f5f5;opacity:.9;">Loading…</div>';
@@ -1278,23 +1259,6 @@ function __showFatal(label, err){
 window.addEventListener('error', (ev) => __showFatal('error', ev));
 window.addEventListener('unhandledrejection', (ev) => __showFatal('promise', ev));
 // --- End diagnostics ---
-
-// ------------------------------
-// Storage helpers (local-only)
-// NOTE: must be defined before any theme/state code that calls jget/jset.
-// ------------------------------
-function jget(key, fallback){
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw == null) return fallback;
-    return JSON.parse(raw);
-  } catch(_) {
-    return fallback;
-  }
-}
-function jset(key, value){
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch(_) {}
-}
 
 /* =========================
    SYNC (TEMP DISABLED)
@@ -1402,12 +1366,11 @@ const THEME_MEMBER_COLORS = {
 
 // --- DEBUG STAGE MARKER ---
 // If you can see this message in the UI, the script successfully executed up to this point.
-if (DEBUG_MARKERS && __appEl) {
-  __appEl.insertAdjacentHTML('beforeend',
-    '<div style="padding:14px;max-width:920px;margin:14px auto;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.35);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">'
+if (__appEl) {
+  __appEl.innerHTML = '<div style="padding:14px;max-width:920px;margin:14px auto;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.35);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">'
     + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Debug: Stage A reached</div>'
     + '<div style="font-size:13px;opacity:.9;line-height:1.35;">JavaScript executed through THEME_MEMBER_COLORS and is about to define THEMES.</div>'
-    + '</div>');
+    + '</div>';
 }
 
 </script>
@@ -1513,12 +1476,11 @@ const THEMES = {
 
 // --- DEBUG STAGE MARKER ---
 // If you can see this message, THEMES parsed successfully.
-if (DEBUG_MARKERS && __appEl) {
-  __appEl.insertAdjacentHTML('beforeend',
-    '<div style="padding:14px;max-width:920px;margin:14px auto;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.35);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">'
+if (__appEl) {
+  __appEl.innerHTML = '<div style="padding:14px;max-width:920px;margin:14px auto;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.35);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">'
     + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Debug: Stage B reached</div>'
     + '<div style="font-size:13px;opacity:.9;line-height:1.35;">THEMES is now minimal (2 themes). If the app still fails later, it is not the theme blob.</div>'
-    + '</div>');
+    + '</div>';
 }
 
 function loadThemeState(){
@@ -1537,7 +1499,7 @@ function applyTheme(themeId, mode){
   const vars = (mode === "light") ? t.light : t.dark;
 
   Object.keys(vars).forEach(k => {
-    document.documentElement.style.setProperty(k, vars);
+    document.documentElement.style.setProperty(k, vars[k]);
   });
 
   // match browser chrome on mobile
@@ -1556,11 +1518,8 @@ function applyTheme(themeId, mode){
   } else {
     // Ensure member colors exist when returning to Paper Clean
     const current = loadMemberColors() || {};
-    const base = (THEME_MEMBER_COLORS && THEME_MEMBER_COLORS.paperClean) ? THEME_MEMBER_COLORS.paperClean : {};
     const ppl = (typeof window !== 'undefined' && Array.isArray(window.PEOPLE)) ? window.PEOPLE : ["Dad","Mom","Ethan","Celo"];
-    ppl.forEach(p => {
-      if (!current[p]) current[p] = base[p] || "#ffffff";
-    });
+    ppl.forEach(p => { if (!current[p]) current[p] = (THEME_MEMBER_COLORS.paperClean && THEME_MEMBER_COLORS.paperClean[p]) ? THEME_MEMBER_COLORS.paperClean[p] : "#ffffff"; });
     saveMemberColors(current);
   }
 }
@@ -1574,7 +1533,7 @@ function themeLabel(themeId){
 <script>
 // --- DEBUG STAGE MARKER ---
 // If you can see this message, everything through theme helpers parsed & executed.
-if (DEBUG_MARKERS && typeof __appEl !== 'undefined' && __appEl) {
+if (typeof __appEl !== 'undefined' && __appEl) {
   __appEl.insertAdjacentHTML('beforeend', '<div style="margin-top:10px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:920px;margin-left:auto;margin-right:auto;">'
     + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Debug: Stage C reached</div>'
     + '<div style="font-size:13px;opacity:.9;line-height:1.35;">Now parsing the Routes/Constants/Data section (split into its own script tag).</div>'
@@ -1588,10 +1547,8 @@ try {
    ROUTES + CONSTANTS
 ========================= */
 
-window.DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
-window.PEOPLE = ["Dad","Mom","Ethan","Celo"];
-const DAYS = window.DAYS;
-const PEOPLE = window.PEOPLE;
+const DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
+const PEOPLE = ["Dad","Mom","Ethan","Celo"];
 
 function todayKey(){
   const map = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
@@ -1652,7 +1609,7 @@ function formatMMDDYYYY(d){
 <script>
 // --- DEBUG STAGE MARKER ---
 // If you can see this message, ROUTES + CONSTANTS parsed successfully and we're entering DATA.
-if (DEBUG_MARKERS && typeof document !== 'undefined') {
+if (typeof document !== 'undefined') {
   const el = document.getElementById('app');
   if (el) {
     el.insertAdjacentHTML('beforeend', '<div style="margin-top:10px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:920px;margin-left:auto;margin-right:auto;">'
@@ -1671,9 +1628,6 @@ if (DEBUG_MARKERS && typeof document !== 'undefined') {
    - Bi-weekly/monthly/maintenance lists stay mostly empty until Phase 5-7.
 ========================= */
 try {
-// Ensure DAYS/PEOPLE exist in this script scope even if the Routes/Constants section is wrapped in a try/catch.
-const DAYS = (typeof window !== 'undefined' && Array.isArray(window.DAYS)) ? window.DAYS : ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
-const PEOPLE = (typeof window !== 'undefined' && Array.isArray(window.PEOPLE)) ? window.PEOPLE : ["Dad","Mom","Ethan","Celo"];
 
 // Daily chores are scheduled per day (lunes → domingo).
 // Tasks are shared objects so 2-person chores have ONE completion state.
@@ -1843,7 +1797,7 @@ function isKid(p){ return KIDS.includes(p); }
 // DAILY TASKS (STABLE)
 // =========================
 // IMPORTANT: Keep this logic boring and predictable.
-// We can reintroduce "fair shuffle/rotation" once the app is loading consistently again.
+// We can reintroduce “fair shuffle/rotation” once the app is loading consistently again.
 
 // Phase 8.4: Walk alternates every other day. Mom starts on lunes.
 function walkAssigneeForDay(dayKey){
@@ -1878,7 +1832,7 @@ function normalizeTwoPersonTask(task){
   const fixed = (hasMom || hasEthan) ? ["Mom","Ethan"] : ["Dad","Celo"];
 
   // Keep primary consistent with the kid on the pair.
-  const primary = (fixed === "Ethan") ? "Ethan" : "Celo";
+  const primary = (fixed[1] === "Ethan") ? "Ethan" : "Celo";
   return { ...task, assignees: fixed, primary };
 }
 
@@ -1896,7 +1850,7 @@ function getTasksForDay(dayKey){
   // Apply pairing guardrails (only affects 2-person chores).
   return withoutWalk.map(t => normalizeTwoPersonTask(t));
 }
-window.WEEKLY_CHORES = [
+const WEEKLY_CHORES = [
   "Sweep",
   "Mop",
   "Vacuum",
@@ -1906,8 +1860,6 @@ window.WEEKLY_CHORES = [
 ];
 
   console.log('Debug: Stage E reached (DATA parsed & executed)');
-
-if (DEBUG_MARKERS) {
   (function(){
     try {
       const html = '<div style="margin-top:10px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:920px;margin-left:auto;margin-right:auto;">'
@@ -1919,7 +1871,6 @@ if (DEBUG_MARKERS) {
       else document.body.insertAdjacentHTML('afterbegin', html);
     } catch(_) {}
   })();
-}
 
 } catch (e) {
   console.error('Debug: DATA crashed', e);
@@ -1930,18 +1881,31 @@ if (DEBUG_MARKERS) {
 
 <script>
 console.log('Debug: Recovery script tag executed');
-if (typeof SHOW_RECOVERY_BANNER !== 'undefined' && SHOW_RECOVERY_BANNER) {
-  (function(){
-    try {
-      const html = '<div style="margin:14px auto;max-width:920px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">'
-        + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Recovery Mode enabled</div>'
-        + '<div style="font-size:13px;opacity:.9;line-height:1.35;">Minimal day-view renderer (local-only). Debug markers can be removed once the full UI is restored.</div>'
-        + '</div>';
-      document.body.insertAdjacentHTML('afterbegin', html);
-    } catch(_) {}
-  })();
-}
+(function(){
+  try {
+    const html = '<div style="margin:14px auto;max-width:920px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">'
+      + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Recovery Mode enabled</div>'
+      + '<div style="font-size:13px;opacity:.9;line-height:1.35;">Minimal day-view renderer (local-only). Debug markers can be removed once the full UI is restored.</div>'
+      + '</div>';
+    document.body.insertAdjacentHTML('afterbegin', html);
+  } catch(_) {}
+})();
 
+// ------------------------------
+// Storage helpers (local-only)
+// ------------------------------
+function jget(key, fallback){
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null) return fallback;
+    return JSON.parse(raw);
+  } catch(_) {
+    return fallback;
+  }
+}
+function jset(key, value){
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch(_) {}
+}
 
 // ------------------------------
 // Recovery constants/helpers
@@ -1985,44 +1949,6 @@ function __esc(s){
 }
 
 // ------------------------------
-// Weekly state (local-only)
-// ------------------------------
-function __weekKeyForNow(){
-  // Monday-anchored week key in local time: YYYY-MM-DD (date of Monday)
-  const now = new Date();
-  const dow = now.getDay(); // 0=Sun..6=Sat
-  const daysSinceMonday = (dow + 6) % 7;
-  const monday = new Date(now);
-  monday.setHours(0,0,0,0);
-  monday.setDate(monday.getDate() - daysSinceMonday);
-  const yyyy = monday.getFullYear();
-  const mm = __pad2(monday.getMonth() + 1);
-  const dd = __pad2(monday.getDate());
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function __weeklyDoneKey(weekKey, slug){ return `weekly::${weekKey}::${slug}`; }
-function __weeklyAssignKey(weekKey, slug){ return `weeklyAssign::${weekKey}::${slug}`; }
-
-function __weeklyIsDone(weekKey, slug){ return !!jget(__weeklyDoneKey(weekKey, slug), false); }
-function __weeklySetDone(weekKey, slug, v){ jset(__weeklyDoneKey(weekKey, slug), !!v); }
-
-function __weeklyGetAssign(weekKey, slug){
-  const v = jget(__weeklyAssignKey(weekKey, slug), '');
-  return (typeof v === 'string') ? v : '';
-}
-function __weeklySetAssign(weekKey, slug, person){
-  jset(__weeklyAssignKey(weekKey, slug), String(person || ''));
-}
-
-function __slugify(s){
-  return String(s || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g,'-')
-    .replace(/(^-|-$)/g,'');
-}
-
-// ------------------------------
 // Completion state
 // ------------------------------
 function __taskDoneKey(taskId){ return 'done::' + taskId; }
@@ -2030,122 +1956,25 @@ function __isTaskDone(taskId){ return !!jget(__taskDoneKey(taskId), false); }
 function __setTaskDone(taskId, v){ jset(__taskDoneKey(taskId), !!v); }
 
 // ------------------------------
-// Notes state (local-only)
-// ------------------------------
-function __notesKey(dayKey){ return 'notes::' + dayKey; }
-function __getNotes(dayKey){ return jget(__notesKey(dayKey), ''); }
-function __setNotes(dayKey, text){ jset(__notesKey(dayKey), String(text || '')); }
-
-  // ------------------------------
-// Member colors (local-only)
-// ------------------------------
-function __getMemberColors(){
-  // Determine active theme.
-  let themeId = 'neonGlass';
-  try {
-    if (typeof loadThemeState === 'function') {
-      const s = loadThemeState();
-      if (s && s.themeId) themeId = s.themeId;
-    }
-  } catch(_) {}
-
-  // Only honor saved custom colors when theme is Paper Clean.
-  if (themeId === 'paperClean') {
-    const saved = jget('memberColors', null);
-    if (saved && typeof saved === 'object') {
-      const out = { Dad: saved.Dad, Mom: saved.Mom, Ethan: saved.Ethan, Celo: saved.Celo };
-      if (out.Dad && out.Mom && out.Ethan && out.Celo) return out;
-    }
-  }
-
-  // Otherwise fall back to current theme preset.
-  const presets = (typeof THEME_MEMBER_COLORS !== 'undefined') ? THEME_MEMBER_COLORS : {};
-  const base = presets[themeId] || presets.neonGlass || {};
-
-  return {
-    Dad: base.Dad || '#22f0b6',
-    Mom: base.Mom || '#ff4fd8',
-    Ethan: base.Ethan || '#5aa7ff',
-    Celo: base.Celo || '#ffd166'
-  };
-}
-
-// ------------------------------
-// Completion helpers
-// ------------------------------
-function __tasksForDaySafe(dayKey){
-  return (typeof getTasksForDay === 'function') ? (getTasksForDay(dayKey) || []) : [];
-}
-
-function __completionForPerson(dayKey, person){
-  const tasks = __tasksForDaySafe(dayKey);
-  const mine = tasks.filter(t => (t.assignees || []).includes(person));
-  const total = mine.length;
-  const done = mine.reduce((acc, t) => acc + (__isTaskDone(t.id) ? 1 : 0), 0);
-  const pct = total ? Math.round((done / total) * 100) : 0;
-  return { total, done, pct };
-}
-
-function __completionOverall(dayKey){
-  const tasks = __tasksForDaySafe(dayKey);
-  // Tasks can appear in multiple columns (shared chores), but completion is keyed by task.id.
-  const uniq = {};
-  tasks.forEach(t => { if (t && t.id) uniq[t.id] = t; });
-  const ids = Object.keys(uniq);
-  const total = ids.length;
-  const done = ids.reduce((acc, id) => acc + (__isTaskDone(id) ? 1 : 0), 0);
-  const pct = total ? Math.round((done / total) * 100) : 0;
-  return { total, done, pct };
-}
-
-function __ringSvg(pct, colorVarOrHex){
-  const r = 52;
-  const c = 2 * Math.PI * r;
-  const dash = Math.max(0, Math.min(c, (pct/100) * c));
-  const gap = c - dash;
-  const raw = String(colorVarOrHex || '--btnActive');
-  const stroke = raw.startsWith('--') ? `var(${raw})` : raw;
-  return `
-    <div class="ringSvgWrap">
-      <svg width="128" height="128" viewBox="0 0 128 128" aria-hidden="true">
-        <g transform="translate(64 64)">
-          <circle class="chalkTrack" r="${r}" cx="0" cy="0" fill="none" stroke="var(--ringTrack)" stroke-width="12" />
-          <circle class="chalkStroke" r="${r}" cx="0" cy="0" fill="none" stroke="${stroke}" stroke-width="12"
-            stroke-linecap="round" transform="rotate(-90)"
-            stroke-dasharray="${dash} ${gap}" />
-        </g>
-      </svg>
-      <div class="pct">${pct}%</div>
-    </div>
-  `;
-}
-// ------------------------------
 // Minimal UI
 // ------------------------------
-function __renderTopNav(routeKey){
+function __renderTopNav(dayKey){
   const top = document.getElementById('topNav');
   if (!top) return;
 
-  const isDay = __DAYS_RECOVERY.includes(routeKey);
-  const activeDay = isDay ? routeKey : __todayKey();
-
   const btns = __DAYS_RECOVERY.map(d => {
-    const active = d === activeDay ? 'active' : '';
+    const active = d === dayKey ? 'active' : '';
     const label = d.charAt(0).toUpperCase() + d.slice(1);
     return `<button class="navBtn ${active}" data-day="${d}">${label}</button>`;
   }).join('');
 
   top.innerHTML = `
-    <div class="menuWrap">
-      <button class="hamburgerBtn" id="menuBtn" type="button">☰</button>
-    </div>
-    <button class="navBtn" id="goToday" type="button">Today</button>
+    <button class="navBtn" id="goToday">Today</button>
     ${btns}
     <div class="spacer"></div>
-    <button class="navBtn" id="resetDay" type="button">Reset Day</button>
+    <button class="navBtn" id="resetDay">Reset Day</button>
   `;
 
-  // Day buttons
   top.querySelectorAll('button[data-day]').forEach(b => {
     b.addEventListener('click', () => {
       const dk = b.getAttribute('data-day');
@@ -2153,28 +1982,17 @@ function __renderTopNav(routeKey){
     });
   });
 
-  // Today
   const todayBtn = document.getElementById('goToday');
   if (todayBtn) todayBtn.addEventListener('click', () => {
     location.hash = '#/' + __todayKey();
   });
 
-  // Reset only makes sense on day routes
   const resetBtn = document.getElementById('resetDay');
-  if (resetBtn) {
-    resetBtn.disabled = !isDay;
-    resetBtn.style.opacity = isDay ? '1' : '.55';
-    resetBtn.style.pointerEvents = isDay ? 'auto' : 'none';
-    resetBtn.addEventListener('click', () => {
-      const tasks = (typeof getTasksForDay === 'function') ? getTasksForDay(activeDay) : [];
-      tasks.forEach(t => __setTaskDone(t.id, false));
-      __renderDay(activeDay);
-    });
-  }
-
-  // Menu wiring
-  const menuBtn = document.getElementById('menuBtn');
-  if (menuBtn) menuBtn.addEventListener('click', __openSideMenu);
+  if (resetBtn) resetBtn.addEventListener('click', () => {
+    const tasks = (typeof getTasksForDay === 'function') ? getTasksForDay(dayKey) : [];
+    tasks.forEach(t => __setTaskDone(t.id, false));
+    __renderDay(dayKey);
+  });
 }
 
 function __renderDay(dayKey){
@@ -2187,11 +2005,10 @@ function __renderDay(dayKey){
   const dateStr = __formatMMDDYYYY(d);
 
   const tasks = (typeof getTasksForDay === 'function') ? getTasksForDay(dayKey) : [];
-  const colors = __getMemberColors();
 
   // bucket tasks by person (shared chores appear in both columns)
   const buckets = {};
-  __PEOPLE_RECOVERY.forEach(p => { buckets[p] = []; });
+  __PEOPLE_RECOVERY.forEach(p => buckets[p] = []);
   tasks.forEach(t => {
     (t.assignees || []).forEach(p => {
       if (buckets[p]) buckets[p].push(t);
@@ -2212,19 +2029,11 @@ function __renderDay(dayKey){
       `;
     }).join('');
 
-    // PATCH 1: updateable header elements (count + progress bar)
-    const c = __completionForPerson(dayKey, p);
-    const pct = c.total ? Math.round((c.done / c.total) * 100) : 0;
-    const accent = colors[p] || 'var(--btnActive)';
-
     return `
-      <section class="column" data-person="${__esc(p)}" style="border-top:4px solid ${__esc(accent)};">
+      <section class="column">
         <div class="dayHeaderBar">
           <h2 class="dayTitle">${__esc(p)}</h2>
-          <div class="dayDate">${__esc(dateStr)} · <span class="dayCount" data-person="${__esc(p)}">${c.done}/${c.total}</span></div>
-        </div>
-        <div class="miniBar" style="height:6px;border-radius:999px;overflow:hidden;border:1px solid var(--border2);background:rgba(0,0,0,0.18);margin:0 12px 10px 12px;">
-          <div class="miniFill" data-person="${__esc(p)}" style="height:100%;width:${pct}%;background:${__esc(accent)};"></div>
+          <div class="dayDate">${__esc(dateStr)}</div>
         </div>
         ${list || '<div class="hint">No tasks.</div>'}
       </section>
@@ -2232,612 +2041,27 @@ function __renderDay(dayKey){
   }).join('');
 
   app.innerHTML = `
+    <div class="panel">
+      <div style="font-weight:900;font-size:16px;">Recovery Mode: Day View</div>
+      <div class="hint">This is a minimal renderer to get you unstuck. Once the full UI/router code is restored, we can remove this block and the debug markers.</div>
+    </div>
     <div class="columns">${cols}</div>
   `;
 
-  // PATCH 2: wire checkboxes with live-update of counts + mini bars (including shared chores)
+  // wire checkboxes
   app.querySelectorAll('input[type="checkbox"][data-task]').forEach(cb => {
     cb.addEventListener('change', () => {
       const id = cb.getAttribute('data-task');
-      const checked = !!cb.checked;
-      __setTaskDone(id, checked);
-
-      // If this task appears in multiple columns (shared chore), sync the other checkboxes visually.
-      app.querySelectorAll(`input[type="checkbox"][data-task="${id}"]`).forEach(other => {
-        if (other !== cb) other.checked = checked;
-      });
-
-      // Find the task object to know which people are affected.
-      const tasks = (typeof getTasksForDay === 'function') ? (getTasksForDay(dayKey) || []) : [];
-      const t = tasks.find(x => x && x.id === id);
-      const affected = (t && Array.isArray(t.assignees) && t.assignees.length) ? t.assignees : [];
-
-      // If we can't find assignees, fall back to updating just the column we clicked.
-      const fallbackCol = cb.closest('section.column');
-      const fallbackPerson = fallbackCol ? fallbackCol.getAttribute('data-person') : null;
-      const peopleToUpdate = affected.length ? affected : (fallbackPerson ? [fallbackPerson] : []);
-
-      peopleToUpdate.forEach(person => {
-        const c = __completionForPerson(dayKey, person);
-        const pct = c.total ? Math.round((c.done / c.total) * 100) : 0;
-
-        const countEl = app.querySelector(`.dayCount[data-person="${person}"]`);
-        if (countEl) countEl.textContent = `${c.done}/${c.total}`;
-
-        const fillEl = app.querySelector(`.miniFill[data-person="${person}"]`);
-        if (fillEl) fillEl.style.width = pct + '%';
-      });
+      __setTaskDone(id, cb.checked);
     });
   });
-}
-
-// ------------------------------
-// Simple router + side menu (restoring "full UI" one page at a time)
-// ------------------------------
-const __EXTRA_ROUTES = ["dashboard","admin","weekly","maintenance"];
-
-function __routeFromHash(){
-  const h = location.hash || '';
-  const m = h.match(/^#\/(.+)$/);
-  const rk = m ? m : '';
-  if (__DAYS_RECOVERY.includes(rk)) return rk;
-  if (__EXTRA_ROUTES.includes(rk)) return rk;
-  return __todayKey();
-}
-
-function __closeSideMenu(){
-  const ov = document.getElementById('sideOverlay');
-  const pn = document.getElementById('sidePanel');
-  if (ov) ov.classList.remove('open');
-  if (pn) {
-    pn.classList.remove('open');
-    pn.setAttribute('aria-hidden', 'true');
-  }
-}
-
-function __openSideMenu(){
-  const ov = document.getElementById('sideOverlay');
-  const pn = document.getElementById('sidePanel');
-  if (ov) ov.classList.add('open');
-  if (pn) {
-    pn.classList.add('open');
-    pn.setAttribute('aria-hidden', 'false');
-  }
-}
-
-function __renderSideMenu(activeRoute){
-  const nav = document.getElementById('sideNav');
-  if (!nav) return;
-
-  const items = [
-    { key: 'dashboard', label: 'Dashboard' },
-    { key: 'admin', label: 'Admin' },
-    { key: 'weekly', label: 'Weekly' },
-    { key: 'maintenance', label: 'Maintenance' },
-  ];
-
-  nav.innerHTML = items.map(it => {
-    const active = (activeRoute === it.key) ? 'active' : '';
-    return `<button class="sideBtn ${active}" type="button" data-route="${it.key}"><span>${it.label}</span><span class="sideChevron">"</span></button>`;
-  }).join('');
-
-  nav.querySelectorAll('button[data-route]').forEach(b => {
-    b.addEventListener('click', () => {
-      const rk = b.getAttribute('data-route');
-      location.hash = '#/' + rk;
-      __closeSideMenu();
-    });
-  });
-
-  // overlay/close wiring
-  const ov = document.getElementById('sideOverlay');
-  if (ov) ov.onclick = __closeSideMenu;
-  const closeBtn = document.getElementById('sideCloseBtn');
-  if (closeBtn) closeBtn.onclick = __closeSideMenu;
-}
-
-
-
-function __renderPlaceholder(title){
-  const app = document.getElementById('app');
-  if (!app) return;
-  app.innerHTML = `
-    <div class="panel">
-      <h2>${__esc(title)}</h2>
-      <div class="hint">This page is a placeholder while we restore the full UI. The Day pages are stable.</div>
-    </div>
-  `;
-}
-
-function __getWeeklyChores(){
-  // Prefer the global list (set in the DATA script tag). If it's missing/empty,
-  // fall back to a sane default so Weekly never renders as "nothing".
-  const list = (typeof window !== 'undefined' && Array.isArray(window.WEEKLY_CHORES)) ? window.WEEKLY_CHORES : [];
-  if (list && list.length) return list;
-  return [
-    "Sweep",
-    "Mop",
-    "Vacuum",
-    "Trash",
-    "Wipe kitchen counters",
-    "Wipe dining table"
-  ];
-}
-
-function __renderWeekly(){
-  const app = document.getElementById('app');
-  if (!app) return;
-  __renderTopNav('weekly');
-
-  const weekKey = __weekKeyForNow();
-  const chores = __getWeeklyChores();
-
-  const rows = chores.map(name => {
-    const slug = __slugify(name);
-    const checked = __weeklyIsDone(weekKey, slug) ? 'checked' : '';
-    const assigned = __weeklyGetAssign(weekKey, slug);
-
-    const opts = ['','Dad','Mom','Ethan','Celo'].map(p => {
-      const label = p ? p : 'Unassigned';
-      const sel = (p === assigned) ? 'selected' : '';
-      return `<option value="${__esc(p)}" ${sel}>${__esc(label)}</option>`;
-    }).join('');
-
-    // weeklyItem is a 3-col grid: checkbox | label | assignee
-    // So we must output exactly 3 direct children.
-    return `
-      <div class="weeklyItem">
-        <input type="checkbox" id="weekly_${__esc(slug)}" data-weekly="${__esc(slug)}" ${checked} />
-        <label class="label" for="weekly_${__esc(slug)}">${__esc(name)}</label>
-        <select class="assignSelect" data-weekly-assign="${__esc(slug)}">${opts}</select>
-      </div>
-    `;
-  }).join('');
-
-  app.innerHTML = `
-    <div class="panel">
-      <div class="toolbar">
-        <div class="left">
-          <h2 style="margin:0;">Weekly</h2>
-          <div class="hint" style="margin:0;">Week of <b>${__esc(weekKey)}</b></div>
-        </div>
-        <div class="right">
-          <button class="navBtn danger" id="weeklyResetBtn" type="button">Reset Weekly</button>
-        </div>
-      </div>
-
-      <div class="hint">Weekly chores are tracked per-week on this device (local only).</div>
-      <div class="weeklyGrid">
-        ${rows || '<div class="hint">No weekly chores configured.</div>'}
-      </div>
-    </div>
-  `;
-
-  // Wire done toggles
-  app.querySelectorAll('input[type="checkbox"][data-weekly]').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const slug = cb.getAttribute('data-weekly');
-      __weeklySetDone(weekKey, slug, !!cb.checked);
-    });
-  });
-
-  // Wire assignee dropdowns
-  app.querySelectorAll('select[data-weekly-assign]').forEach(sel => {
-    sel.addEventListener('change', () => {
-      const slug = sel.getAttribute('data-weekly-assign');
-      __weeklySetAssign(weekKey, slug, sel.value);
-    });
-  });
-
-  // Reset button
-  const rb = document.getElementById('weeklyResetBtn');
-  if (rb) rb.addEventListener('click', () => {
-    chores.forEach(name => {
-      const slug = __slugify(name);
-      __weeklySetDone(weekKey, slug, false);
-    });
-    __renderWeekly();
-  });
-}
-
-  // ------------------------------
-// Maintenance (local-only)
-// ------------------------------
-function __maintKey(){ return 'maintenanceItems'; }
-function __loadMaint(){
-  const v = jget(__maintKey(), []);
-  return Array.isArray(v) ? v : [];
-}
-function __saveMaint(list){ jset(__maintKey(), Array.isArray(list) ? list : []); }
-
-function __renderMaintenance(){
-  const app = document.getElementById('app');
-  if (!app) return;
-
-  __renderTopNav('maintenance');
-
-  const items = __loadMaint();
-  const open = items.filter(x => x && !x.done);
-  const done = items.filter(x => x && x.done);
-
-  const rowHtml = (x) => {
-    const who = x.who || '';
-    const freq = x.freq || '';
-    const when = x.createdAt ? new Date(x.createdAt).toLocaleDateString() : '';
-    const meta = [freq && `Freq: ${freq}`, who && `Who: ${who}`, when && `Added: ${when}`].filter(Boolean).join(' · ');
-    return `
-      <div class="maintRow" data-mid="${__esc(x.id)}">
-        <div>
-          <div class="maintTask">${__esc(x.name || '')}</div>
-          <div class="maintSub">${__esc(meta || ' ')}</div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <label class="choreLabel" style="margin:0;padding:6px 10px;box-shadow:var(--neuOutShadowSoft);">
-            <input type="checkbox" data-maint-done="${__esc(x.id)}" ${x.done ? 'checked' : ''} />
-            <span>${x.done ? 'Done' : 'Mark done'}</span>
-          </label>
-          <button class="ghost" type="button" data-maint-del="${__esc(x.id)}">Delete</button>
-        </div>
-      </div>
-    `;
-  };
-
-  app.innerHTML = `
-    <div class="panel">
-      <div class="toolbar">
-        <div class="left">
-          <h2 style="margin:0;">Maintenance</h2>
-          <div class="hint" style="margin:0;">Local-only list on this device (for now).</div>
-        </div>
-        <div class="right">
-          <button class="navBtn danger" id="maintResetBtn" type="button">Clear Completed</button>
-        </div>
-      </div>
-
-      <div class="maintForm">
-        <div class="field">
-          <label>Task</label>
-          <input id="maintName" type="text" placeholder="e.g., Replace AC filter" />
-        </div>
-        <div class="field">
-          <label>Frequency</label>
-          <select id="maintFreq">
-            <option value="">(none)</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-            <option value="quarterly">Quarterly</option>
-            <option value="yearly">Yearly</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Who</label>
-          <select id="maintWho">
-            <option value="">Unassigned</option>
-            <option value="Dad">Dad</option>
-            <option value="Mom">Mom</option>
-            <option value="Ethan">Ethan</option>
-            <option value="Celo">Celo</option>
-          </select>
-        </div>
-        <div class="actions">
-          <button class="navBtn" id="maintAddBtn" type="button">Add</button>
-        </div>
-      </div>
-
-      <div style="height:10px"></div>
-
-      <div class="maintList">
-        ${open.length ? open.map(rowHtml).join('') : '<div class="hint">No open maintenance items.</div>'}
-        ${done.length ? '<div class="hint" style="margin-top:10px;">Completed</div>' + done.map(rowHtml).join('') : ''}
-      </div>
-    </div>
-  `;
-
-  // Add
-  const addBtn = document.getElementById('maintAddBtn');
-  if (addBtn) addBtn.addEventListener('click', () => {
-    const nameEl = document.getElementById('maintName');
-    const freqEl = document.getElementById('maintFreq');
-    const whoEl = document.getElementById('maintWho');
-    const name = (nameEl && nameEl.value) ? nameEl.value.trim() : '';
-    const freq = (freqEl && freqEl.value) ? String(freqEl.value) : '';
-    const who = (whoEl && whoEl.value) ? String(whoEl.value) : '';
-    if (!name) return;
-
-    const list = __loadMaint();
-    list.unshift({ id: String(Date.now()), name, freq, who, done: false, createdAt: Date.now() });
-    __saveMaint(list);
-    __renderMaintenance();
-  });
-
-  // Enter key adds
-  const nameEl = document.getElementById('maintName');
-  if (nameEl) nameEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const btn = document.getElementById('maintAddBtn');
-      if (btn) btn.click();
-    }
-  });
-
-  // Done toggles
-  app.querySelectorAll('input[type="checkbox"][data-maint-done]').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const id = cb.getAttribute('data-maint-done');
-      const list = __loadMaint();
-      const x = list.find(it => it && it.id === id);
-      if (x) x.done = !!cb.checked;
-      __saveMaint(list);
-      __renderMaintenance();
-    });
-  });
-
-  // Delete
-  app.querySelectorAll('button[data-maint-del]').forEach(b => {
-    b.addEventListener('click', () => {
-      const id = b.getAttribute('data-maint-del');
-      const list = __loadMaint().filter(it => it && it.id !== id);
-      __saveMaint(list);
-      __renderMaintenance();
-    });
-  });
-
-  // Clear completed
-  const resetBtn = document.getElementById('maintResetBtn');
-  if (resetBtn) resetBtn.addEventListener('click', () => {
-    const list = __loadMaint().filter(it => it && !it.done);
-    __saveMaint(list);
-    __renderMaintenance();
-  });
-}
-  
-function __renderDashboard(){
-  const app = document.getElementById('app');
-  if (!app) return;
-
-  const dayKey = __todayKey();
-  const d = __dateForDayKey(dayKey);
-  const dateStr = __formatMMDDYYYY(d);
-
-  const overall = __completionOverall(dayKey);
-  const dad = __completionForPerson(dayKey, 'Dad');
-  const mom = __completionForPerson(dayKey, 'Mom');
-  const ethan = __completionForPerson(dayKey, 'Ethan');
-  const celo = __completionForPerson(dayKey, 'Celo');
-  const noteVal = __getNotes(dayKey);
-  const colors = __getMemberColors();
-
-  app.innerHTML = `
-    <div class="dashGrid">
-      <section class="panel">
-        <div class="dashHeaderRow">
-          <h2>Dashboard</h2>
-          <div class="hint">Today: <b>${__esc(dayKey)}</b> (${__esc(dateStr)})</div>
-        </div>
-
-        <div class="rings">
-          <div class="ringCard">
-            <div class="ringMeta">
-              <div style="font-weight:900;">Overall</div>
-              <div class="hint">${overall.done}/${overall.total} tasks</div>
-            </div>
-            ${__ringSvg(overall.pct, '--btnActive')}
-            <button class="navBtn" id="dashGoToday" type="button">Go to Today</button>
-          </div>
-
-          <div class="ringCard">
-            <div class="ringMeta">
-              <div style="font-weight:900;">Dad</div>
-              <div class="hint">${dad.done}/${dad.total}</div>
-            </div>
-            ${__ringSvg(dad.pct, colors.Dad)}
-          </div>
-
-          <div class="ringCard">
-            <div class="ringMeta">
-              <div style="font-weight:900;">Mom</div>
-              <div class="hint">${mom.done}/${mom.total}</div>
-            </div>
-            ${__ringSvg(mom.pct, colors.Mom)}
-          </div>
-
-          <div class="ringCard">
-            <div class="ringMeta">
-              <div style="font-weight:900;">Ethan</div>
-              <div class="hint">${ethan.done}/${ethan.total}</div>
-            </div>
-            ${__ringSvg(ethan.pct, colors.Ethan)}
-          </div>
-
-          <div class="ringCard">
-            <div class="ringMeta">
-              <div style="font-weight:900;">Celo</div>
-              <div class="hint">${celo.done}/${celo.total}</div>
-            </div>
-            ${__ringSvg(celo.pct, colors.Celo)}
-          </div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="dashHeaderRow">
-          <h2>Notes (Today)</h2>
-          <div class="hint">Saved automatically on this device</div>
-        </div>
-        <div class="notesBox">
-          <textarea id="dashNotes" placeholder="Add notes for today...">${__esc(noteVal)}</textarea>
-          <div class="hint">Notes are stored locally for now (sync can come later).</div>
-        </div>
-      </section>
-    </div>
-  `;
-
-  const btn = document.getElementById('dashGoToday');
-  if (btn) btn.onclick = () => { location.hash = '#/' + dayKey; };
-
-  const ta = document.getElementById('dashNotes');
-  if (ta) {
-    ta.addEventListener('input', () => {
-      __setNotes(dayKey, ta.value);
-    });
-  }
-}
-
-function __renderAdmin(){
-  const app = document.getElementById('app');
-  if (!app) return;
-
-  // Current theme state
-  let state = { themeId: 'neonGlass', mode: 'dark' };
-  try {
-    if (typeof loadThemeState === 'function') state = loadThemeState();
-  } catch(_) {}
-
-  const themeId = state.themeId || 'neonGlass';
-  const mode = (state.mode === 'light') ? 'light' : 'dark';
-  const canEditColors = (themeId === 'paperClean');
-
-  // Theme options
-  const themeKeys = (typeof THEMES !== 'undefined') ? Object.keys(THEMES) : ['neonGlass','paperClean'];
-  const themeOptions = themeKeys.map(k => {
-    const label = (typeof themeLabel === 'function') ? themeLabel(k) : k;
-    const sel = (k === themeId) ? 'selected' : '';
-    return `<option value="${__esc(k)}" ${sel}>${__esc(label)}</option>`;
-  }).join('');
-
-  // Member colors
-  const colors = __getMemberColors();
-
-  const colorRows = __PEOPLE_RECOVERY.map(p => {
-    const v = colors || '#ffffff';
-    const dis = canEditColors ? '' : 'disabled';
-    const rowStyle = canEditColors ? '' : 'style="opacity:0.65;"';
-    return `
-      <div class="adminRow" ${rowStyle}>
-        <div class="adminName">${__esc(p)}</div>
-        <input class="colorInput" type="color" data-person="${__esc(p)}" value="${__esc(v)}" ${dis} />
-      </div>
-    `;
-  }).join('');
-
-  const paperHint = (themeId === 'paperClean')
-    ? 'Paper Clean: member colors are editable and will persist on this device.'
-    : 'Member colors are locked on this theme. Switch to Paper Clean to customize.';
-
-  app.innerHTML = `
-    <div class="panel">
-      <div class="dashHeaderRow">
-        <h2>Admin</h2>
-        <div class="hint">Local-only settings (sync is disabled).</div>
-      </div>
-
-      <div class="themeGrid">
-        <div class="themeRow">
-          <label>Theme</label>
-          <select id="adminThemeSel">${themeOptions}</select>
-          <div class="hint">${__esc(paperHint)}</div>
-        </div>
-
-        <div class="themeRow">
-          <label>Mode</label>
-          <div class="modeBtns">
-            <button class="navBtn ${mode === 'dark' ? 'active' : ''}" id="adminModeDark" type="button">Dark</button>
-            <button class="navBtn ${mode === 'light' ? 'active' : ''}" id="adminModeLight" type="button">Light</button>
-          </div>
-          <div class="hint">Applies immediately across the app.</div>
-        </div>
-      </div>
-
-      <div style="height:10px"></div>
-
-      <h3>Member Colors</h3>
-      <div class="hint">These colors drive the Dashboard rings (and later, column accents).</div>
-
-      <div class="adminGrid">
-        ${colorRows}
-      </div>
-
-      <div class="dashNav" style="margin-top:12px;">
-        <button class="navBtn" id="adminGoDashboard" type="button">Go to Dashboard</button>
-        <button class="navBtn" id="adminGoToday" type="button">Go to Today</button>
-      </div>
-    </div>
-  `;
-
-  // Wire buttons
-  const goDash = document.getElementById('adminGoDashboard');
-  if (goDash) goDash.onclick = () => { location.hash = '#/dashboard'; };
-
-  const goToday = document.getElementById('adminGoToday');
-  if (goToday) goToday.onclick = () => { location.hash = '#/' + __todayKey(); };
-
-  // Theme selection
-  const sel = document.getElementById('adminThemeSel');
-  if (sel) {
-    sel.addEventListener('change', () => {
-      const nextTheme = sel.value;
-      try {
-        if (typeof applyTheme === 'function') applyTheme(nextTheme, mode);
-      } catch(_) {}
-      __renderRoute('admin');
-    });
-  }
-
-  // Mode buttons
-  const bDark = document.getElementById('adminModeDark');
-  const bLight = document.getElementById('adminModeLight');
-  if (bDark) bDark.onclick = () => {
-    try { if (typeof applyTheme === 'function') applyTheme(themeId, 'dark'); } catch(_) {}
-    __renderRoute('admin');
-  };
-  if (bLight) bLight.onclick = () => {
-    try { if (typeof applyTheme === 'function') applyTheme(themeId, 'light'); } catch(_) {}
-    __renderRoute('admin');
-  };
-
-  // Member color pickers
-  app.querySelectorAll('input[type="color"][data-person]').forEach(inp => {
-    inp.addEventListener('input', () => {
-      // Only save custom colors on Paper Clean.
-      let t = 'neonGlass';
-      try {
-        if (typeof loadThemeState === 'function') {
-          const s = loadThemeState();
-          if (s && s.themeId) t = s.themeId;
-        }
-      } catch(_) {}
-      if (t !== 'paperClean') return;
-
-      const person = inp.getAttribute('data-person');
-      const next = inp.value;
-      const current = jget('memberColors', __getMemberColors());
-      current[person] = next;
-      jset('memberColors', current);
-      // Stay on admin; rings update next time dashboard is rendered.
-    });
-  });
-}
-
-function __renderRoute(routeKey){
-  __renderSideMenu(routeKey);
-  __renderTopNav(routeKey);
-
-  if (__DAYS_RECOVERY.includes(routeKey)) {
-    __renderDay(routeKey);
-    return;
-  }
-
-  if (routeKey === 'dashboard') return __renderDashboard();
-  if (routeKey === 'admin') return __renderAdmin();
-  if (routeKey === 'weekly') return __renderWeekly();
-  if (routeKey === 'maintenance') return __renderMaintenance();
-
-  // fallback
-  __renderDay(__todayKey());
 }
 
 function __currentRouteDayKey(){
-  return __routeFromHash();
+  const h = location.hash || '';
+  const m = h.match(/^#\/(.+)$/);
+  const dk = m ? m[1] : '';
+  return __DAYS_RECOVERY.includes(dk) ? dk : __todayKey();
 }
 
 function __bootRecovery(){
@@ -2849,9 +2073,9 @@ function __bootRecovery(){
     }
   } catch(_) {}
 
-  __renderRoute(__currentRouteDayKey());
+  __renderDay(__currentRouteDayKey());
 }
 
-window.addEventListener('hashchange', () => __renderRoute(__currentRouteDayKey()));
+window.addEventListener('hashchange', () => __renderDay(__currentRouteDayKey()));
 __bootRecovery();
 </script>
