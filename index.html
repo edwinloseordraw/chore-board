@@ -1537,7 +1537,7 @@ function applyTheme(themeId, mode){
   const vars = (mode === "light") ? t.light : t.dark;
 
   Object.keys(vars).forEach(k => {
-    document.documentElement.style.setProperty(k, vars[k]);
+    document.documentElement.style.setProperty(k, vars);
   });
 
   // match browser chrome on mobile
@@ -1556,7 +1556,7 @@ function applyTheme(themeId, mode){
   } else {
     // Ensure member colors exist when returning to Paper Clean
     const current = loadMemberColors();
-    PEOPLE.forEach(p => { if (!current[p]) current[p] = THEME_MEMBER_COLORS.paperClean[p] || "#ffffff"; });
+    PEOPLE.forEach(p => { if (!current) current = THEME_MEMBER_COLORS.paperClean || "#ffffff"; });
     saveMemberColors(current);
   }
 }
@@ -1839,7 +1839,7 @@ function isKid(p){ return KIDS.includes(p); }
 // DAILY TASKS (STABLE)
 // =========================
 // IMPORTANT: Keep this logic boring and predictable.
-// We can reintroduce “fair shuffle/rotation” once the app is loading consistently again.
+// We can reintroduce "fair shuffle/rotation" once the app is loading consistently again.
 
 // Phase 8.4: Walk alternates every other day. Mom starts on lunes.
 function walkAssigneeForDay(dayKey){
@@ -1860,8 +1860,8 @@ function buildWalkTask(dayKey){
 function normalizeTwoPersonTask(task){
   if (!task || !Array.isArray(task.assignees) || task.assignees.length !== 2) return task;
 
-  const a = task.assignees[0];
-  const b = task.assignees[1];
+  const a = task.assignees;
+  const b = task.assignees;
 
   const isAllowed = (a === "Mom" && b === "Ethan") || (a === "Ethan" && b === "Mom") ||
                     (a === "Dad" && b === "Celo")  || (a === "Celo"  && b === "Dad");
@@ -1874,7 +1874,7 @@ function normalizeTwoPersonTask(task){
   const fixed = (hasMom || hasEthan) ? ["Mom","Ethan"] : ["Dad","Celo"];
 
   // Keep primary consistent with the kid on the pair.
-  const primary = (fixed[1] === "Ethan") ? "Ethan" : "Celo";
+  const primary = (fixed === "Ethan") ? "Ethan" : "Celo";
   return { ...task, assignees: fixed, primary };
 }
 
@@ -2187,15 +2187,15 @@ function __renderDay(dayKey){
 
   // bucket tasks by person (shared chores appear in both columns)
   const buckets = {};
-  __PEOPLE_RECOVERY.forEach(p => buckets[p] = []);
+  __PEOPLE_RECOVERY.forEach(p => buckets = []);
   tasks.forEach(t => {
     (t.assignees || []).forEach(p => {
-      if (buckets[p]) buckets[p].push(t);
+      if (buckets) buckets.push(t);
     });
   });
 
   const cols = __PEOPLE_RECOVERY.map(p => {
-    const list = (buckets[p] || []).map(t => {
+    const list = (buckets || []).map(t => {
       const checked = __isTaskDone(t.id) ? 'checked' : '';
       const label = __esc(t.text);
       return `
@@ -2211,7 +2211,7 @@ function __renderDay(dayKey){
     // PATCH 1: updateable header elements (count + progress bar)
     const c = __completionForPerson(dayKey, p);
     const pct = c.total ? Math.round((c.done / c.total) * 100) : 0;
-    const accent = colors[p] || 'var(--btnActive)';
+    const accent = colors || 'var(--btnActive)';
 
     return `
       <section class="column" data-person="${__esc(p)}" style="border-top:4px solid ${__esc(accent)};">
@@ -2275,7 +2275,7 @@ const __EXTRA_ROUTES = ["dashboard","admin","weekly","maintenance"];
 function __routeFromHash(){
   const h = location.hash || '';
   const m = h.match(/^#\/(.+)$/);
-  const rk = m ? m[1] : '';
+  const rk = m ? m : '';
   if (__DAYS_RECOVERY.includes(rk)) return rk;
   if (__EXTRA_ROUTES.includes(rk)) return rk;
   return __todayKey();
@@ -2314,7 +2314,7 @@ function __renderSideMenu(activeRoute){
 
   nav.innerHTML = items.map(it => {
     const active = (activeRoute === it.key) ? 'active' : '';
-    return `<button class="sideBtn ${active}" type="button" data-route="${it.key}"><span>${it.label}</span><span class="sideChevron">›</span></button>`;
+    return `<button class="sideBtn ${active}" type="button" data-route="${it.key}"><span>${it.label}</span><span class="sideChevron">"</span></button>`;
   }).join('');
 
   nav.querySelectorAll('button[data-route]').forEach(b => {
@@ -2346,8 +2346,8 @@ function __renderPlaceholder(title){
 }
 
 function __getWeeklyChores(){
-  // Prefer the global list (set in the DATA script tag). If it’s missing/empty,
-  // fall back to a sane default so Weekly never renders as “nothing”.
+  // Prefer the global list (set in the DATA script tag). If it's missing/empty,
+  // fall back to a sane default so Weekly never renders as "nothing".
   const list = (typeof window !== 'undefined' && Array.isArray(window.WEEKLY_CHORES)) ? window.WEEKLY_CHORES : [];
   if (list && list.length) return list;
   return [
@@ -2707,7 +2707,7 @@ function __renderAdmin(){
   const colors = __getMemberColors();
 
   const colorRows = __PEOPLE_RECOVERY.map(p => {
-    const v = colors[p] || '#ffffff';
+    const v = colors || '#ffffff';
     const dis = canEditColors ? '' : 'disabled';
     const rowStyle = canEditColors ? '' : 'style="opacity:0.65;"';
     return `
@@ -2828,7 +2828,7 @@ function __renderRoute(routeKey){
   if (routeKey === 'dashboard') return __renderDashboard();
   if (routeKey === 'admin') return __renderAdmin();
   if (routeKey === 'weekly') return __renderWeekly();
-  if (routeKey === 'maintenance') return __renderPlaceholder('Maintenance');
+  if (routeKey === 'maintenance') return __renderMaintenance();
 
   // fallback
   __renderDay(__todayKey());
