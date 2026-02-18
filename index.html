@@ -1555,8 +1555,12 @@ function applyTheme(themeId, mode){
     }
   } else {
     // Ensure member colors exist when returning to Paper Clean
-    const current = loadMemberColors();
-    PEOPLE.forEach(p => { if (!current) current = THEME_MEMBER_COLORS.paperClean || "#ffffff"; });
+    const current = loadMemberColors() || {};
+    const base = (THEME_MEMBER_COLORS && THEME_MEMBER_COLORS.paperClean) ? THEME_MEMBER_COLORS.paperClean : {};
+    const ppl = (typeof window !== 'undefined' && Array.isArray(window.PEOPLE)) ? window.PEOPLE : ["Dad","Mom","Ethan","Celo"];
+    ppl.forEach(p => {
+      if (!current[p]) current[p] = base[p] || "#ffffff";
+    });
     saveMemberColors(current);
   }
 }
@@ -1860,8 +1864,8 @@ function buildWalkTask(dayKey){
 function normalizeTwoPersonTask(task){
   if (!task || !Array.isArray(task.assignees) || task.assignees.length !== 2) return task;
 
-  const a = task.assignees;
-  const b = task.assignees;
+  const a = task.assignees[0];
+  const b = task.assignees[1];
 
   const isAllowed = (a === "Mom" && b === "Ethan") || (a === "Ethan" && b === "Mom") ||
                     (a === "Dad" && b === "Celo")  || (a === "Celo"  && b === "Dad");
@@ -2187,15 +2191,15 @@ function __renderDay(dayKey){
 
   // bucket tasks by person (shared chores appear in both columns)
   const buckets = {};
-  __PEOPLE_RECOVERY.forEach(p => buckets = []);
+  __PEOPLE_RECOVERY.forEach(p => { buckets[p] = []; });
   tasks.forEach(t => {
     (t.assignees || []).forEach(p => {
-      if (buckets) buckets.push(t);
+      if (buckets[p]) buckets[p].push(t);
     });
   });
 
   const cols = __PEOPLE_RECOVERY.map(p => {
-    const list = (buckets || []).map(t => {
+    const list = (buckets[p] || []).map(t => {
       const checked = __isTaskDone(t.id) ? 'checked' : '';
       const label = __esc(t.text);
       return `
@@ -2211,7 +2215,7 @@ function __renderDay(dayKey){
     // PATCH 1: updateable header elements (count + progress bar)
     const c = __completionForPerson(dayKey, p);
     const pct = c.total ? Math.round((c.done / c.total) * 100) : 0;
-    const accent = colors || 'var(--btnActive)';
+    const accent = colors[p] || 'var(--btnActive)';
 
     return `
       <section class="column" data-person="${__esc(p)}" style="border-top:4px solid ${__esc(accent)};">
@@ -2363,7 +2367,6 @@ function __getWeeklyChores(){
 function __renderWeekly(){
   const app = document.getElementById('app');
   if (!app) return;
-
   __renderTopNav('weekly');
 
   const weekKey = __weekKeyForNow();
