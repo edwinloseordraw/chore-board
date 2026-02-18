@@ -1541,14 +1541,17 @@ if (typeof __appEl !== 'undefined' && __appEl) {
 }
 
 console.log('Debug: DATA script tag started');
+// Make DAYS/PEOPLE truly global (they were block-scoped inside a try{} and later code crashed).
+var DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
+var PEOPLE = ["Dad","Mom","Ethan","Celo"];
+window.DAYS = DAYS;
+window.PEOPLE = PEOPLE;
 try {
 
 /* =========================
    ROUTES + CONSTANTS
 ========================= */
 
-const DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
-const PEOPLE = ["Dad","Mom","Ethan","Celo"];
 
 function todayKey(){
   const map = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
