@@ -1534,9 +1534,17 @@ function applyTheme(themeId, mode){
   if (!t) return;
   const vars = (mode === "light") ? t.light : t.dark;
 
-  Object.keys(vars).forEach(k => {
+    Object.keys(vars).forEach(k => {
     document.documentElement.style.setProperty(k, vars[k]);
   });
+
+  // Safari repaint nudge: gradients in CSS vars sometimes don't visually update unless we touch the real property.
+  if (document.body) {
+    document.body.style.background = vars["--bg"] || "var(--bg)";
+    document.body.style.color = vars["--text"] || "var(--text)";
+  }
+  const __top = document.getElementById('topNav');
+  if (__top) __top.style.background = vars["--headerBg"] || "var(--headerBg)";
 
   // match browser chrome on mobile
   const themeColor = (mode === "light") ? "#ffffff" : "#111111";
