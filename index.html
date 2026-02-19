@@ -2373,6 +2373,24 @@ function __renderMaintenance(){
 
   const items = __loadMaintenance();
 
+  const PEOPLE_OPTS = ['','Dad','Mom','Ethan','Celo'];
+  const INTERVAL_OPTS = ['Weekly','Biweekly','Monthly','Quarterly','Yearly','Once'];
+
+  function __buildPeopleOptions(selected){
+    return PEOPLE_OPTS.map(p => {
+      const label = p ? p : 'Unassigned';
+      const sel = (String(selected || '') === String(p)) ? 'selected' : '';
+      return `<option value="${__esc(p)}" ${sel}>${__esc(label)}</option>`;
+    }).join('');
+  }
+
+  function __buildIntervalOptions(selected){
+    return INTERVAL_OPTS.map(v => {
+      const sel = (String(selected || '') === String(v)) ? 'selected' : '';
+      return `<option value="${__esc(v)}" ${sel}>${__esc(v)}</option>`;
+    }).join('');
+  }
+
   const rows = items.map(it => {
     const done = !!it.done;
     const who = it.assignee || '';
@@ -2381,8 +2399,6 @@ function __renderMaintenance(){
     const createdStr = created ? created.toLocaleDateString() : '';
 
     const subBits = [];
-    if (interval) subBits.push(interval);
-    if (who) subBits.push(who);
     if (createdStr) subBits.push('Added ' + createdStr);
 
     return `
@@ -2391,7 +2407,13 @@ function __renderMaintenance(){
           <div class="maintTask">${__esc(it.text || '')}</div>
           <div class="maintSub">${__esc(subBits.filter(Boolean).join(' • '))}</div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex:0 0 auto;">
+        <div style="display:flex;gap:8px;align-items:center;flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end;">
+          <select class="assignSelect" data-minterval="${__esc(it.id)}" title="Interval">
+            ${__buildIntervalOptions(interval)}
+          </select>
+          <select class="assignSelect" data-massign="${__esc(it.id)}" title="Assignee">
+            ${__buildPeopleOptions(who)}
+          </select>
           <label class="choreLabel" style="padding:6px 10px;box-shadow: var(--neuOutShadowSoft);">
             <input type="checkbox" data-mdone="${__esc(it.id)}" ${done ? 'checked' : ''} />
             <span style="flex:0 0 auto;">Done</span>
@@ -2402,12 +2424,9 @@ function __renderMaintenance(){
     `;
   }).join('');
 
-  const peopleOpts = ['','Dad','Mom','Ethan','Celo'].map(p => {
-    const label = p ? p : 'Unassigned';
-    return `<option value="${__esc(p)}">${__esc(label)}</option>`;
-  }).join('');
+  const peopleOpts = __buildPeopleOptions('');
 
-  const intervalOpts = ['Weekly','Biweekly','Monthly','Quarterly','Yearly','Once'].map(v => {
+  const intervalOpts = INTERVAL_OPTS.map(v => {
     return `<option value="${__esc(v)}">${__esc(v)}</option>`;
   }).join('');
 
@@ -2481,6 +2500,7 @@ function __renderMaintenance(){
     if (e.key === 'Enter') add();
   });
 
+
   app.querySelectorAll('input[type="checkbox"][data-mdone]').forEach(cb => {
     cb.addEventListener('change', () => {
       const id = cb.getAttribute('data-mdone');
@@ -2488,6 +2508,30 @@ function __renderMaintenance(){
       const idx = cur.findIndex(x => x && x.id === id);
       if (idx >= 0) {
         cur[idx].done = !!cb.checked;
+        __saveMaintenance(cur);
+      }
+    });
+  });
+
+  app.querySelectorAll('select[data-massign]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const id = sel.getAttribute('data-massign');
+      const cur = __loadMaintenance();
+      const idx = cur.findIndex(x => x && x.id === id);
+      if (idx >= 0) {
+        cur[idx].assignee = sel.value || '';
+        __saveMaintenance(cur);
+      }
+    });
+  });
+
+  app.querySelectorAll('select[data-minterval]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const id = sel.getAttribute('data-minterval');
+      const cur = __loadMaintenance();
+      const idx = cur.findIndex(x => x && x.id === id);
+      if (idx >= 0) {
+        cur[idx].interval = sel.value || 'Monthly';
         __saveMaintenance(cur);
       }
     });
