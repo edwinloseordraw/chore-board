@@ -2088,18 +2088,32 @@ function __renderTopNav(dayKey){
   const themeSel = document.getElementById('themeSelect');
   const modeSel = document.getElementById('modeSelect');
 
-  function apply(){
+  function applyFromHeader(){
+    const tid = themeSel ? themeSel.value : (themeState.themeId || 'neonGlass');
+    const md = modeSel ? modeSel.value : (themeState.mode || 'dark');
+
+    if (typeof applyTheme !== 'function') {
+      console.warn('applyTheme is not defined, cannot change theme');
+      return;
+    }
+
     try {
-      if (typeof applyTheme === 'function') {
-        const tid = themeSel ? themeSel.value : (themeState.themeId || 'neonGlass');
-        const md = modeSel ? modeSel.value : (themeState.mode || 'dark');
-        applyTheme(tid, md);
-      }
-    } catch(_) {}
+      console.log('Theme change requested:', tid, md);
+      applyTheme(tid, md);
+    } catch (e) {
+      console.error('Theme change failed:', e);
+      if (typeof __showFatal === 'function') __showFatal('theme', e);
+    }
   }
 
-  if (themeSel) themeSel.addEventListener('change', apply);
-  if (modeSel) modeSel.addEventListener('change', apply);
+  // Use property handler so we don't accumulate multiple listeners across rerenders.
+  top.onchange = (ev) => {
+    const t = ev && ev.target;
+    if (!t) return;
+    if (t.id === 'themeSelect' || t.id === 'modeSelect') {
+      applyFromHeader();
+    }
+  };
 }
 
 function __renderDay(dayKey){
