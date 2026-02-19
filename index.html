@@ -2088,6 +2088,19 @@ function __renderTopNav(dayKey){
   const themeSel = document.getElementById('themeSelect');
   const modeSel = document.getElementById('modeSelect');
 
+  // Wire theme controls directly (Safari can be picky).
+  // We listen to BOTH `change` and `input` to catch different browser behaviors.
+  function __wireThemeControl(el){
+    if (!el) return;
+    el.addEventListener('change', applyFromHeader);
+    el.addEventListener('input', applyFromHeader);
+    // Fallback: if the UI opens/closes without firing change reliably, a pointer-up often does.
+    el.addEventListener('pointerup', () => { setTimeout(applyFromHeader, 0); });
+    el.addEventListener('click', () => { try{ el.focus(); }catch(_){} });
+  }
+  __wireThemeControl(themeSel);
+  __wireThemeControl(modeSel);
+
   function applyFromHeader(){
     const tid = themeSel ? themeSel.value : (themeState.themeId || 'neonGlass');
     const md = modeSel ? modeSel.value : (themeState.mode || 'dark');
@@ -2099,21 +2112,14 @@ function __renderTopNav(dayKey){
 
     try {
       console.log('Theme change requested:', tid, md);
+      // Debug: confirm the selects actually have the values we think they do.
+      console.log('Theme control values:', { theme: tid, mode: md, themeSel: !!themeSel, modeSel: !!modeSel });
       applyTheme(tid, md);
     } catch (e) {
       console.error('Theme change failed:', e);
       if (typeof __showFatal === 'function') __showFatal('theme', e);
     }
   }
-
-  // Use property handler so we don't accumulate multiple listeners across rerenders.
-  top.onchange = (ev) => {
-    const t = ev && ev.target;
-    if (!t) return;
-    if (t.id === 'themeSelect' || t.id === 'modeSelect') {
-      applyFromHeader();
-    }
-  };
 }
 
 function __renderDay(dayKey){
