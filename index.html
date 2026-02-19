@@ -2086,7 +2086,7 @@ function __renderTopNav(dayKey){
     __renderDay(dayKey);
   });
 
-  // --- Begin new theme/mode button logic ---
+  // --- Theme / Mode controls (robust click handling) ---
   const themeBtn = document.getElementById('themeBtn');
   const modeBtn = document.getElementById('modeBtn');
 
@@ -2103,7 +2103,7 @@ function __renderTopNav(dayKey){
       if (themeBtn) themeBtn.textContent = (typeof themeLabel === 'function') ? themeLabel(themeId) : themeId;
       if (modeBtn) modeBtn.textContent = (md === 'light') ? 'Light' : 'Dark';
 
-      // No forced rerender here. Rerenders were snapping state back in some builds.
+      // Persisted theme state should be read on the next render; we do not force navigation.
     } catch (e) {
       console.error('Theme change failed:', e);
       if (typeof __showFatal === 'function') __showFatal('theme', e);
@@ -2115,8 +2115,8 @@ function __renderTopNav(dayKey){
     const ids = (typeof THEMES === 'object' && THEMES) ? Object.keys(THEMES) : ['neonGlass'];
     const curId = st.themeId || 'neonGlass';
     const md = (st.mode === 'light') ? 'light' : 'dark';
-    const idx = Math.max(0, ids.indexOf(curId));
-    const nextId = ids[(idx + 1) % ids.length] || 'neonGlass';
+    const idx = ids.indexOf(curId);
+    const nextId = ids[(idx + 1 + ids.length) % ids.length] || 'neonGlass';
     __applyThemeSafe(nextId, md);
   }
 
@@ -2127,16 +2127,27 @@ function __renderTopNav(dayKey){
     __applyThemeSafe(curId, md);
   }
 
-  // Attach handlers in the most compatible way possible (Safari can be picky).
-  if (themeBtn) {
-    themeBtn.onclick = __cycleTheme;
-    themeBtn.addEventListener('click', __cycleTheme);
-  }
-  if (modeBtn) {
-    modeBtn.onclick = __toggleMode;
-    modeBtn.addEventListener('click', __toggleMode);
-  }
-  // --- End new theme/mode button logic ---
+  // Use event delegation so re-rendered headers always work and Safari doesn't get cute.
+  top.onclick = function(ev){
+    const t = ev && ev.target;
+    if (!t) return;
+
+    if (t.id === 'themeBtn') {
+      ev.preventDefault();
+      __cycleTheme();
+      return;
+    }
+    if (t.id === 'modeBtn') {
+      ev.preventDefault();
+      __toggleMode();
+      return;
+    }
+  };
+
+  // Also wire direct handlers in case something stops bubbling.
+  if (themeBtn) themeBtn.onclick = __cycleTheme;
+  if (modeBtn) modeBtn.onclick = __toggleMode;
+  // --- End Theme / Mode controls ---
 }
 
 function __renderDay(dayKey){
