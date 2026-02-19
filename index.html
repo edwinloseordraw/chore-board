@@ -93,17 +93,11 @@
       box-shadow: var(--neuOutShadowSoft);
     }
 
-            header button.active{
+    header button.active{
       background:var(--btnActive);
       color:#000;
       font-weight:800;
       border-color: rgba(0,0,0,0.25);
-    }
-
-    header button.active{
-      background:var(--btnActive);
-      color:#000;
-      font-weight:700;
     }
 
         header select{
@@ -1364,14 +1358,6 @@ const THEME_MEMBER_COLORS = {
   }
 };
 
-// --- DEBUG STAGE MARKER ---
-// If you can see this message in the UI, the script successfully executed up to this point.
-if (__appEl) {
-  __appEl.innerHTML = '<div style="padding:14px;max-width:920px;margin:14px auto;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.35);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">'
-    + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Debug: Stage A reached</div>'
-    + '<div style="font-size:13px;opacity:.9;line-height:1.35;">JavaScript executed through THEME_MEMBER_COLORS and is about to define THEMES.</div>'
-    + '</div>';
-}
 
 </script>
 
@@ -1474,14 +1460,6 @@ const THEMES = {
   }
 };
 
-// --- DEBUG STAGE MARKER ---
-// If you can see this message, THEMES parsed successfully.
-if (__appEl) {
-  __appEl.innerHTML = '<div style="padding:14px;max-width:920px;margin:14px auto;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.35);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">'
-    + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Debug: Stage B reached</div>'
-    + '<div style="font-size:13px;opacity:.9;line-height:1.35;">THEMES is now minimal (2 themes). If the app still fails later, it is not the theme blob.</div>'
-    + '</div>';
-}
 
 function loadThemeState(){
   const s = jget("themeState", { themeId: "neonGlass", mode: "dark" });
@@ -1492,6 +1470,13 @@ function loadThemeState(){
 }
 
 function saveThemeState(s){ jset("themeState", s); }
+// Member color persistence (local-only). Some older builds call these from applyTheme().
+function loadMemberColors(){
+  return jget('memberColors', {});
+}
+function saveMemberColors(obj){
+  jset('memberColors', obj || {});
+}
 
 function applyTheme(themeId, mode){
   const t = THEMES[themeId];
@@ -1531,14 +1516,6 @@ function themeLabel(themeId){
 </script>
 
 <script>
-// --- DEBUG STAGE MARKER ---
-// If you can see this message, everything through theme helpers parsed & executed.
-if (typeof __appEl !== 'undefined' && __appEl) {
-  __appEl.insertAdjacentHTML('beforeend', '<div style="margin-top:10px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:920px;margin-left:auto;margin-right:auto;">'
-    + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Debug: Stage C reached</div>'
-    + '<div style="font-size:13px;opacity:.9;line-height:1.35;">Now parsing the Routes/Constants/Data section (split into its own script tag).</div>'
-    + '</div>');
-}
 
 console.log('Debug: DATA script tag started');
 // Make DAYS/PEOPLE truly global (they were block-scoped inside a try{} and later code crashed).
@@ -1610,17 +1587,6 @@ function formatMMDDYYYY(d){
 </script>
 
 <script>
-// --- DEBUG STAGE MARKER ---
-// If you can see this message, ROUTES + CONSTANTS parsed successfully and we're entering DATA.
-if (typeof document !== 'undefined') {
-  const el = document.getElementById('app');
-  if (el) {
-    el.insertAdjacentHTML('beforeend', '<div style="margin-top:10px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:920px;margin-left:auto;margin-right:auto;">'
-      + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Debug: Stage D reached</div>'
-      + '<div style="font-size:13px;opacity:.9;line-height:1.35;">Now parsing the DATA section (daily schedule, helpers, weekly chores).</div>'
-      + '</div>');
-  }
-}
 
 </script>
 
@@ -1862,18 +1828,6 @@ const WEEKLY_CHORES = [
   "Wipe dining table"
 ];
 
-  console.log('Debug: Stage E reached (DATA parsed & executed)');
-  (function(){
-    try {
-      const html = '<div style="margin-top:10px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;max-width:920px;margin-left:auto;margin-right:auto;">'
-        + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Debug: Stage E reached</div>'
-        + '<div style="font-size:13px;opacity:.9;line-height:1.35;">DATA executed successfully. Next failure (if any) is in UI/render/state code after DATA.</div>'
-        + '</div>';
-      const el = document.getElementById('app');
-      if (el) el.insertAdjacentHTML('beforeend', html);
-      else document.body.insertAdjacentHTML('afterbegin', html);
-    } catch(_) {}
-  })();
 
 } catch (e) {
   console.error('Debug: DATA crashed', e);
@@ -1883,16 +1837,6 @@ const WEEKLY_CHORES = [
 </script>
 
 <script>
-console.log('Debug: Recovery script tag executed');
-(function(){
-  try {
-    const html = '<div style="margin:14px auto;max-width:920px;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">'
-      + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Recovery Mode enabled</div>'
-      + '<div style="font-size:13px;opacity:.9;line-height:1.35;">Minimal day-view renderer (local-only). Debug markers can be removed once the full UI is restored.</div>'
-      + '</div>';
-    document.body.insertAdjacentHTML('afterbegin', html);
-  } catch(_) {}
-})();
 
 // ------------------------------
 // Storage helpers (local-only)
