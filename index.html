@@ -1261,28 +1261,6 @@ window.addEventListener('unhandledrejection', (ev) => __showFatal('promise', ev)
    - When you're ready to re-enable sync, we can re-add Firebase behind a feature flag.
 ========================= */
 
-  // ------------------------------
-// Storage helpers (EARLY GUARD)
-// - Theme code can run before later helpers are parsed in a single-file app.
-// - Define guarded versions now to prevent ReferenceError in Safari.
-// ------------------------------
-if (typeof window.jget !== 'function') {
-  window.jget = function jget(key, fallback){
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw == null) return fallback;
-      return JSON.parse(raw);
-    } catch(_) {
-      return fallback;
-    }
-  };
-}
-if (typeof window.jset !== 'function') {
-  window.jset = function jset(key, value){
-    try { localStorage.setItem(key, JSON.stringify(value)); } catch(_) {}
-  };
-}
-  
 /* =========================
    THEME SYSTEM (Admin)
    - 5 preconfigured themes
@@ -1534,25 +1512,16 @@ function applyTheme(themeId, mode){
   if (!t) return;
   const vars = (mode === "light") ? t.light : t.dark;
 
-    Object.keys(vars).forEach(k => {
+  Object.keys(vars).forEach(k => {
     document.documentElement.style.setProperty(k, vars[k]);
   });
-
-  // Safari repaint nudge: gradients in CSS vars sometimes don't visually update unless we touch the real property.
-  if (document.body) {
-    document.body.style.background = vars["--bg"] || "var(--bg)";
-    document.body.style.color = vars["--text"] || "var(--text)";
-  }
-  const __top = document.getElementById('topNav');
-  if (__top) __top.style.background = vars["--headerBg"] || "var(--headerBg)";
 
   // match browser chrome on mobile
   const themeColor = (mode === "light") ? "#ffffff" : "#111111";
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", themeColor);
 
-  saveThemeState({ themeId, mode });   
-  console.log("Theme applied:", { themeId, mode });
+  saveThemeState({ themeId, mode });
 
   // Lock member colors to the selected theme (except Paper Clean)
   // IMPORTANT: set member colors BEFORE applying CSS vars so the UI updates immediately.
@@ -2448,18 +2417,20 @@ function __renderAdmin(){
   const dayKey = __currentRouteDayKey();
   __renderTopNav(dayKey);
 
+  // We are locking the theme to Neon Glass. Admin only controls:
+  // - Dark/Light mode
+  // - Member accent colors
   const themeState = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
-  const currentThemeId = themeState.themeId || 'neonGlass';
-  const isPaperClean = currentThemeId === 'paperClean';
+  const currentMode = (themeState && themeState.mode === 'light') ? 'light' : 'dark';
+
   const colors = getMemberColorsSafe();
 
   const colorRows = __PEOPLE_RECOVERY.map(p => {
     const c = colors[p] || getMemberColor(p);
-    const disabled = isPaperClean ? '' : 'disabled';
     return `
       <div class="adminRow">
         <div class="adminName">${__esc(p)}</div>
-        <input class="colorInput" type="color" data-mcolor="${__esc(p)}" value="${__esc(c)}" ${disabled} />
+        <input class="colorInput" type="color" data-mcolor="${__esc(p)}" value="${__esc(c)}" />
       </div>
     `;
   }).join('');
@@ -2467,16 +2438,15 @@ function __renderAdmin(){
   app.innerHTML = `
     <div class="panel">
       <h2>Admin</h2>
-      <div class="hint">Theme is controlled in the header. Member colors can be edited only in <b>Paper Clean</b> (other themes are locked to their preset colors).</div>
+      <div class="hint">Neon Glass is the default theme. Use this page to set member accent colors and switch between Dark and Light mode.</div>
 
-      <div class="themeGrid">
-        <div class="themeRow">
-          <label>Current Theme</label>
-          <div style="font-weight:900;">${__esc((typeof themeLabel === 'function') ? themeLabel(currentThemeId) : currentThemeId)}</div>
-        </div>
+      <div class="themeGrid" style="grid-template-columns: 1fr;">
         <div class="themeRow">
           <label>Mode</label>
-          <div style="font-weight:900;">${__esc(themeState.mode || 'dark')}</div>
+          <div class="modeBtns">
+            <button class="navBtn" id="adminModeDark" type="button">Dark</button>
+            <button class="navBtn" id="adminModeLight" type="button">Light</button>
+          </div>
         </div>
       </div>
 
@@ -2487,18 +2457,49 @@ function __renderAdmin(){
     </div>
   `;
 
-  // Wire color inputs (Paper Clean only)
-  if (isPaperClean) {
-    app.querySelectorAll('input[type="color"][data-mcolor]').forEach(inp => {
-      inp.addEventListener('input', () => {
-        const person = inp.getAttribute('data-mcolor');
-        const cur = getMemberColorsSafe();
-        cur[person] = inp.value;
-        saveMemberColors(cur);
-        applyMemberColorsToCSS();
-      });
-    });
+  // Set active state for mode buttons
+  const bDark = document.getElementById('adminModeDark');
+  const bLight = document.getElementById('adminModeLight');
+  if (bDark && bLight) {
+    if (currentMode === 'light') {
+      bLight.classList.add('active');
+      bDark.classList.remove('active');
+    } else {
+      bDark.classList.add('active');
+      bLight.classList.remove('active');
+    }
   }
+
+  // Wire mode toggles (locks themeId to neonGlass)
+  function setMode(md){
+    if (typeof applyTheme === 'function') {
+      try {
+        applyTheme('neonGlass', md);
+      } catch (e) {
+        console.error('Admin mode toggle failed:', e);
+        if (typeof __showFatal === 'function') __showFatal('admin-mode', e);
+      }
+    } else {
+      console.warn('applyTheme is not defined; cannot change mode');
+    }
+
+    // Re-render to reflect active button state
+    __renderAdmin();
+  }
+
+  if (bDark) bDark.addEventListener('click', () => setMode('dark'));
+  if (bLight) bLight.addEventListener('click', () => setMode('light'));
+
+  // Wire color inputs (always enabled)
+  app.querySelectorAll('input[type="color"][data-mcolor]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const person = inp.getAttribute('data-mcolor');
+      const cur = getMemberColorsSafe();
+      cur[person] = inp.value;
+      saveMemberColors(cur);
+      applyMemberColorsToCSS();
+    });
+  });
 }
 
 // ------------------------------
