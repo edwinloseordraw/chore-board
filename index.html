@@ -2103,40 +2103,38 @@ function __renderTopNav(dayKey){
       if (themeBtn) themeBtn.textContent = (typeof themeLabel === 'function') ? themeLabel(themeId) : themeId;
       if (modeBtn) modeBtn.textContent = (md === 'light') ? 'Light' : 'Dark';
 
-      // Force a re-render so the header reads fresh state from localStorage.
-      // (Fixes cases where Safari keeps stale DOM/handlers around.)
-      setTimeout(function(){
-        try { __renderRoute(); } catch(_) {}
-      }, 0);
-
+      // No forced rerender here. Rerenders were snapping state back in some builds.
     } catch (e) {
       console.error('Theme change failed:', e);
       if (typeof __showFatal === 'function') __showFatal('theme', e);
     }
   }
 
-  // Safari can be weird with styled <select>. Use buttons instead:
-  // - Theme button cycles through available themes
-  // - Mode button toggles light/dark
-  if (themeBtn) {
-    themeBtn.addEventListener('click', () => {
-      const st = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
-      const ids = (typeof THEMES === 'object' && THEMES) ? Object.keys(THEMES) : ['neonGlass'];
-      const curId = st.themeId || 'neonGlass';
-      const md = (st.mode === 'light') ? 'light' : 'dark';
-      const idx = Math.max(0, ids.indexOf(curId));
-      const nextId = ids[(idx + 1) % ids.length] || 'neonGlass';
-      __applyThemeSafe(nextId, md);
-    });
+  function __cycleTheme(){
+    const st = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
+    const ids = (typeof THEMES === 'object' && THEMES) ? Object.keys(THEMES) : ['neonGlass'];
+    const curId = st.themeId || 'neonGlass';
+    const md = (st.mode === 'light') ? 'light' : 'dark';
+    const idx = Math.max(0, ids.indexOf(curId));
+    const nextId = ids[(idx + 1) % ids.length] || 'neonGlass';
+    __applyThemeSafe(nextId, md);
   }
 
+  function __toggleMode(){
+    const st = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
+    const curId = st.themeId || 'neonGlass';
+    const md = (st.mode === 'light') ? 'dark' : 'light';
+    __applyThemeSafe(curId, md);
+  }
+
+  // Attach handlers in the most compatible way possible (Safari can be picky).
+  if (themeBtn) {
+    themeBtn.onclick = __cycleTheme;
+    themeBtn.addEventListener('click', __cycleTheme);
+  }
   if (modeBtn) {
-    modeBtn.addEventListener('click', () => {
-      const st = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
-      const curId = st.themeId || 'neonGlass';
-      const md = (st.mode === 'light') ? 'dark' : 'light';
-      __applyThemeSafe(curId, md);
-    });
+    modeBtn.onclick = __toggleMode;
+    modeBtn.addEventListener('click', __toggleMode);
   }
   // --- End new theme/mode button logic ---
 }
