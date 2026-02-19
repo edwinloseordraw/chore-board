@@ -1523,10 +1523,8 @@ function applyTheme(themeId, mode){
 
   saveThemeState({ themeId, mode });
 
-  // Apply member colors as CSS variables for UI accents
-  applyMemberColorsToCSS();
-
   // Lock member colors to the selected theme (except Paper Clean)
+  // IMPORTANT: set member colors BEFORE applying CSS vars so the UI updates immediately.
   if (themeId !== "paperClean") {
     const preset = THEME_MEMBER_COLORS[themeId];
     if (preset) {
@@ -1536,9 +1534,18 @@ function applyTheme(themeId, mode){
     // Ensure member colors exist when returning to Paper Clean
     const current = loadMemberColors() || {};
     const ppl = (typeof window !== 'undefined' && Array.isArray(window.PEOPLE)) ? window.PEOPLE : ["Dad","Mom","Ethan","Celo"];
-    ppl.forEach(p => { if (!current[p]) current[p] = (THEME_MEMBER_COLORS.paperClean && THEME_MEMBER_COLORS.paperClean[p]) ? THEME_MEMBER_COLORS.paperClean[p] : "#ffffff"; });
+    ppl.forEach(p => {
+      if (!current[p]) {
+        current[p] = (THEME_MEMBER_COLORS.paperClean && THEME_MEMBER_COLORS.paperClean[p])
+          ? THEME_MEMBER_COLORS.paperClean[p]
+          : "#ffffff";
+      }
+    });
     saveMemberColors(current);
   }
+
+  // Apply member colors as CSS variables for UI accents
+  applyMemberColorsToCSS();
 }
 // Ensure member color CSS vars are applied on load as well
 applyMemberColorsToCSS();
@@ -2101,7 +2108,25 @@ function __renderTopNav(dayKey){
   __wireThemeControl(themeSel);
   __wireThemeControl(modeSel);
 
+  // Global fallback: if the header re-renders or an event fails to bind,
+  // catch theme changes at the document level.
+  if (!window.__themeGlobalListenerAttached) {
+    window.__themeGlobalListenerAttached = true;
+    const handler = (ev) => {
+      const t = ev && ev.target;
+      if (!t) return;
+      if (t.id === 'themeSelect' || t.id === 'modeSelect') {
+        try { applyFromHeader(); } catch(_) {}
+      }
+    };
+    document.addEventListener('change', handler, true);
+    document.addEventListener('input', handler, true);
+    document.addEventListener('pointerup', handler, true);
+  }
+
   function applyFromHeader(){
+    // Safari can sometimes be weird about firing change events on styled selects.
+    // Always re-read the DOM values at the moment we apply.
     const tid = themeSel ? themeSel.value : (themeState.themeId || 'neonGlass');
     const md = modeSel ? modeSel.value : (themeState.mode || 'dark');
 
