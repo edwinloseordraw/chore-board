@@ -2058,14 +2058,8 @@ function __renderTopNav(dayKey){
 
     <div class="spacer"></div>
 
-    <select id="themeSelect" aria-label="Theme">
-      ${themeOptions}
-    </select>
-
-    <select id="modeSelect" aria-label="Mode">
-      <option value="dark" ${mode === 'dark' ? 'selected' : ''}>Dark</option>
-      <option value="light" ${mode === 'light' ? 'selected' : ''}>Light</option>
-    </select>
+    <button class="navBtn" id="themeBtn" type="button">${__esc((typeof themeLabel === 'function') ? themeLabel(themeState.themeId || 'neonGlass') : (themeState.themeId || 'neonGlass'))}</button>
+    <button class="navBtn" id="modeBtn" type="button">${__esc((mode === 'light') ? 'Light' : 'Dark')}</button>
 
     <button class="navBtn" id="resetDay" type="button">Reset Day</button>
   `;
@@ -2092,59 +2086,51 @@ function __renderTopNav(dayKey){
     __renderDay(dayKey);
   });
 
-  const themeSel = document.getElementById('themeSelect');
-  const modeSel = document.getElementById('modeSelect');
+  // --- Begin new theme/mode button logic ---
+  const themeBtn = document.getElementById('themeBtn');
+  const modeBtn = document.getElementById('modeBtn');
 
-  // Wire theme controls directly (Safari can be picky).
-  // We listen to BOTH `change` and `input` to catch different browser behaviors.
-  function __wireThemeControl(el){
-    if (!el) return;
-    el.addEventListener('change', applyFromHeader);
-    el.addEventListener('input', applyFromHeader);
-    // Fallback: if the UI opens/closes without firing change reliably, a pointer-up often does.
-    el.addEventListener('pointerup', () => { setTimeout(applyFromHeader, 0); });
-    el.addEventListener('click', () => { try{ el.focus(); }catch(_){} });
-  }
-  __wireThemeControl(themeSel);
-  __wireThemeControl(modeSel);
-
-  // Global fallback: if the header re-renders or an event fails to bind,
-  // catch theme changes at the document level.
-  if (!window.__themeGlobalListenerAttached) {
-    window.__themeGlobalListenerAttached = true;
-    const handler = (ev) => {
-      const t = ev && ev.target;
-      if (!t) return;
-      if (t.id === 'themeSelect' || t.id === 'modeSelect') {
-        try { applyFromHeader(); } catch(_) {}
-      }
-    };
-    document.addEventListener('change', handler, true);
-    document.addEventListener('input', handler, true);
-    document.addEventListener('pointerup', handler, true);
-  }
-
-  function applyFromHeader(){
-    // Safari can sometimes be weird about firing change events on styled selects.
-    // Always re-read the DOM values at the moment we apply.
-    const tid = themeSel ? themeSel.value : (themeState.themeId || 'neonGlass');
-    const md = modeSel ? modeSel.value : (themeState.mode || 'dark');
-
+  function __applyThemeSafe(themeId, md){
     if (typeof applyTheme !== 'function') {
       console.warn('applyTheme is not defined, cannot change theme');
       return;
     }
-
     try {
-      console.log('Theme change requested:', tid, md);
-      // Debug: confirm the selects actually have the values we think they do.
-      console.log('Theme control values:', { theme: tid, mode: md, themeSel: !!themeSel, modeSel: !!modeSel });
-      applyTheme(tid, md);
+      console.log('Theme change requested:', themeId, md);
+      applyTheme(themeId, md);
+      // Update button labels to reflect the new state
+      if (themeBtn) themeBtn.textContent = (typeof themeLabel === 'function') ? themeLabel(themeId) : themeId;
+      if (modeBtn) modeBtn.textContent = (md === 'light') ? 'Light' : 'Dark';
     } catch (e) {
       console.error('Theme change failed:', e);
       if (typeof __showFatal === 'function') __showFatal('theme', e);
     }
   }
+
+  // Safari can be weird with styled <select>. Use buttons instead:
+  // - Theme button cycles through available themes
+  // - Mode button toggles light/dark
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      const st = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
+      const ids = (typeof THEMES === 'object' && THEMES) ? Object.keys(THEMES) : ['neonGlass'];
+      const curId = st.themeId || 'neonGlass';
+      const md = (st.mode === 'light') ? 'light' : 'dark';
+      const idx = Math.max(0, ids.indexOf(curId));
+      const nextId = ids[(idx + 1) % ids.length] || 'neonGlass';
+      __applyThemeSafe(nextId, md);
+    });
+  }
+
+  if (modeBtn) {
+    modeBtn.addEventListener('click', () => {
+      const st = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
+      const curId = st.themeId || 'neonGlass';
+      const md = (st.mode === 'light') ? 'dark' : 'light';
+      __applyThemeSafe(curId, md);
+    });
+  }
+  // --- End new theme/mode button logic ---
 }
 
 function __renderDay(dayKey){
