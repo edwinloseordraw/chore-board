@@ -1261,6 +1261,28 @@ window.addEventListener('unhandledrejection', (ev) => __showFatal('promise', ev)
    - When you're ready to re-enable sync, we can re-add Firebase behind a feature flag.
 ========================= */
 
+  // ------------------------------
+// Storage helpers (EARLY GUARD)
+// - Theme code can run before later helpers are parsed in a single-file app.
+// - Define guarded versions now to prevent ReferenceError in Safari.
+// ------------------------------
+if (typeof window.jget !== 'function') {
+  window.jget = function jget(key, fallback){
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw == null) return fallback;
+      return JSON.parse(raw);
+    } catch(_) {
+      return fallback;
+    }
+  };
+}
+if (typeof window.jset !== 'function') {
+  window.jset = function jset(key, value){
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch(_) {}
+  };
+}
+  
 /* =========================
    THEME SYSTEM (Admin)
    - 5 preconfigured themes
@@ -1521,7 +1543,8 @@ function applyTheme(themeId, mode){
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", themeColor);
 
-  saveThemeState({ themeId, mode });
+  saveThemeState({ themeId, mode });   
+  console.log("Theme applied:", { themeId, mode });
 
   // Lock member colors to the selected theme (except Paper Clean)
   // IMPORTANT: set member colors BEFORE applying CSS vars so the UI updates immediately.
