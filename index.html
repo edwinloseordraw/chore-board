@@ -615,6 +615,7 @@
 
       /* Let content define height. Grid can still stretch columns evenly without forcing extra blank space. */
       min-height: 0;
+      border-top: 4px solid rgba(255,255,255,0.12);
     }
 
     /* Day header (day name + date) */
@@ -1478,6 +1479,34 @@ function saveMemberColors(obj){
   jset('memberColors', obj || {});
 }
 
+function getMemberColorsSafe(){
+  try {
+    const mc = loadMemberColors && loadMemberColors();
+    return (mc && typeof mc === 'object') ? mc : {};
+  } catch(_) {
+    return {};
+  }
+}
+
+function getMemberColor(person){
+  const mc = getMemberColorsSafe();
+  if (mc && mc[person]) return mc[person];
+  // fallback to neonGlass preset if missing
+  const fallback = (THEME_MEMBER_COLORS && THEME_MEMBER_COLORS.neonGlass && THEME_MEMBER_COLORS.neonGlass[person]) ? THEME_MEMBER_COLORS.neonGlass[person] : '#22f0b6';
+  return fallback;
+}
+
+function applyMemberColorsToCSS(){
+  try {
+    const mc = getMemberColorsSafe();
+    const ppl = (typeof window !== 'undefined' && Array.isArray(window.PEOPLE)) ? window.PEOPLE : ["Dad","Mom","Ethan","Celo"];
+    ppl.forEach(p => {
+      const val = mc[p] || getMemberColor(p);
+      document.documentElement.style.setProperty(`--member-${p.toLowerCase()}`, val);
+    });
+  } catch(_) {}
+}
+
 function applyTheme(themeId, mode){
   const t = THEMES[themeId];
   if (!t) return;
@@ -1494,6 +1523,9 @@ function applyTheme(themeId, mode){
 
   saveThemeState({ themeId, mode });
 
+  // Apply member colors as CSS variables for UI accents
+  applyMemberColorsToCSS();
+
   // Lock member colors to the selected theme (except Paper Clean)
   if (themeId !== "paperClean") {
     const preset = THEME_MEMBER_COLORS[themeId];
@@ -1508,6 +1540,8 @@ function applyTheme(themeId, mode){
     saveMemberColors(current);
   }
 }
+// Ensure member color CSS vars are applied on load as well
+applyMemberColorsToCSS();
 
 function themeLabel(themeId){
   return THEMES[themeId] ? THEMES[themeId].name : themeId;
@@ -2103,7 +2137,7 @@ function __renderDay(dayKey){
     }).join('');
 
     return `
-      <section class="column">
+      <section class="column" style="border-top:4px solid ${__esc(getMemberColor(p))};">
         <div class="dayHeaderBar">
           <h2 class="dayTitle">${__esc(p)}</h2>
           <div class="dayDate">${__esc(dateStr)}</div>
@@ -2170,7 +2204,7 @@ function __renderDashboard(){
           <div class="pct">${pctx}%</div>
           <svg viewBox="0 0 120 120" width="128" height="128" aria-hidden="true">
             <circle cx="60" cy="60" r="46" fill="none" stroke="var(--ringTrack)" stroke-width="12" class="chalkTrack" />
-            <circle cx="60" cy="60" r="46" fill="none" stroke="var(--btnActive)" stroke-width="12" stroke-linecap="round"
+            <circle cx="60" cy="60" r="46" fill="none" stroke="${__esc(getMemberColor(p))}" stroke-width="12" stroke-linecap="round"
               stroke-dasharray="${Math.round(2*Math.PI*46)}" stroke-dashoffset="${Math.round((1-(pctx/100))*2*Math.PI*46)}" class="chalkStroke" />
           </svg>
         </div>
@@ -2324,24 +2358,57 @@ function __renderAdmin(){
   const dayKey = __currentRouteDayKey();
   __renderTopNav(dayKey);
 
-  const s = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
+  const themeState = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
+  const currentThemeId = themeState.themeId || 'neonGlass';
+  const isPaperClean = currentThemeId === 'paperClean';
+  const colors = getMemberColorsSafe();
+
+  const colorRows = __PEOPLE_RECOVERY.map(p => {
+    const c = colors[p] || getMemberColor(p);
+    const disabled = isPaperClean ? '' : 'disabled';
+    return `
+      <div class="adminRow">
+        <div class="adminName">${__esc(p)}</div>
+        <input class="colorInput" type="color" data-mcolor="${__esc(p)}" value="${__esc(c)}" ${disabled} />
+      </div>
+    `;
+  }).join('');
 
   app.innerHTML = `
     <div class="panel">
       <h2>Admin</h2>
-      <div class="hint">Recovery Admin: theme is controlled from the header for now. Member color editing and avatars can be restored once the full UI is stable.</div>
+      <div class="hint">Theme is controlled in the header. Member colors can be edited only in <b>Paper Clean</b> (other themes are locked to their preset colors).</div>
+
       <div class="themeGrid">
         <div class="themeRow">
           <label>Current Theme</label>
-          <div style="font-weight:900;">${__esc((typeof themeLabel === 'function') ? themeLabel(s.themeId) : s.themeId)}</div>
+          <div style="font-weight:900;">${__esc((typeof themeLabel === 'function') ? themeLabel(currentThemeId) : currentThemeId)}</div>
         </div>
         <div class="themeRow">
           <label>Mode</label>
-          <div style="font-weight:900;">${__esc(s.mode || 'dark')}</div>
+          <div style="font-weight:900;">${__esc(themeState.mode || 'dark')}</div>
         </div>
       </div>
+
+      <div style="margin-top:10px;"></div>
+      <h3 style="margin:0 0 8px 0;">Member Colors</h3>
+      <div class="hint" style="margin-top:-2px;">These colors drive the accent border on each person’s column and their ring on the Dashboard.</div>
+      <div class="adminGrid">${colorRows}</div>
     </div>
   `;
+
+  // Wire color inputs (Paper Clean only)
+  if (isPaperClean) {
+    app.querySelectorAll('input[type="color"][data-mcolor]').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const person = inp.getAttribute('data-mcolor');
+        const cur = getMemberColorsSafe();
+        cur[person] = inp.value;
+        saveMemberColors(cur);
+        applyMemberColorsToCSS();
+      });
+    });
+  }
 }
 
 // ------------------------------
