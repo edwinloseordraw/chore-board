@@ -2096,11 +2096,19 @@ function __renderTopNav(dayKey){
       return;
     }
     try {
-      console.log('Theme change requested:', themeId, md);
+      console.log('Theme change requested:', { themeId, mode: md });
       applyTheme(themeId, md);
+
       // Update button labels to reflect the new state
       if (themeBtn) themeBtn.textContent = (typeof themeLabel === 'function') ? themeLabel(themeId) : themeId;
       if (modeBtn) modeBtn.textContent = (md === 'light') ? 'Light' : 'Dark';
+
+      // Force a re-render so the header reads fresh state from localStorage.
+      // (Fixes cases where Safari keeps stale DOM/handlers around.)
+      setTimeout(function(){
+        try { __renderRoute(); } catch(_) {}
+      }, 0);
+
     } catch (e) {
       console.error('Theme change failed:', e);
       if (typeof __showFatal === 'function') __showFatal('theme', e);
