@@ -1547,8 +1547,19 @@ function applyTheme(themeId, mode){
   // Apply member colors as CSS variables for UI accents
   applyMemberColorsToCSS();
 }
-// Ensure member color CSS vars are applied on load as well
-applyMemberColorsToCSS();
+// Ensure member color CSS vars are applied on load as well.
+// NOTE: `jget/jset` are defined later in this file, so calling immediately can crash the theme script.
+(function(){
+  function safeApply(){
+    try { applyMemberColorsToCSS(); } catch(_) {}
+  }
+  // If storage helpers exist already, apply now; otherwise wait until DOMContentLoaded.
+  if (typeof window.jget === 'function') {
+    safeApply();
+  } else {
+    window.addEventListener('DOMContentLoaded', safeApply);
+  }
+})();
 
 function themeLabel(themeId){
   return THEMES[themeId] ? THEMES[themeId].name : themeId;
