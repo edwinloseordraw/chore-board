@@ -2344,6 +2344,26 @@ function __renderAdmin(){
   `;
 }
 
+// ------------------------------
+// Maintenance (local-only)
+// ------------------------------
+function __maintStorageKey(){
+  return 'maintenance::items';
+}
+
+function __loadMaintenance(){
+  const v = jget(__maintStorageKey(), []);
+  return Array.isArray(v) ? v : [];
+}
+
+function __saveMaintenance(items){
+  jset(__maintStorageKey(), Array.isArray(items) ? items : []);
+}
+
+function __uuid(){
+  return 'm_' + Math.random().toString(16).slice(2) + '_' + Date.now();
+}
+
 function __renderMaintenance(){
   const app = document.getElementById('app');
   if (!app) return;
@@ -2351,12 +2371,142 @@ function __renderMaintenance(){
   const dayKey = __currentRouteDayKey();
   __renderTopNav(dayKey);
 
+  const items = __loadMaintenance();
+
+  const rows = items.map(it => {
+    const done = !!it.done;
+    const who = it.assignee || '';
+    const interval = it.interval || 'Monthly';
+    const created = it.createdAt ? new Date(it.createdAt) : null;
+    const createdStr = created ? created.toLocaleDateString() : '';
+
+    const subBits = [];
+    if (interval) subBits.push(interval);
+    if (who) subBits.push(who);
+    if (createdStr) subBits.push('Added ' + createdStr);
+
+    return `
+      <div class="maintRow" data-mid="${__esc(it.id)}">
+        <div style="min-width:0;">
+          <div class="maintTask">${__esc(it.text || '')}</div>
+          <div class="maintSub">${__esc(subBits.filter(Boolean).join(' • '))}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex:0 0 auto;">
+          <label class="choreLabel" style="padding:6px 10px;box-shadow: var(--neuOutShadowSoft);">
+            <input type="checkbox" data-mdone="${__esc(it.id)}" ${done ? 'checked' : ''} />
+            <span style="flex:0 0 auto;">Done</span>
+          </label>
+          <button class="ghost" type="button" data-mremove="${__esc(it.id)}">Remove</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const peopleOpts = ['','Dad','Mom','Ethan','Celo'].map(p => {
+    const label = p ? p : 'Unassigned';
+    return `<option value="${__esc(p)}">${__esc(label)}</option>`;
+  }).join('');
+
+  const intervalOpts = ['Weekly','Biweekly','Monthly','Quarterly','Yearly','Once'].map(v => {
+    return `<option value="${__esc(v)}">${__esc(v)}</option>`;
+  }).join('');
+
   app.innerHTML = `
     <div class="panel">
-      <h2>Maintenance</h2>
-      <div class="hint">Placeholder while we restore the full UI. Day pages, Dashboard, and Weekly are the current priorities.</div>
+      <div class="toolbar">
+        <div class="left">
+          <h2 style="margin:0;">Maintenance</h2>
+          <div class="hint" style="margin:0;">Local-only for now. This is the real list (not a placeholder). Add tasks you want tracked over time.</div>
+        </div>
+        <div class="right">
+          <button class="navBtn danger" id="resetMaintenance" type="button">Reset Maintenance</button>
+        </div>
+      </div>
+
+      <div class="maintForm" style="margin-top:10px;">
+        <div class="field">
+          <label>Task</label>
+          <input id="mTask" type="text" placeholder="e.g., Replace AC filter" />
+        </div>
+
+        <div class="field">
+          <label>Interval</label>
+          <select id="mInterval">
+            ${intervalOpts}
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Assignee</label>
+          <select id="mAssignee">
+            ${peopleOpts}
+          </select>
+        </div>
+
+        <div class="actions">
+          <button class="navBtn" id="mAdd" type="button">Add</button>
+        </div>
+      </div>
+
+      <div class="maintList" style="margin-top:12px;">
+        ${rows || '<div class="hint">No maintenance tasks yet. Add one above.</div>'}
+      </div>
     </div>
   `;
+
+  const addBtn = document.getElementById('mAdd');
+  const taskEl = document.getElementById('mTask');
+  const intervalEl = document.getElementById('mInterval');
+  const whoEl = document.getElementById('mAssignee');
+
+  function add(){
+    const text = (taskEl && taskEl.value) ? taskEl.value.trim() : '';
+    if (!text) return;
+    const it = {
+      id: __uuid(),
+      text,
+      interval: intervalEl ? intervalEl.value : 'Monthly',
+      assignee: whoEl ? whoEl.value : '',
+      createdAt: Date.now(),
+      done: false
+    };
+    const cur = __loadMaintenance();
+    cur.unshift(it);
+    __saveMaintenance(cur);
+    __renderMaintenance();
+  }
+
+  if (addBtn) addBtn.addEventListener('click', add);
+  if (taskEl) taskEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') add();
+  });
+
+  app.querySelectorAll('input[type="checkbox"][data-mdone]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const id = cb.getAttribute('data-mdone');
+      const cur = __loadMaintenance();
+      const idx = cur.findIndex(x => x && x.id === id);
+      if (idx >= 0) {
+        cur[idx].done = !!cb.checked;
+        __saveMaintenance(cur);
+      }
+    });
+  });
+
+  app.querySelectorAll('button[data-mremove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-mremove');
+      const cur = __loadMaintenance().filter(x => x && x.id !== id);
+      __saveMaintenance(cur);
+      __renderMaintenance();
+    });
+  });
+
+  const resetBtn = document.getElementById('resetMaintenance');
+  if (resetBtn) resetBtn.addEventListener('click', () => {
+    __saveMaintenance([]);
+    __renderMaintenance();
+  });
 }
 
 function __renderRoute(){
