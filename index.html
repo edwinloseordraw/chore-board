@@ -2675,8 +2675,71 @@ function __renderMaintenance(){
     __renderMaintenance();
   }
 
+
   if (addBtn) addBtn.addEventListener('click', add);
   if (taskEl) taskEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      add();
+    }
+  });
+
+  // Done toggles
+  app.querySelectorAll('input[type="checkbox"][data-mdone]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const id = cb.getAttribute('data-mdone');
+      const cur = __loadMaintenance();
+      const idx = cur.findIndex(x => x && x.id === id);
+      if (idx >= 0) {
+        cur[idx].done = !!cb.checked;
+        __saveMaintenance(cur);
+      }
+    });
+  });
+
+  // Assignee updates
+  app.querySelectorAll('select[data-massign]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const id = sel.getAttribute('data-massign');
+      const cur = __loadMaintenance();
+      const idx = cur.findIndex(x => x && x.id === id);
+      if (idx >= 0) {
+        cur[idx].assignee = sel.value || '';
+        __saveMaintenance(cur);
+      }
+    });
+  });
+
+  // Interval updates
+  app.querySelectorAll('select[data-minterval]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const id = sel.getAttribute('data-minterval');
+      const cur = __loadMaintenance();
+      const idx = cur.findIndex(x => x && x.id === id);
+      if (idx >= 0) {
+        cur[idx].interval = sel.value || 'Monthly';
+        __saveMaintenance(cur);
+      }
+    });
+  });
+
+  // Remove row
+  app.querySelectorAll('button[data-mremove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-mremove');
+      const cur = __loadMaintenance().filter(x => x && x.id !== id);
+      __saveMaintenance(cur);
+      __renderMaintenance();
+    });
+  });
+
+  // Reset maintenance
+  const resetBtn = document.getElementById('resetMaintenance');
+  if (resetBtn) resetBtn.addEventListener('click', () => {
+    __saveMaintenance([]);
+    __renderMaintenance();
+  });
+}
     if (e.key === 'Enter') {
       e.preventDefault();
       add();
