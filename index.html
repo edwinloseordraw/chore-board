@@ -2626,14 +2626,15 @@ function renderTopNav(){
   label.style.fontSize = "13px";
   label.style.opacity = "0.8";
   label.style.whiteSpace = "nowrap";
-  label.textContent = (r === "dashboard") ? "Dashboard" :
-    (r === "biweekly") ? "Bi-weekly" :
-    (r === "monthly") ? "Monthly" :
-    (r === "maintenance") ? "Maintenance" :
-    (r === "admin") ? "Admin" :
-    (isDayRoute && isTodayView) ? `Hoy • ${today}` :
-    (DAYS.includes(r)) ? `${r}` :
-    (r === "hoy") ? `Hoy • ${today}` : "";
+  let lbl = "";
+  if (r === "dashboard") lbl = "Dashboard";
+  else if (r === "biweekly") lbl = "Bi-weekly";
+  else if (r === "monthly") lbl = "Monthly";
+  else if (r === "maintenance") lbl = "Maintenance";
+  else if (r === "admin") lbl = "Admin";
+  else if (r === "hoy") lbl = `Hoy • ${today}`;
+  else if (DAYS.includes(r)) lbl = (r === today) ? `Hoy • ${today}` : r;
+  label.textContent = lbl;
   nav.appendChild(label);
 
   // Spacer (keeps header layout stable)
