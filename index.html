@@ -1508,6 +1508,9 @@ function applyMemberColorsToCSS(){
 }
 
 function applyTheme(themeId, mode){
+  // Neon Glass is the only theme now. Ignore any other themeId.
+  themeId = 'neonGlass';
+  
   const t = THEMES[themeId];
   if (!t) return;
   const vars = (mode === "light") ? t.light : t.dark;
@@ -2069,7 +2072,6 @@ function __renderTopNav(dayKey){
 
     <div class="spacer"></div>
 
-    <button class="navBtn" id="themeBtn" type="button">${__esc((typeof themeLabel === 'function') ? themeLabel(themeState.themeId || 'neonGlass') : (themeState.themeId || 'neonGlass'))}</button>
     <button class="navBtn" id="modeBtn" type="button">${__esc((mode === 'light') ? 'Light' : 'Dark')}</button>
 
     <button class="navBtn" id="resetDay" type="button">Reset Day</button>
@@ -2097,57 +2099,34 @@ function __renderTopNav(dayKey){
     __renderDay(dayKey);
   });
 
-  // --- Theme / Mode controls (robust click handling) ---
-  const themeBtn = document.getElementById('themeBtn');
+  // --- Mode control (Neon Glass is locked as the only theme) ---
   const modeBtn = document.getElementById('modeBtn');
 
-  function __applyThemeSafe(themeId, md){
+  function __applyModeSafe(md){
     if (typeof applyTheme !== 'function') {
-      console.warn('applyTheme is not defined, cannot change theme');
+      console.warn('applyTheme is not defined, cannot change mode');
       return;
     }
     try {
-      console.log('Theme change requested:', { themeId, mode: md });
-      applyTheme(themeId, md);
-
-      // Update button labels to reflect the new state
-      if (themeBtn) themeBtn.textContent = (typeof themeLabel === 'function') ? themeLabel(themeId) : themeId;
+      console.log('Mode change requested:', { themeId: 'neonGlass', mode: md });
+      applyTheme('neonGlass', md);
       if (modeBtn) modeBtn.textContent = (md === 'light') ? 'Light' : 'Dark';
-
-      // Persisted theme state should be read on the next render; we do not force navigation.
     } catch (e) {
-      console.error('Theme change failed:', e);
-      if (typeof __showFatal === 'function') __showFatal('theme', e);
+      console.error('Mode change failed:', e);
+      if (typeof __showFatal === 'function') __showFatal('mode', e);
     }
-  }
-
-  function __cycleTheme(){
-    const st = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
-    const ids = (typeof THEMES === 'object' && THEMES) ? Object.keys(THEMES) : ['neonGlass'];
-    const curId = st.themeId || 'neonGlass';
-    const md = (st.mode === 'light') ? 'light' : 'dark';
-    const idx = ids.indexOf(curId);
-    const nextId = ids[(idx + 1 + ids.length) % ids.length] || 'neonGlass';
-    __applyThemeSafe(nextId, md);
   }
 
   function __toggleMode(){
     const st = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
-    const curId = st.themeId || 'neonGlass';
     const md = (st.mode === 'light') ? 'dark' : 'light';
-    __applyThemeSafe(curId, md);
+    __applyModeSafe(md);
   }
 
-  // Use event delegation so re-rendered headers always work and Safari doesn't get cute.
+  // Event delegation so re-rendered headers always work.
   top.onclick = function(ev){
     const t = ev && ev.target;
     if (!t) return;
-
-    if (t.id === 'themeBtn') {
-      ev.preventDefault();
-      __cycleTheme();
-      return;
-    }
     if (t.id === 'modeBtn') {
       ev.preventDefault();
       __toggleMode();
@@ -2155,10 +2134,8 @@ function __renderTopNav(dayKey){
     }
   };
 
-  // Also wire direct handlers in case something stops bubbling.
-  if (themeBtn) themeBtn.onclick = __cycleTheme;
   if (modeBtn) modeBtn.onclick = __toggleMode;
-  // --- End Theme / Mode controls ---
+  // --- End Mode control ---
 }
 
 function __renderDay(dayKey){
