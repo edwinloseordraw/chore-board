@@ -685,7 +685,7 @@
 
     .weeklyItem{
       display:grid;
-      grid-template-columns:18px 1fr 120px;
+      grid-template-columns:18px minmax(0, 1fr) 130px;
       align-items:center;
       gap:8px;
       background:var(--panel3);
@@ -700,7 +700,7 @@
       font-size:13px;
       opacity:0.95;
       line-height:1.15;
-      word-break:break-word;
+      overflow-wrap:anywhere;
     }
 
         .weeklyItem select{
@@ -710,7 +710,7 @@
       border-radius:10px;
       padding:6px 8px;
       font-size:13px;
-      width:120px;
+      width:130px;
     }
 
     /* Yesterday summary */
@@ -1526,28 +1526,8 @@ function applyTheme(themeId, mode){
 
   saveThemeState({ themeId, mode });
 
-  // Lock member colors to the selected theme (except Paper Clean)
-  // IMPORTANT: set member colors BEFORE applying CSS vars so the UI updates immediately.
-  if (themeId !== "paperClean") {
-    const preset = THEME_MEMBER_COLORS[themeId];
-    if (preset) {
-      saveMemberColors({ ...preset });
-    }
-  } else {
-    // Ensure member colors exist when returning to Paper Clean
-    const current = loadMemberColors() || {};
-    const ppl = (typeof window !== 'undefined' && Array.isArray(window.PEOPLE)) ? window.PEOPLE : ["Dad","Mom","Ethan","Celo"];
-    ppl.forEach(p => {
-      if (!current[p]) {
-        current[p] = (THEME_MEMBER_COLORS.paperClean && THEME_MEMBER_COLORS.paperClean[p])
-          ? THEME_MEMBER_COLORS.paperClean[p]
-          : "#ffffff";
-      }
-    });
-    saveMemberColors(current);
-  }
-
-  // Apply member colors as CSS variables for UI accents
+  // Do NOT overwrite custom member colors when switching Dark/Light.
+  // Just re-apply whatever is saved in localStorage.
   applyMemberColorsToCSS();
 }
 // Ensure member color CSS vars are applied on load as well.
@@ -1572,7 +1552,6 @@ function themeLabel(themeId){
 
 <script>
 
-console.log('Debug: DATA script tag started');
 // Make DAYS/PEOPLE truly global (they were block-scoped inside a try{} and later code crashed).
 var DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
 var PEOPLE = ["Dad","Mom","Ethan","Celo"];
@@ -1633,7 +1612,6 @@ function formatMMDDYYYY(d){
   return `${mm}-${dd}-${yyyy}`;
 }
 
-  console.log('Debug: Routes + Constants reached end');
 } catch (e) {
   console.error('Debug: Routes + Constants crashed', e);
   if (typeof __showFatal === 'function') __showFatal('routes/constants', e);
