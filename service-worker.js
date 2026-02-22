@@ -1,4 +1,4 @@
-const CACHE_NAME = "chore-board-v1";
+const CACHE_NAME = "chore-board-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -25,11 +25,17 @@ self.addEventListener("fetch", (event) => {
   // Network-first for HTML so updates deploy cleanly, cache fallback for hiccups.
   const request = event.request;
 
+  // Always fetch latest school calendar image (do NOT cache month.png)
+  if (request.method === "GET" && request.url.includes("month.png")) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   event.respondWith(
     fetch(request)
       .then((response) => {
         // Save a copy of successful GETs in cache
-        if (request.method === "GET") {
+        if (request.method === "GET" && !request.url.includes("month.png")) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
         }
