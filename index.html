@@ -2544,7 +2544,9 @@ function normItemText(t){
   return (t || "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-
+/* =========================
+   NAV + ROUTING
+========================= */
 
 function route(){
   // Normalize: supports "#/dashboard", "#dashboard", "#//dashboard", etc.
@@ -2705,9 +2707,6 @@ function renderTopNav(){
 
   // Hoy (simple)
   sideNav.appendChild(navBtn("Hoy", "hoy", (r === "hoy" || DAYS.includes(r))));
-
-  // Celo's School
-  sideNav.appendChild(navBtn("Celo's School", "celos-school", r === "celos-school"));
 
   // Dashboard
   sideNav.appendChild(navBtn("Dashboard", "dashboard", r === "dashboard"));
@@ -4088,7 +4087,6 @@ function renderApp(){
     saveDashState(dash);
     return renderDashboard();
   }
-  if (r === "celos-school") return renderCeloSchool();
   if (r === "biweekly") return renderChecklistPage("biweekly");
   if (r === "monthly") return renderChecklistPage("monthly");
   if (r === "maintenance") return renderMaintenance();
