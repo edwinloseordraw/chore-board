@@ -2544,6 +2544,55 @@ function normItemText(t){
   return (t || "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
+
+/* =========================
+   CELO'S SCHOOL CALENDAR
+   - Stored inline so the app stays single-file/offline-friendly.
+   - When you get a new calendar each month, replace the DATA URL below.
+========================= */
+
+// Replace this value when you have the new month calendar.
+// Tip: keep it as a single line.
+const CELO_SCHOOL_CALENDAR = {
+  title: "Celo's School",
+  monthLabel: "February",
+  // TODO: Replace with the new calendar image data URL each month.
+  // Format: "data:image/png;base64,AAAA..."
+  imgDataUrl: ""
+};
+
+function renderCeloSchool(){
+  const app = document.getElementById("app");
+
+  const hasImg = !!(CELO_SCHOOL_CALENDAR.imgDataUrl && CELO_SCHOOL_CALENDAR.imgDataUrl.startsWith("data:image"));
+
+  app.innerHTML = `
+    <section class="panel">
+      <div class="toolbar">
+        <div class="left">
+          <h2 style="margin:0;">${escapeHtml(CELO_SCHOOL_CALENDAR.title)}</h2>
+          <div class="hint" style="margin:6px 0 0 0;">Current event calendar: ${escapeHtml(CELO_SCHOOL_CALENDAR.monthLabel)}</div>
+        </div>
+      </div>
+
+      ${hasImg ? `
+        <div class="panel" style="margin-top:12px; padding:12px;">
+          <img
+            src="${CELO_SCHOOL_CALENDAR.imgDataUrl}"
+            alt="${escapeHtml(CELO_SCHOOL_CALENDAR.title)} calendar"
+            style="width:100%; max-width:1100px; display:block; margin:0 auto; border-radius:12px;"
+          />
+        </div>
+      ` : `
+        <div class="panel" style="margin-top:12px; background:transparent; border-style:dashed;">
+          <div class="hint" style="margin-top:0;">Calendar image not set yet.</div>
+          <div class="hint">Replace <code>CELO_SCHOOL_CALENDAR.imgDataUrl</code> with a <code>data:image/...</code> URL and it will show here.</div>
+        </div>
+      `}
+    </section>
+  `;
+}
+
 /* =========================
    NAV + ROUTING
 ========================= */
@@ -2707,6 +2756,9 @@ function renderTopNav(){
 
   // Hoy (simple)
   sideNav.appendChild(navBtn("Hoy", "hoy", (r === "hoy" || DAYS.includes(r))));
+
+  // Celo's School
+  sideNav.appendChild(navBtn("Celo's School", "celos-school", r === "celos-school"));
 
   // Dashboard
   sideNav.appendChild(navBtn("Dashboard", "dashboard", r === "dashboard"));
@@ -4087,6 +4139,7 @@ function renderApp(){
     saveDashState(dash);
     return renderDashboard();
   }
+  if (r === "celos-school") return renderCeloSchool();
   if (r === "biweekly") return renderChecklistPage("biweekly");
   if (r === "monthly") return renderChecklistPage("monthly");
   if (r === "maintenance") return renderMaintenance();
