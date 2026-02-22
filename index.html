@@ -1528,26 +1528,20 @@ function applyTheme(themeId, mode){
 
   saveThemeState({ themeId, mode });
 
-  // Lock member colors to the selected theme (except Paper Clean)
-  // IMPORTANT: set member colors BEFORE applying CSS vars so the UI updates immediately.
-  if (themeId !== "paperClean") {
-    const preset = THEME_MEMBER_COLORS[themeId];
-    if (preset) {
-      saveMemberColors({ ...preset });
+  // Member colors are user-controlled (Admin). Do NOT overwrite them on every mode change.
+  // Only initialize defaults once if nothing is saved yet.
+  const curColors = loadMemberColors() || {};
+  const ppl = (typeof window !== 'undefined' && Array.isArray(window.PEOPLE)) ? window.PEOPLE : ["Dad","Mom","Ethan","Celo"];
+  const preset = (THEME_MEMBER_COLORS && THEME_MEMBER_COLORS.neonGlass) ? THEME_MEMBER_COLORS.neonGlass : {};
+
+  let changed = false;
+  ppl.forEach(p => {
+    if (!curColors[p]) {
+      curColors[p] = preset[p] || '#22f0b6';
+      changed = true;
     }
-  } else {
-    // Ensure member colors exist when returning to Paper Clean
-    const current = loadMemberColors() || {};
-    const ppl = (typeof window !== 'undefined' && Array.isArray(window.PEOPLE)) ? window.PEOPLE : ["Dad","Mom","Ethan","Celo"];
-    ppl.forEach(p => {
-      if (!current[p]) {
-        current[p] = (THEME_MEMBER_COLORS.paperClean && THEME_MEMBER_COLORS.paperClean[p])
-          ? THEME_MEMBER_COLORS.paperClean[p]
-          : "#ffffff";
-      }
-    });
-    saveMemberColors(current);
-  }
+  });
+  if (changed) saveMemberColors(curColors);
 
   // Apply member colors as CSS variables for UI accents
   applyMemberColorsToCSS();
@@ -2044,16 +2038,7 @@ function __renderTopNav(dayKey){
 
   __ensureSideShell();
 
-  // Theme controls (safe if THEMES missing)
   const themeState = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
-  const themeOptions = (typeof THEMES === 'object' && THEMES)
-    ? Object.keys(THEMES).map(id => {
-        const name = (THEMES[id] && THEMES[id].name) ? THEMES[id].name : id;
-        const sel = (themeState.themeId === id) ? 'selected' : '';
-        return `<option value="${__esc(id)}" ${sel}>${__esc(name)}</option>`;
-      }).join('')
-    : `<option value="neonGlass" selected>Neon Glass</option>`;
-
   const mode = (themeState && themeState.mode === 'light') ? 'light' : 'dark';
 
   const btns = __DAYS_RECOVERY.map(d => {
