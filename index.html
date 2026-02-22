@@ -6,6 +6,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#111111" />
+  <link rel="manifest" href="manifest.webmanifest" />
   
   <style>
         :root{
@@ -638,37 +639,6 @@
       white-space:nowrap;
     }
 
-    .dayProgress{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding:0 12px 10px 12px;
-      margin-top:-6px;
-    }
-    .dayProgress .count{
-      font-size:12px;
-      font-weight:900;
-      color:var(--muted2);
-      white-space:nowrap;
-    }
-    .progTrack{
-      flex:1;
-      height:8px;
-      border-radius:999px;
-      background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.10);
-      overflow:hidden;
-      box-shadow: var(--neuInShadowSoft);
-    }
-    .progFill{
-      height:100%;
-      width:0%;
-      border-radius:999px;
-      background: var(--btnActive);
-      box-shadow: 0 0 10px rgba(255,255,255,0.12);
-    }
-
     .column h2{
       margin:0 0 8px 0;
       text-align:center;
@@ -715,7 +685,7 @@
 
     .weeklyItem{
       display:grid;
-      grid-template-columns:18px minmax(0, 1fr) 130px;
+      grid-template-columns:18px 1fr 120px;
       align-items:center;
       gap:8px;
       background:var(--panel3);
@@ -730,10 +700,7 @@
       font-size:13px;
       opacity:0.95;
       line-height:1.15;
-      min-width:0;
-      white-space:normal;
-      word-break:normal;
-      overflow-wrap:anywhere;
+      word-break:break-word;
     }
 
         .weeklyItem select{
@@ -743,7 +710,7 @@
       border-radius:10px;
       padding:6px 8px;
       font-size:13px;
-      width:130px;
+      width:120px;
     }
 
     /* Yesterday summary */
@@ -1139,6 +1106,7 @@
        - uploaded in Admin
        - displayed in each member column header on day pages
     ========================= */
+
     .memberHeader{
       display:flex;
       align-items:center;
@@ -1248,9 +1216,7 @@
   function showBootFailure(){
     var app = document.getElementById('app');
     if (!app) return;
-    const html = (app.innerHTML || '').trim();
-    const isOnlyLoading = html === 'Loading…' || html === 'Loading...' || /Loading[\.…]*$/i.test(html);
-    if (html && !isOnlyLoading) return;
+    if (app.innerHTML && app.innerHTML.trim()) return;
     app.innerHTML = '<div style="padding:14px;max-width:920px;margin:14px auto;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.35);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">'
       + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Blank page blocker</div>'
       + '<div style="font-size:13px;opacity:.9;line-height:1.35;">The app script did not run (usually a JavaScript syntax error or a module import failing). Open DevTools → Console to see the exact error and line number.</div>'
@@ -1264,6 +1230,7 @@
 
 <script>
 // --- Boot diagnostics: prevent silent blank page ---
+console.log("Chore Board script started");
 const __appEl = document.getElementById('app');
 if (__appEl && !__appEl.innerHTML.trim()) {
   __appEl.innerHTML = '<div style="padding:14px;max-width:820px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#f5f5f5;opacity:.9;">Loading…</div>';
@@ -1559,20 +1526,26 @@ function applyTheme(themeId, mode){
 
   saveThemeState({ themeId, mode });
 
-  // Member colors are user-controlled (Admin). Do NOT overwrite them on every mode change.
-  // Only initialize defaults once if nothing is saved yet.
-  const curColors = loadMemberColors() || {};
-  const ppl = (typeof window !== 'undefined' && Array.isArray(window.PEOPLE)) ? window.PEOPLE : ["Dad","Mom","Ethan","Celo"];
-  const preset = (THEME_MEMBER_COLORS && THEME_MEMBER_COLORS.neonGlass) ? THEME_MEMBER_COLORS.neonGlass : {};
-
-  let changed = false;
-  ppl.forEach(p => {
-    if (!curColors[p]) {
-      curColors[p] = preset[p] || '#22f0b6';
-      changed = true;
+  // Lock member colors to the selected theme (except Paper Clean)
+  // IMPORTANT: set member colors BEFORE applying CSS vars so the UI updates immediately.
+  if (themeId !== "paperClean") {
+    const preset = THEME_MEMBER_COLORS[themeId];
+    if (preset) {
+      saveMemberColors({ ...preset });
     }
-  });
-  if (changed) saveMemberColors(curColors);
+  } else {
+    // Ensure member colors exist when returning to Paper Clean
+    const current = loadMemberColors() || {};
+    const ppl = (typeof window !== 'undefined' && Array.isArray(window.PEOPLE)) ? window.PEOPLE : ["Dad","Mom","Ethan","Celo"];
+    ppl.forEach(p => {
+      if (!current[p]) {
+        current[p] = (THEME_MEMBER_COLORS.paperClean && THEME_MEMBER_COLORS.paperClean[p])
+          ? THEME_MEMBER_COLORS.paperClean[p]
+          : "#ffffff";
+      }
+    });
+    saveMemberColors(current);
+  }
 
   // Apply member colors as CSS variables for UI accents
   applyMemberColorsToCSS();
@@ -1599,6 +1572,7 @@ function themeLabel(themeId){
 
 <script>
 
+console.log('Debug: DATA script tag started');
 // Make DAYS/PEOPLE truly global (they were block-scoped inside a try{} and later code crashed).
 var DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
 var PEOPLE = ["Dad","Mom","Ethan","Celo"];
@@ -1659,6 +1633,7 @@ function formatMMDDYYYY(d){
   return `${mm}-${dd}-${yyyy}`;
 }
 
+  console.log('Debug: Routes + Constants reached end');
 } catch (e) {
   console.error('Debug: Routes + Constants crashed', e);
   if (typeof __showFatal === 'function') __showFatal('routes/constants', e);
@@ -1899,7 +1874,7 @@ function getTasksForDay(dayKey){
   // Apply pairing guardrails (only affects 2-person chores).
   return withoutWalk.map(t => normalizeTwoPersonTask(t));
 }
-window.WEEKLY_CHORES = [
+const WEEKLY_CHORES = [
   "Sweep",
   "Mop",
   "Vacuum",
@@ -2069,7 +2044,16 @@ function __renderTopNav(dayKey){
 
   __ensureSideShell();
 
+  // Theme controls (safe if THEMES missing)
   const themeState = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
+  const themeOptions = (typeof THEMES === 'object' && THEMES)
+    ? Object.keys(THEMES).map(id => {
+        const name = (THEMES[id] && THEMES[id].name) ? THEMES[id].name : id;
+        const sel = (themeState.themeId === id) ? 'selected' : '';
+        return `<option value="${__esc(id)}" ${sel}>${__esc(name)}</option>`;
+      }).join('')
+    : `<option value="neonGlass" selected>Neon Glass</option>`;
+
   const mode = (themeState && themeState.mode === 'light') ? 'light' : 'dark';
 
   const btns = __DAYS_RECOVERY.map(d => {
@@ -2175,12 +2159,7 @@ function __renderDay(dayKey){
   });
 
   const cols = __PEOPLE_RECOVERY.map(p => {
-    const tasksForPerson = (buckets[p] || []);
-    const total = tasksForPerson.length;
-    const doneCount = tasksForPerson.reduce((acc, t) => acc + (__isTaskDone(t.id) ? 1 : 0), 0);
-    const pct = total ? Math.round((doneCount / total) * 100) : 0;
-
-    const list = tasksForPerson.map(t => {
+    const list = (buckets[p] || []).map(t => {
       const checked = __isTaskDone(t.id) ? 'checked' : '';
       const label = __esc(t.text);
       return `
@@ -2193,17 +2172,11 @@ function __renderDay(dayKey){
       `;
     }).join('');
 
-    const accent = __esc(getMemberColor(p));
-
     return `
-      <section class="column" data-person="${__esc(p)}" style="border-top:4px solid ${accent};">
+      <section class="column" style="border-top:4px solid ${__esc(getMemberColor(p))};">
         <div class="dayHeaderBar">
           <h2 class="dayTitle">${__esc(p)}</h2>
           <div class="dayDate">${__esc(dateStr)}</div>
-        </div>
-        <div class="dayProgress">
-          <div class="progTrack"><div class="progFill" data-person="${__esc(p)}" style="width:${pct}%; background:${accent};"></div></div>
-          <div class="count" data-person="${__esc(p)}">${doneCount}/${total}</div>
         </div>
         ${list || '<div class="hint">No tasks.</div>'}
       </section>
@@ -2211,44 +2184,18 @@ function __renderDay(dayKey){
   }).join('');
 
   app.innerHTML = `
+    <div class="panel">
+      <div style="font-weight:900;font-size:16px;">Recovery Mode: Day View</div>
+      <div class="hint">This is a minimal renderer to get you unstuck. Once the full UI/router code is restored, we can remove this block and the debug markers.</div>
+    </div>
     <div class="columns">${cols}</div>
   `;
 
-  // wire checkboxes (live updates + shared chores)
+  // wire checkboxes
   app.querySelectorAll('input[type="checkbox"][data-task]').forEach(cb => {
     cb.addEventListener('change', () => {
       const id = cb.getAttribute('data-task');
-      const checked = !!cb.checked;
-      __setTaskDone(id, checked);
-
-      // If this task appears in multiple columns (shared chore), sync all matching checkboxes visually.
-      app.querySelectorAll(`input[type="checkbox"][data-task="${id}"]`).forEach(other => {
-        if (other !== cb) other.checked = checked;
-      });
-
-      // Find affected assignees so we can update both columns.
-      const tasks = (typeof getTasksForDay === 'function') ? (getTasksForDay(dayKey) || []) : [];
-      const t = tasks.find(x => x && x.id === id);
-      const affected = (t && Array.isArray(t.assignees) && t.assignees.length) ? t.assignees : [];
-
-      // If we cannot find assignees, fall back to the clicked column.
-      const fallbackCol = cb.closest('section.column');
-      const fallbackPerson = fallbackCol ? fallbackCol.getAttribute('data-person') : null;
-      const peopleToUpdate = affected.length ? affected : (fallbackPerson ? [fallbackPerson] : []);
-
-      peopleToUpdate.forEach(person => {
-        // recompute for this person
-        const allForPerson = tasks.filter(x => (x.assignees || []).includes(person));
-        const total = allForPerson.length;
-        const doneCount = allForPerson.reduce((acc, x) => acc + (__isTaskDone(x.id) ? 1 : 0), 0);
-        const pct = total ? Math.round((doneCount / total) * 100) : 0;
-
-        const countEl = app.querySelector(`.count[data-person="${person}"]`);
-        if (countEl) countEl.textContent = `${doneCount}/${total}`;
-
-        const fillEl = app.querySelector(`.progFill[data-person="${person}"]`);
-        if (fillEl) fillEl.style.width = pct + '%';
-      });
+      __setTaskDone(id, cb.checked);
     });
   });
 }
@@ -2375,7 +2322,7 @@ function __renderWeekly(){
   __renderTopNav(dayKey);
 
   const wk = __weeklyKey();
-  const list = (typeof window !== 'undefined' && Array.isArray(window.WEEKLY_CHORES)) ? window.WEEKLY_CHORES : [];
+  const list = Array.isArray(WEEKLY_CHORES) ? WEEKLY_CHORES : [];
 
   const state = jget('weekly::' + wk, {});
   const assigned = jget('weeklyAssign::' + wk, {});
@@ -2392,8 +2339,8 @@ function __renderWeekly(){
 
     return `
       <div class="weeklyItem">
-        <input type="checkbox" id="wk_${__esc(id)}" data-wid="${__esc(id)}" ${done ? 'checked' : ''} />
-        <label class="label" for="wk_${__esc(id)}">${__esc(name)}</label>
+        <input type="checkbox" data-wid="${__esc(id)}" ${done ? 'checked' : ''} />
+        <div class="label">${__esc(name)}</div>
         <select class="assignSelect" data-wassign="${__esc(id)}">${peopleOpts}</select>
       </div>
     `;
@@ -2564,7 +2511,7 @@ function __renderMaintenance(){
   const PEOPLE_OPTS = ['','Dad','Mom','Ethan','Celo'];
   const INTERVAL_OPTS = ['Weekly','Biweekly','Monthly','Quarterly','Yearly','Once'];
 
-  function buildPeopleOptions(selected){
+  function __buildPeopleOptions(selected){
     return PEOPLE_OPTS.map(p => {
       const label = p ? p : 'Unassigned';
       const sel = (String(selected || '') === String(p)) ? 'selected' : '';
@@ -2572,7 +2519,7 @@ function __renderMaintenance(){
     }).join('');
   }
 
-  function buildIntervalOptions(selected){
+  function __buildIntervalOptions(selected){
     return INTERVAL_OPTS.map(v => {
       const sel = (String(selected || '') === String(v)) ? 'selected' : '';
       return `<option value="${__esc(v)}" ${sel}>${__esc(v)}</option>`;
@@ -2586,18 +2533,21 @@ function __renderMaintenance(){
     const created = it.createdAt ? new Date(it.createdAt) : null;
     const createdStr = created ? created.toLocaleDateString() : '';
 
+    const subBits = [];
+    if (createdStr) subBits.push('Added ' + createdStr);
+
     return `
       <div class="maintRow" data-mid="${__esc(it.id)}">
         <div style="min-width:0;">
           <div class="maintTask">${__esc(it.text || '')}</div>
-          <div class="maintSub">${__esc(createdStr ? ('Added ' + createdStr) : '')}</div>
+          <div class="maintSub">${__esc(subBits.filter(Boolean).join(' • '))}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end;">
           <select class="assignSelect" data-minterval="${__esc(it.id)}" title="Interval">
-            ${buildIntervalOptions(interval)}
+            ${__buildIntervalOptions(interval)}
           </select>
           <select class="assignSelect" data-massign="${__esc(it.id)}" title="Assignee">
-            ${buildPeopleOptions(who)}
+            ${__buildPeopleOptions(who)}
           </select>
           <label class="choreLabel" style="padding:6px 10px;box-shadow: var(--neuOutShadowSoft);">
             <input type="checkbox" data-mdone="${__esc(it.id)}" ${done ? 'checked' : ''} />
@@ -2609,15 +2559,18 @@ function __renderMaintenance(){
     `;
   }).join('');
 
-  const peopleOpts = buildPeopleOptions('');
-  const intervalOpts = INTERVAL_OPTS.map(v => `<option value="${__esc(v)}">${__esc(v)}</option>`).join('');
+  const peopleOpts = __buildPeopleOptions('');
+
+  const intervalOpts = INTERVAL_OPTS.map(v => {
+    return `<option value="${__esc(v)}">${__esc(v)}</option>`;
+  }).join('');
 
   app.innerHTML = `
     <div class="panel">
       <div class="toolbar">
         <div class="left">
           <h2 style="margin:0;">Maintenance</h2>
-          <div class="hint" style="margin:0;">Local-only. Add tasks, assign them, pick an interval, and mark done.</div>
+          <div class="hint" style="margin:0;">Local-only for now. This is the real list (not a placeholder). Add tasks you want tracked over time.</div>
         </div>
         <div class="right">
           <button class="navBtn danger" id="resetMaintenance" type="button">Reset Maintenance</button>
@@ -2632,12 +2585,16 @@ function __renderMaintenance(){
 
         <div class="field">
           <label>Interval</label>
-          <select id="mInterval">${intervalOpts}</select>
+          <select id="mInterval">
+            ${intervalOpts}
+          </select>
         </div>
 
         <div class="field">
           <label>Assignee</label>
-          <select id="mAssignee">${peopleOpts}</select>
+          <select id="mAssignee">
+            ${peopleOpts}
+          </select>
         </div>
 
         <div class="actions">
@@ -2670,20 +2627,15 @@ function __renderMaintenance(){
     const cur = __loadMaintenance();
     cur.unshift(it);
     __saveMaintenance(cur);
-    if (taskEl) taskEl.value = '';
     __renderMaintenance();
   }
 
-
   if (addBtn) addBtn.addEventListener('click', add);
   if (taskEl) taskEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      add();
-    }
+    if (e.key === 'Enter') add();
   });
 
-  // Done toggles
+
   app.querySelectorAll('input[type="checkbox"][data-mdone]').forEach(cb => {
     cb.addEventListener('change', () => {
       const id = cb.getAttribute('data-mdone');
@@ -2696,7 +2648,6 @@ function __renderMaintenance(){
     });
   });
 
-  // Assignee updates
   app.querySelectorAll('select[data-massign]').forEach(sel => {
     sel.addEventListener('change', () => {
       const id = sel.getAttribute('data-massign');
@@ -2709,7 +2660,6 @@ function __renderMaintenance(){
     });
   });
 
-  // Interval updates
   app.querySelectorAll('select[data-minterval]').forEach(sel => {
     sel.addEventListener('change', () => {
       const id = sel.getAttribute('data-minterval');
@@ -2722,7 +2672,6 @@ function __renderMaintenance(){
     });
   });
 
-  // Remove row
   app.querySelectorAll('button[data-mremove]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-mremove');
@@ -2732,10 +2681,54 @@ function __renderMaintenance(){
     });
   });
 
-  // Reset maintenance
   const resetBtn = document.getElementById('resetMaintenance');
   if (resetBtn) resetBtn.addEventListener('click', () => {
     __saveMaintenance([]);
     __renderMaintenance();
   });
 }
+
+function __renderRoute(){
+  const r = __route();
+
+  // Day routes
+  if (__isDayKey(r)) {
+    __renderDay(r);
+    return;
+  }
+
+  // Non-day routes
+  if (r === 'dashboard') { __renderDashboard(); return; }
+  if (r === 'weekly') { __renderWeekly(); return; }
+  if (r === 'admin') { __renderAdmin(); return; }
+  if (r === 'maintenance') { __renderMaintenance(); return; }
+
+  // Unknown route -> dashboard (safe)
+  location.hash = '#/dashboard';
+}
+
+function __currentRouteDayKey(){
+  const r = __route();
+  return __isDayKey(r) ? r : __todayKey();
+}
+
+function __bootRecovery(){
+  // Apply default theme if possible (theme functions expect jget/jset)
+  try {
+    if (typeof loadThemeState === 'function' && typeof applyTheme === 'function') {
+      const s = loadThemeState();
+      applyTheme(s.themeId, s.mode);
+    }
+  } catch(_) {}
+
+  // Default landing page: dashboard (unless the hash is already a valid route)
+  if (!location.hash || location.hash === '#/' || location.hash === '#') {
+    location.hash = '#/dashboard';
+    return;
+  }
+  __renderRoute();
+}
+
+window.addEventListener('hashchange', __renderRoute);
+__bootRecovery();
+</script>
