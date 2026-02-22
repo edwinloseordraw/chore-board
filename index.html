@@ -2120,6 +2120,12 @@ function prevDayKey(dayKey){
   return DAYS[(idx - 1 + DAYS.length) % DAYS.length];
 }
 
+function nextDayKey(dayKey){
+  const idx = DAYS.indexOf(dayKey);
+  if (idx === -1) return "lunes";
+  return DAYS[(idx + 1) % DAYS.length];
+}
+
 function pad2(n){ return String(n).padStart(2,"0"); }
 
 // Returns a Date for the given dayKey in the CURRENT week (Monday->Sunday).
@@ -2559,6 +2565,10 @@ function renderTopNav(){
 
   const r = route();
 
+  // If we're on a day page (or the special "hoy" route), enable day-to-day cycling.
+  const isDayRoute = DAYS.includes(r) || r === "hoy";
+  const currentDayKey = (r === "hoy") ? todayKey() : r;
+
   // --- Hamburger on the TOP LEFT (central navigation) ---
   const menuWrap = document.createElement("div");
   menuWrap.className = "menuWrap";
@@ -2572,6 +2582,29 @@ function renderTopNav(){
 
   nav.appendChild(menuWrap);
 
+  // Day cycling buttons (Ayer / Mañana) shown on daily views
+  if (isDayRoute){
+    const ayerBtn = document.createElement("button");
+    ayerBtn.className = "navBtn";
+    ayerBtn.type = "button";
+    ayerBtn.textContent = "Ayer";
+    ayerBtn.addEventListener("click", () => {
+      const prev = prevDayKey(currentDayKey);
+      goto(prev);
+    });
+    nav.appendChild(ayerBtn);
+
+    const mananaBtn = document.createElement("button");
+    mananaBtn.className = "navBtn";
+    mananaBtn.type = "button";
+    mananaBtn.textContent = "Mañana";
+    mananaBtn.addEventListener("click", () => {
+      const next = nextDayKey(currentDayKey);
+      goto(next);
+    });
+    nav.appendChild(mananaBtn);
+  }
+
   // Optional: small page label (kept subtle)
   const label = document.createElement("div");
   label.style.marginLeft = "6px";
@@ -2584,7 +2617,7 @@ function renderTopNav(){
     (r === "maintenance") ? "Maintenance" :
     (r === "admin") ? "Admin" :
     (DAYS.includes(r)) ? `Hoy • ${r}` :
-    (r === "hoy") ? `Hoy • ${todayKey()}` : "";
+    (r === "hoy") ? `Hoy • ${currentDayKey}` : "";
   nav.appendChild(label);
 
   // Spacer (keeps header layout stable)
