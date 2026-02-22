@@ -2684,10 +2684,13 @@ function __renderMaintenance(){
 
   if (addBtn) addBtn.addEventListener('click', add);
   if (taskEl) taskEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') add();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      add();
+    }
   });
 
-
+  // Per-row done toggles
   app.querySelectorAll('input[type="checkbox"][data-mdone]').forEach(cb => {
     cb.addEventListener('change', () => {
       const id = cb.getAttribute('data-mdone');
@@ -2700,6 +2703,7 @@ function __renderMaintenance(){
     });
   });
 
+  // Per-row assignee updates
   app.querySelectorAll('select[data-massign]').forEach(sel => {
     sel.addEventListener('change', () => {
       const id = sel.getAttribute('data-massign');
@@ -2712,6 +2716,7 @@ function __renderMaintenance(){
     });
   });
 
+  // Per-row interval updates
   app.querySelectorAll('select[data-minterval]').forEach(sel => {
     sel.addEventListener('change', () => {
       const id = sel.getAttribute('data-minterval');
@@ -2724,6 +2729,7 @@ function __renderMaintenance(){
     });
   });
 
+  // Remove row
   app.querySelectorAll('button[data-mremove]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-mremove');
@@ -2733,54 +2739,10 @@ function __renderMaintenance(){
     });
   });
 
+  // Reset maintenance
   const resetBtn = document.getElementById('resetMaintenance');
   if (resetBtn) resetBtn.addEventListener('click', () => {
     __saveMaintenance([]);
     __renderMaintenance();
   });
 }
-
-function __renderRoute(){
-  const r = __route();
-
-  // Day routes
-  if (__isDayKey(r)) {
-    __renderDay(r);
-    return;
-  }
-
-  // Non-day routes
-  if (r === 'dashboard') { __renderDashboard(); return; }
-  if (r === 'weekly') { __renderWeekly(); return; }
-  if (r === 'admin') { __renderAdmin(); return; }
-  if (r === 'maintenance') { __renderMaintenance(); return; }
-
-  // Unknown route -> dashboard (safe)
-  location.hash = '#/dashboard';
-}
-
-function __currentRouteDayKey(){
-  const r = __route();
-  return __isDayKey(r) ? r : __todayKey();
-}
-
-function __bootRecovery(){
-  // Apply default theme if possible (theme functions expect jget/jset)
-  try {
-    if (typeof loadThemeState === 'function' && typeof applyTheme === 'function') {
-      const s = loadThemeState();
-      applyTheme(s.themeId, s.mode);
-    }
-  } catch(_) {}
-
-  // Default landing page: dashboard (unless the hash is already a valid route)
-  if (!location.hash || location.hash === '#/' || location.hash === '#') {
-    location.hash = '#/dashboard';
-    return;
-  }
-  __renderRoute();
-}
-
-window.addEventListener('hashchange', __renderRoute);
-__bootRecovery();
-</script>
