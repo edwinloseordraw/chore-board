@@ -2558,13 +2558,13 @@ const CELO_SCHOOL_CALENDAR = {
   monthLabel: "February",
   // TODO: Replace with the new calendar image data URL each month.
   // Format: "data:image/png;base64,AAAA..."
-  imgDataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABkAAAATECAYAAAAzsslAAAAMTm...QmCC"
+  imgDataUrl: "february.png"
 };
 
 function renderCeloSchool(){
   const app = document.getElementById("app");
 
-  const hasImg = !!(CELO_SCHOOL_CALENDAR.imgDataUrl && CELO_SCHOOL_CALENDAR.imgDataUrl.startsWith("data:image"));
+  const hasImg = !!CELO_SCHOOL_CALENDAR.imgDataUrl;
 
   app.innerHTML = `
     <section class="panel">
