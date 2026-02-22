@@ -2299,7 +2299,10 @@ function buildDailyBaseTasks(dayKey){
 
   // --- Fixed chores (personal reminders) ---
   FIXED_SOLO_CHORES.forEach(c => {
-    if (c.when === "weekdays" && !isWeekday(dayKey)) return;
+    // School nights: Sunday through Thursday
+    if (c.when === "weekdays"){
+      if (!(dayKey === "domingo" || dayKey === "lunes" || dayKey === "martes" || dayKey === "miercoles" || dayKey === "jueves")) return;
+    }
     if (c.when === "mwf"){
       // Brush Harvey: Monday, Wednesday, Friday only
       if (!(dayKey === "lunes" || dayKey === "miercoles" || dayKey === "viernes")) return;
