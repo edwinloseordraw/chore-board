@@ -2570,7 +2570,9 @@ function renderTopNav(){
 
   // If we're on a day page (or the special "hoy" route), enable day-to-day cycling.
   const isDayRoute = DAYS.includes(r) || r === "hoy";
-  const currentDayKey = (r === "hoy") ? todayKey() : r;
+  const today = todayKey();
+  const currentDayKey = (r === "hoy") ? today : r;
+  const isTodayView = (r === "hoy") || (DAYS.includes(r) && r === today);
 
   // --- Hamburger on the TOP LEFT (central navigation) ---
   const menuWrap = document.createElement("div");
@@ -2629,8 +2631,9 @@ function renderTopNav(){
     (r === "monthly") ? "Monthly" :
     (r === "maintenance") ? "Maintenance" :
     (r === "admin") ? "Admin" :
-    (DAYS.includes(r)) ? `Hoy • ${r}` :
-    (r === "hoy") ? `Hoy • ${currentDayKey}` : "";
+    (isDayRoute && isTodayView) ? `Hoy • ${today}` :
+    (DAYS.includes(r)) ? `${r}` :
+    (r === "hoy") ? `Hoy • ${today}` : "";
   nav.appendChild(label);
 
   // Spacer (keeps header layout stable)
