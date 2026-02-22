@@ -2165,148 +2165,143 @@ function makeTask(dayKey, slug, text, assignees, primary){
   };
 }
 
-const DAILY_SCHEDULE = {
-  lunes: [
-    // Pairing change: Dad+Celo, Mom+Ethan
-    makeTask("lunes", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
-    makeTask("lunes", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
-    makeTask("lunes", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
-    makeTask("lunes", "brushHarvey", "Brush Harvey", ["Dad"], "Dad"),
+// Instead of hard-coding who does what every day, we build a weekly-rotating roster.
+// Goals:
+//  - Everyone gets variety across the week.
+//  - 2-person chores ONLY use the allowed pairs:
+//      * Mom + Ethan
+//      * Dad + Celo
+//  - Rotation is deterministic per-week (stable), so it doesn't reshuffle every refresh.
 
-    makeTask("lunes", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
-    makeTask("lunes", "mop", "Mop", ["Mom"], "Mom"),
-    makeTask("lunes", "dining", "Wipe dining table", ["Mom"], "Mom"),
-    makeTask("lunes", "walk", "Walk with Celo", ["Mom"], "Mom"),
+// Core daily chores (rotate fairly)
+const ROTATING_PAIR_CHORES = [
+  { slug: "vacuum", text: "Vacuum" },
+  { slug: "dishes", text: "Wash dishes" },
+  { slug: "trash",  text: "Take out trash" }
+];
 
-    makeTask("lunes", "dust", "Dust", ["Ethan"], "Ethan"),
-    makeTask("lunes", "dogPoop", "Dog poop", ["Ethan"], "Ethan"),
+// Solo chores. These rotate across ALL people unless restricted.
+// If you want to add/remove chores later, do it here.
+const ROTATING_SOLO_CHORES = [
+  { slug: "counters",    text: "Wipe kitchen counters",   when: "all" },
+  { slug: "dining",      text: "Wipe dining table",       when: "all" },
+  { slug: "mop",         text: "Mop",                     when: "all" },
+  { slug: "dust",        text: "Dust",                    when: "all" },
+  { slug: "cabinets",    text: "Cabinets",                when: "all" },
+  { slug: "feedDogs",    text: "Feed dogs",               when: "all" },
+  { slug: "dogPoop",     text: "Dog poop",                when: "all" },
+  { slug: "brushHarvey", text: "Brush Harvey",            when: "all" },
+  { slug: "read",        text: "Read for 20 min",         when: "all" }
+];
 
-    makeTask("lunes", "feedDogs", "Feed dogs", ["Celo"], "Celo"),
-    makeTask("lunes", "cabinets", "Cabinets", ["Celo"], "Celo"),
-    makeTask("lunes", "read", "Read for 20 min", ["Celo"], "Celo"),
-    // Celo-only weekday chores (Mon–Fri)
-    makeTask("lunes", "prepBackpack", "Reminder: Prep backpack for tomorrow", ["Celo"], "Celo"),
-    makeTask("lunes", "appleWatch", "Reminder: Where's your Apple Watch?", ["Celo"], "Celo")
-  ],
+// Chores that should stay with a specific person (personal reminders)
+const FIXED_SOLO_CHORES = [
+  // Celo-only weekday reminders (Mon–Fri)
+  { slug: "prepBackpack", text: "Reminder: Prep backpack for tomorrow", person: "Celo", when: "weekdays" },
+  { slug: "appleWatch",   text: "Reminder: Where's your Apple Watch?",  person: "Celo", when: "weekdays" }
+];
 
-  martes: [
-    makeTask("martes", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
-    makeTask("martes", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
-    makeTask("martes", "dust", "Dust", ["Dad"], "Dad"),
-    makeTask("martes", "cabinets", "Cabinets", ["Dad"], "Dad"),
-    makeTask("martes", "walk", "Walk with Celo", ["Dad"], "Dad"),
+function isWeekday(dayKey){
+  return dayKey !== "sabado" && dayKey !== "domingo";
+}
 
-    makeTask("martes", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
-    makeTask("martes", "counters", "Wipe kitchen counters", ["Mom"], "Mom"),
-    makeTask("martes", "feedDogs", "Feed dogs", ["Mom"], "Mom"),
+// Deterministic per-week seed (Monday of the current week) so it stays stable.
+function weekSeedString(){
+  const monday = dateForDayKey("lunes");
+  // YYYY-MM-DD
+  const y = monday.getFullYear();
+  const m = pad2(monday.getMonth() + 1);
+  const d = pad2(monday.getDate());
+  return `${y}-${m}-${d}`;
+}
 
-    makeTask("martes", "mop", "Mop", ["Ethan"], "Ethan"),
-    makeTask("martes", "dining", "Wipe dining table", ["Ethan"], "Ethan"),
+function hashSeed(str){
+  // small, deterministic hash (good enough for shuffling chores)
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
 
-    makeTask("martes", "dogPoop", "Dog poop", ["Celo"], "Celo"),
-    makeTask("martes", "read", "Read for 20 min", ["Celo"], "Celo"),
-    makeTask("martes", "prepBackpack", "Reminder: Prep backpack for tomorrow", ["Celo"], "Celo"),
-    makeTask("martes", "appleWatch", "Reminder: Where's your Apple Watch?", ["Celo"], "Celo")
-  ],
+function seededRandFactory(seed){
+  // mulberry32
+  let t = seed >>> 0;
+  return function(){
+    t += 0x6D2B79F5;
+    let x = t;
+    x = Math.imul(x ^ (x >>> 15), x | 1);
+    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
-  miercoles: [
-    makeTask("miercoles", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
-    makeTask("miercoles", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
-    makeTask("miercoles", "dining", "Wipe dining table", ["Dad"], "Dad"),
-    makeTask("miercoles", "dogPoop", "Dog poop", ["Dad"], "Dad"),
-    makeTask("miercoles", "brushHarvey", "Brush Harvey", ["Dad"], "Dad"),
+function seededShuffle(arr, seed){
+  const a = arr.slice();
+  const rand = seededRandFactory(seed);
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
-    makeTask("miercoles", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
-    makeTask("miercoles", "dust", "Dust", ["Mom"], "Mom"),
-    makeTask("miercoles", "cabinets", "Cabinets", ["Mom"], "Mom"),
-    makeTask("miercoles", "walk", "Walk with Celo", ["Mom"], "Mom"),
+function rotateArray(arr, offset){
+  const a = arr.slice();
+  const n = a.length;
+  const o = ((offset % n) + n) % n;
+  return a.slice(o).concat(a.slice(0, o));
+}
 
-    makeTask("miercoles", "counters", "Wipe kitchen counters", ["Ethan"], "Ethan"),
-    makeTask("miercoles", "feedDogs", "Feed dogs", ["Ethan"], "Ethan"),
+function allowedPairsForWeek(seed){
+  // We shuffle the pair order per-week so Dad+Celo aren't always "pair A".
+  const pairs = [
+    ["Dad", "Celo"],
+    ["Mom", "Ethan"]
+  ];
+  return seededShuffle(pairs, seed + 101);
+}
 
-    makeTask("miercoles", "mop", "Mop", ["Celo"], "Celo"),
-    makeTask("miercoles", "read", "Read for 20 min", ["Celo"], "Celo"),
-    makeTask("miercoles", "prepBackpack", "Reminder: Prep backpack for tomorrow", ["Celo"], "Celo"),
-    makeTask("miercoles", "appleWatch", "Reminder: Where's your Apple Watch?", ["Celo"], "Celo")
-  ],
+function buildDailyBaseTasks(dayKey){
+  const dayIdx = DAYS.indexOf(dayKey);
+  const seed = hashSeed("chores::" + weekSeedString());
 
-  jueves: [
-    makeTask("jueves", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
-    makeTask("jueves", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
-    makeTask("jueves", "mop", "Mop", ["Dad"], "Dad"),
-    makeTask("jueves", "walk", "Walk with Celo", ["Dad"], "Dad"),
+  // Shuffle people per-week and rotate per-day so assignments vary day-to-day.
+  const weeklyPeopleOrder = seededShuffle(PEOPLE, seed + 7);
+  const todayOrder = rotateArray(weeklyPeopleOrder, dayIdx);
 
-    makeTask("jueves", "dining", "Wipe dining table", ["Mom"], "Mom"),
-    makeTask("jueves", "dogPoop", "Dog poop", ["Mom"], "Mom"),
+  // Pair chores rotate between the two allowed pairs, with a per-chore offset
+  const pairs = allowedPairsForWeek(seed);
 
-    makeTask("jueves", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
-    makeTask("jueves", "cabinets", "Cabinets", ["Ethan"], "Ethan"),
-    makeTask("jueves", "feedDogs", "Feed dogs", ["Ethan"], "Ethan"),
+  const tasks = [];
 
-    makeTask("jueves", "dust", "Dust", ["Celo"], "Celo"),
-    makeTask("jueves", "counters", "Wipe kitchen counters", ["Celo"], "Celo"),
-    makeTask("jueves", "read", "Read for 20 min", ["Celo"], "Celo"),
-    makeTask("jueves", "prepBackpack", "Reminder: Prep backpack for tomorrow", ["Celo"], "Celo"),
-    makeTask("jueves", "appleWatch", "Reminder: Where's your Apple Watch?", ["Celo"], "Celo")
-  ],
+  // --- Pair chores ---
+  ROTATING_PAIR_CHORES.forEach((c, i) => {
+    const pair = pairs[(dayIdx + i) % pairs.length];
+    // Primary is the 2nd person, so each pair gets credit spread over time.
+    tasks.push(makeTask(dayKey, c.slug, c.text, pair.slice(), pair[1]));
+  });
 
-  viernes: [
-    makeTask("viernes", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
-    makeTask("viernes", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
-    makeTask("viernes", "counters", "Wipe kitchen counters", ["Dad"], "Dad"),
-    makeTask("viernes", "feedDogs", "Feed dogs", ["Dad"], "Dad"),
-    makeTask("viernes", "brushHarvey", "Brush Harvey", ["Dad"], "Dad"),
+  // --- Solo chores ---
+  // Assign solo chores in a round-robin through todayOrder.
+  // This is simple and fair: each person gets different chores across the week.
+  ROTATING_SOLO_CHORES.forEach((c, i) => {
+    const person = todayOrder[i % todayOrder.length];
+    tasks.push(makeTask(dayKey, c.slug, c.text, [person], person));
+  });
 
-    makeTask("viernes", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
-    makeTask("viernes", "dining", "Wipe dining table", ["Mom"], "Mom"),
-    makeTask("viernes", "cabinets", "Cabinets", ["Mom"], "Mom"),
-    makeTask("viernes", "walk", "Walk with Celo", ["Mom"], "Mom"),
+  // --- Fixed chores (personal reminders) ---
+  FIXED_SOLO_CHORES.forEach(c => {
+    if (c.when === "weekdays" && !isWeekday(dayKey)) return;
+    if (!PEOPLE.includes(c.person)) return;
+    tasks.push(makeTask(dayKey, c.slug, c.text, [c.person], c.person));
+  });
 
-    makeTask("viernes", "dust", "Dust", ["Ethan"], "Ethan"),
-    makeTask("viernes", "dogPoop", "Dog poop", ["Ethan"], "Ethan"),
-
-    makeTask("viernes", "mop", "Mop", ["Celo"], "Celo"),
-    makeTask("viernes", "read", "Read for 20 min", ["Celo"], "Celo"),
-    makeTask("viernes", "prepBackpack", "Reminder: Prep backpack for tomorrow", ["Celo"], "Celo"),
-    makeTask("viernes", "appleWatch", "Reminder: Where's your Apple Watch?", ["Celo"], "Celo")
-  ],
-
-  sabado: [
-    makeTask("sabado", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
-    makeTask("sabado", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
-    makeTask("sabado", "cabinets", "Cabinets", ["Dad"], "Dad"),
-    makeTask("sabado", "dogPoop", "Dog poop", ["Dad"], "Dad"),
-    makeTask("sabado", "walk", "Walk with Celo", ["Dad"], "Dad"),
-
-    makeTask("sabado", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
-    makeTask("sabado", "dust", "Dust", ["Mom"], "Mom"),
-    makeTask("sabado", "counters", "Wipe kitchen counters", ["Mom"], "Mom"),
-
-    makeTask("sabado", "dining", "Wipe dining table", ["Ethan"], "Ethan"),
-    makeTask("sabado", "mop", "Mop", ["Ethan"], "Ethan"),
-
-    makeTask("sabado", "feedDogs", "Feed dogs", ["Celo"], "Celo"),
-    makeTask("sabado", "read", "Read for 20 min", ["Celo"], "Celo")
-  ],
-
-  domingo: [
-    makeTask("domingo", "vacuum", "Vacuum", ["Dad","Celo"], "Celo"),
-    makeTask("domingo", "trash", "Take out trash", ["Dad","Celo"], "Celo"),
-    makeTask("domingo", "mop", "Mop", ["Dad"], "Dad"),
-
-    makeTask("domingo", "dishes", "Wash dishes", ["Mom","Ethan"], "Ethan"),
-    makeTask("domingo", "dust", "Dust", ["Mom"], "Mom"),
-    makeTask("domingo", "cabinets", "Cabinets", ["Mom"], "Mom"),
-    makeTask("domingo", "walk", "Walk with Celo", ["Mom"], "Mom"),
-
-    makeTask("domingo", "dining", "Wipe dining table", ["Ethan"], "Ethan"),
-    makeTask("domingo", "dogPoop", "Dog poop", ["Ethan"], "Ethan"),
-
-    makeTask("domingo", "feedDogs", "Feed dogs", ["Celo"], "Celo"),
-    makeTask("domingo", "counters", "Wipe kitchen counters", ["Celo"], "Celo"),
-    makeTask("domingo", "read", "Read for 20 min", ["Celo"], "Celo")
-  ]
-};
+  return tasks;
+}
+// -------------------------
+// Phase 8.3 + 8.4 helpers
 
 // -------------------------
 // Phase 8.3 + 8.4 helpers
@@ -2364,11 +2359,10 @@ function normalizeTwoPersonTask(task){
 }
 
 function getTasksForDay(dayKey){
-  // Pull from schedule (do NOT use checkbox state for anything here)
-  const base = (DAILY_SCHEDULE[dayKey] || []).slice();
+  // Build a rotating roster (stable per-week, varied per-day).
+  const base = buildDailyBaseTasks(dayKey);
 
-  // Phase 8.4: remove any manually-scheduled walk tasks to avoid duplicates,
-  // then inject the automatic alternating walk task.
+  // Phase 8.4: ensure walk alternates every other day and is injected once.
   const withoutWalk = base.filter(t => {
     const id = (t && t.id) ? t.id : "";
     return !id.endsWith("::walk");
@@ -3433,7 +3427,7 @@ function renderYesterday(dayKey){
 
         // omit only from validation section
         if (id.endsWith("::prepBackpack") || id.endsWith("::appleWatch")) return false;
-        if (text.includes("prepare backpack for tomorrow")) return false;
+        if (text.includes("prep backpack for tomorrow")) return false;
         if (text.includes("where's your apple watch")) return false;
 
         return true;
