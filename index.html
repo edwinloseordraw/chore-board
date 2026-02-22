@@ -2565,7 +2565,7 @@ function __renderMaintenance(){
   const PEOPLE_OPTS = ['','Dad','Mom','Ethan','Celo'];
   const INTERVAL_OPTS = ['Weekly','Biweekly','Monthly','Quarterly','Yearly','Once'];
 
-  function __buildPeopleOptions(selected){
+  function buildPeopleOptions(selected){
     return PEOPLE_OPTS.map(p => {
       const label = p ? p : 'Unassigned';
       const sel = (String(selected || '') === String(p)) ? 'selected' : '';
@@ -2573,7 +2573,7 @@ function __renderMaintenance(){
     }).join('');
   }
 
-  function __buildIntervalOptions(selected){
+  function buildIntervalOptions(selected){
     return INTERVAL_OPTS.map(v => {
       const sel = (String(selected || '') === String(v)) ? 'selected' : '';
       return `<option value="${__esc(v)}" ${sel}>${__esc(v)}</option>`;
@@ -2587,21 +2587,18 @@ function __renderMaintenance(){
     const created = it.createdAt ? new Date(it.createdAt) : null;
     const createdStr = created ? created.toLocaleDateString() : '';
 
-    const subBits = [];
-    if (createdStr) subBits.push('Added ' + createdStr);
-
     return `
       <div class="maintRow" data-mid="${__esc(it.id)}">
         <div style="min-width:0;">
           <div class="maintTask">${__esc(it.text || '')}</div>
-          <div class="maintSub">${__esc(subBits.filter(Boolean).join(' • '))}</div>
+          <div class="maintSub">${__esc(createdStr ? ('Added ' + createdStr) : '')}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end;">
           <select class="assignSelect" data-minterval="${__esc(it.id)}" title="Interval">
-            ${__buildIntervalOptions(interval)}
+            ${buildIntervalOptions(interval)}
           </select>
           <select class="assignSelect" data-massign="${__esc(it.id)}" title="Assignee">
-            ${__buildPeopleOptions(who)}
+            ${buildPeopleOptions(who)}
           </select>
           <label class="choreLabel" style="padding:6px 10px;box-shadow: var(--neuOutShadowSoft);">
             <input type="checkbox" data-mdone="${__esc(it.id)}" ${done ? 'checked' : ''} />
@@ -2613,18 +2610,15 @@ function __renderMaintenance(){
     `;
   }).join('');
 
-  const peopleOpts = __buildPeopleOptions('');
-
-  const intervalOpts = INTERVAL_OPTS.map(v => {
-    return `<option value="${__esc(v)}">${__esc(v)}</option>`;
-  }).join('');
+  const peopleOpts = buildPeopleOptions('');
+  const intervalOpts = INTERVAL_OPTS.map(v => `<option value="${__esc(v)}">${__esc(v)}</option>`).join('');
 
   app.innerHTML = `
     <div class="panel">
       <div class="toolbar">
         <div class="left">
           <h2 style="margin:0;">Maintenance</h2>
-          <div class="hint" style="margin:0;">Local-only for now. This is the real list (not a placeholder). Add tasks you want tracked over time.</div>
+          <div class="hint" style="margin:0;">Local-only. Add tasks, assign them, pick an interval, and mark done.</div>
         </div>
         <div class="right">
           <button class="navBtn danger" id="resetMaintenance" type="button">Reset Maintenance</button>
@@ -2639,16 +2633,12 @@ function __renderMaintenance(){
 
         <div class="field">
           <label>Interval</label>
-          <select id="mInterval">
-            ${intervalOpts}
-          </select>
+          <select id="mInterval">${intervalOpts}</select>
         </div>
 
         <div class="field">
           <label>Assignee</label>
-          <select id="mAssignee">
-            ${peopleOpts}
-          </select>
+          <select id="mAssignee">${peopleOpts}</select>
         </div>
 
         <div class="actions">
@@ -2681,6 +2671,7 @@ function __renderMaintenance(){
     const cur = __loadMaintenance();
     cur.unshift(it);
     __saveMaintenance(cur);
+    if (taskEl) taskEl.value = '';
     __renderMaintenance();
   }
 
@@ -2692,7 +2683,6 @@ function __renderMaintenance(){
     }
   });
 
-  // Per-row done toggles
   app.querySelectorAll('input[type="checkbox"][data-mdone]').forEach(cb => {
     cb.addEventListener('change', () => {
       const id = cb.getAttribute('data-mdone');
@@ -2705,7 +2695,6 @@ function __renderMaintenance(){
     });
   });
 
-  // Per-row assignee updates
   app.querySelectorAll('select[data-massign]').forEach(sel => {
     sel.addEventListener('change', () => {
       const id = sel.getAttribute('data-massign');
@@ -2718,7 +2707,6 @@ function __renderMaintenance(){
     });
   });
 
-  // Per-row interval updates
   app.querySelectorAll('select[data-minterval]').forEach(sel => {
     sel.addEventListener('change', () => {
       const id = sel.getAttribute('data-minterval');
@@ -2731,7 +2719,6 @@ function __renderMaintenance(){
     });
   });
 
-  // Remove row
   app.querySelectorAll('button[data-mremove]').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-mremove');
@@ -2741,46 +2728,9 @@ function __renderMaintenance(){
     });
   });
 
-  // Reset maintenance
   const resetBtn = document.getElementById('resetMaintenance');
   if (resetBtn) resetBtn.addEventListener('click', () => {
     __saveMaintenance([]);
     __renderMaintenance();
   });
 }
-<script>
-// Boot kicker: if the app is still stuck on the Loading placeholder, try to start the router.
-(function(){
-  function kick(){
-    try {
-      var app = document.getElementById('app');
-      var html = app ? (app.innerHTML || '').trim() : '';
-      var isOnlyLoading = html === 'Loading…' || html === 'Loading...' || /Loading[\.…]*$/i.test(html);
-      if (!isOnlyLoading) return;
-
-      if (typeof __bootRecovery === 'function') {
-        __bootRecovery();
-        return;
-      }
-      if (typeof __renderRoute === 'function') {
-        __renderRoute();
-        return;
-      }
-
-      // If core functions are missing, show a useful message.
-      if (app) {
-        app.innerHTML = '<div style="padding:14px;max-width:920px;margin:14px auto;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.35);">'
-          + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">App did not boot</div>'
-          + '<div style="font-size:13px;opacity:.9;line-height:1.35;">Core functions were not defined (likely a JavaScript syntax error earlier in index.html). Open DevTools → Console for the first red error.</div>'
-          + '</div>';
-      }
-    } catch (e) {
-      try { if (typeof __showFatal === 'function') __showFatal('boot-kicker', e); } catch(_) {}
-    }
-  }
-
-  window.addEventListener('DOMContentLoaded', function(){ setTimeout(kick, 250); });
-  setTimeout(kick, 1200);
-})();
-</script>
-</body>
