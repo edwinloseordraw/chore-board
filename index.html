@@ -2582,6 +2582,16 @@ function renderTopNav(){
 
   nav.appendChild(menuWrap);
 
+  // Persistent Hoy button (always visible)
+  const hoyTopBtn = document.createElement("button");
+  hoyTopBtn.className = "navBtn";
+  hoyTopBtn.type = "button";
+  hoyTopBtn.textContent = "Hoy";
+  hoyTopBtn.addEventListener("click", () => {
+    goto("hoy");
+  });
+  nav.appendChild(hoyTopBtn);
+
   // Day cycling buttons (Ayer / Mañana) shown on daily views
   if (isDayRoute){
     const ayerBtn = document.createElement("button");
@@ -2993,7 +3003,6 @@ function renderDashboard(){
       <div class="panel">
         <div class="dashHeaderRow">
           <h2>Progress Dashboard</h2>
-          <button class="navBtn" type="button" onclick="goto(todayKey())">Hoy</button>
         </div>
         <div class="hint">Rings track completion for Daily (Hoy), Semanal, Bi-weekly, and Monthly. (Maintenance not included yet.)</div>
 
