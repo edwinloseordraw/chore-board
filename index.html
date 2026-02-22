@@ -1140,7 +1140,6 @@
        - uploaded in Admin
        - displayed in each member column header on day pages
     ========================= */
-
     .memberHeader{
       display:flex;
       align-items:center;
@@ -2196,14 +2195,14 @@ function __renderDay(dayKey){
     const accent = __esc(getMemberColor(p));
 
     return `
-      <section class="column" style="border-top:4px solid ${accent};">
+      <section class="column" data-person="${__esc(p)}" style="border-top:4px solid ${accent};">
         <div class="dayHeaderBar">
           <h2 class="dayTitle">${__esc(p)}</h2>
           <div class="dayDate">${__esc(dateStr)}</div>
         </div>
         <div class="dayProgress">
-          <div class="progTrack"><div class="progFill" style="width:${pct}%; background:${accent};"></div></div>
-          <div class="count">${doneCount}/${total}</div>
+          <div class="progTrack"><div class="progFill" data-person="${__esc(p)}" style="width:${pct}%; background:${accent};"></div></div>
+          <div class="count" data-person="${__esc(p)}">${doneCount}/${total}</div>
         </div>
         ${list || '<div class="hint">No tasks.</div>'}
       </section>
@@ -2214,11 +2213,41 @@ function __renderDay(dayKey){
     <div class="columns">${cols}</div>
   `;
 
-  // wire checkboxes
+  // wire checkboxes (live updates + shared chores)
   app.querySelectorAll('input[type="checkbox"][data-task]').forEach(cb => {
     cb.addEventListener('change', () => {
       const id = cb.getAttribute('data-task');
-      __setTaskDone(id, cb.checked);
+      const checked = !!cb.checked;
+      __setTaskDone(id, checked);
+
+      // If this task appears in multiple columns (shared chore), sync all matching checkboxes visually.
+      app.querySelectorAll(`input[type="checkbox"][data-task="${id}"]`).forEach(other => {
+        if (other !== cb) other.checked = checked;
+      });
+
+      // Find affected assignees so we can update both columns.
+      const tasks = (typeof getTasksForDay === 'function') ? (getTasksForDay(dayKey) || []) : [];
+      const t = tasks.find(x => x && x.id === id);
+      const affected = (t && Array.isArray(t.assignees) && t.assignees.length) ? t.assignees : [];
+
+      // If we cannot find assignees, fall back to the clicked column.
+      const fallbackCol = cb.closest('section.column');
+      const fallbackPerson = fallbackCol ? fallbackCol.getAttribute('data-person') : null;
+      const peopleToUpdate = affected.length ? affected : (fallbackPerson ? [fallbackPerson] : []);
+
+      peopleToUpdate.forEach(person => {
+        // recompute for this person
+        const allForPerson = tasks.filter(x => (x.assignees || []).includes(person));
+        const total = allForPerson.length;
+        const doneCount = allForPerson.reduce((acc, x) => acc + (__isTaskDone(x.id) ? 1 : 0), 0);
+        const pct = total ? Math.round((doneCount / total) * 100) : 0;
+
+        const countEl = app.querySelector(`.count[data-person="${person}"]`);
+        if (countEl) countEl.textContent = `${doneCount}/${total}`;
+
+        const fillEl = app.querySelector(`.progFill[data-person="${person}"]`);
+        if (fillEl) fillEl.style.width = pct + '%';
+      });
     });
   });
 }
