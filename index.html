@@ -2195,8 +2195,7 @@ const ROTATING_SOLO_CHORES = [
   { slug: "dust",        text: "Dust",                    when: "all" },
   { slug: "cabinets",    text: "Cabinets",                when: "all" },
   { slug: "feedDogs",    text: "Feed dogs",               when: "all" },
-  { slug: "dogPoop",     text: "Dog poop",                when: "all" },
-  { slug: "read",        text: "Read for 20 min",         when: "all" }
+  { slug: "dogPoop",     text: "Dog poop",                when: "all" }
 ];
 
 // Chores that should stay with a specific person (personal reminders)
@@ -2204,6 +2203,7 @@ const FIXED_SOLO_CHORES = [
   // Celo-only weekday reminders (Mon–Fri)
   { slug: "prepBackpack", text: "Reminder: Prep backpack for tomorrow", person: "Celo", when: "weekdays" },
   { slug: "appleWatch",   text: "Reminder: Where's your Apple Watch?",  person: "Celo", when: "weekdays" },
+  { slug: "read20", text: "Read for 20 min", person: "Celo", when: "monfri" },
   { slug: "brushHarvey", text: "Brush Harvey", person: "Dad", when: "mwf" }
 ];
 
@@ -2306,6 +2306,10 @@ function buildDailyBaseTasks(dayKey){
     if (c.when === "mwf"){
       // Brush Harvey: Monday, Wednesday, Friday only
       if (!(dayKey === "lunes" || dayKey === "miercoles" || dayKey === "viernes")) return;
+    }
+    if (c.when === "monfri"){
+      // Monday through Friday only
+      if (!(dayKey === "lunes" || dayKey === "martes" || dayKey === "miercoles" || dayKey === "jueves" || dayKey === "viernes")) return;
     }
     if (!PEOPLE.includes(c.person)) return;
     tasks.push(makeTask(dayKey, c.slug, c.text, [c.person], c.person));
