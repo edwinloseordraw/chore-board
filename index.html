@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -93,11 +94,17 @@
       box-shadow: var(--neuOutShadowSoft);
     }
 
-    header button.active{
+            header button.active{
       background:var(--btnActive);
       color:#000;
       font-weight:800;
       border-color: rgba(0,0,0,0.25);
+    }
+
+    header button.active{
+      background:var(--btnActive);
+      color:#000;
+      font-weight:700;
     }
 
         header select{
@@ -615,7 +622,6 @@
 
       /* Let content define height. Grid can still stretch columns evenly without forcing extra blank space. */
       min-height: 0;
-      border-top: 4px solid rgba(255,255,255,0.12);
     }
 
     /* Day header (day name + date) */
@@ -685,7 +691,7 @@
 
     .weeklyItem{
       display:grid;
-      grid-template-columns:18px minmax(0, 1fr) 130px;
+      grid-template-columns:18px 1fr 120px;
       align-items:center;
       gap:8px;
       background:var(--panel3);
@@ -700,7 +706,7 @@
       font-size:13px;
       opacity:0.95;
       line-height:1.15;
-      overflow-wrap:anywhere;
+      word-break:break-word;
     }
 
         .weeklyItem select{
@@ -710,7 +716,7 @@
       border-radius:10px;
       padding:6px 8px;
       font-size:13px;
-      width:130px;
+      width:120px;
     }
 
     /* Yesterday summary */
@@ -1208,58 +1214,73 @@
 
 <body>
 <header id="topNav"></header>
-
 <main id="app"></main>
-<script>
-// If the module script fails to parse/load, at least show *something* instead of a blank page.
-(function(){
-  function showBootFailure(){
-    var app = document.getElementById('app');
-    if (!app) return;
-    if (app.innerHTML && app.innerHTML.trim()) return;
-    app.innerHTML = '<div style="padding:14px;max-width:920px;margin:14px auto;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.35);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;">'
-      + '<div style="font-weight:900;font-size:16px;margin-bottom:6px;">Blank page blocker</div>'
-      + '<div style="font-size:13px;opacity:.9;line-height:1.35;">The app script did not run (usually a JavaScript syntax error or a module import failing). Open DevTools → Console to see the exact error and line number.</div>'
-      + '</div>';
-  }
-  window.addEventListener('error', function(){ setTimeout(showBootFailure, 0); });
-  window.addEventListener('unhandledrejection', function(){ setTimeout(showBootFailure, 0); });
-  document.addEventListener('DOMContentLoaded', function(){ setTimeout(showBootFailure, 250); });
-})();
-</script>
 
-<script>
-// --- Boot diagnostics: prevent silent blank page ---
-console.log("Chore Board script started");
-const __appEl = document.getElementById('app');
-if (__appEl && !__appEl.innerHTML.trim()) {
-  __appEl.innerHTML = '<div style="padding:14px;max-width:820px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#f5f5f5;opacity:.9;">Loading…</div>';
-}
-function __showFatal(label, err){
-  try{
-    const e = err && (err.error || err.reason || err);
-    const msg = (e && (e.message || String(e))) || String(err);
-    const stack = (e && e.stack) ? e.stack : '';
-    const html = `
-      <div style="padding:14px;max-width:920px;margin:14px auto;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.35);">
-        <div style="font-weight:900;font-size:16px;margin-bottom:6px;">App crashed (${label})</div>
-        <div style="font-size:13px;opacity:.9;line-height:1.35;">${String(msg).replace(/</g,'&lt;')}</div>
-        ${stack ? `<pre style="margin-top:10px;white-space:pre-wrap;font-size:12px;opacity:.85;">${String(stack).replace(/</g,'&lt;')}</pre>` : ''}
-        <div style="margin-top:10px;font-size:12px;opacity:.85;">Open DevTools Console for details.</div>
-      </div>`;
-    const a = document.getElementById('app');
-    if (a) a.innerHTML = html;
-  } catch(_){}
-}
-window.addEventListener('error', (ev) => __showFatal('error', ev));
-window.addEventListener('unhandledrejection', (ev) => __showFatal('promise', ev));
-// --- End diagnostics ---
-
+<script type="module">
 /* =========================
-   SYNC (TEMP DISABLED)
-   - Firebase/Auth/Firestore removed for now to restore a stable offline/local-only app.
-   - When you're ready to re-enable sync, we can re-add Firebase behind a feature flag.
+   FIREBASE (Auth + Firestore)
+   - Using CDN modular SDK (no build tools)
+   - Anonymous Auth enabled in console
 ========================= */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBdyYuUBWiZQCGvd4pWdUy5i6lMKHV53Y8",
+  authDomain: "family-chore-board-666c7.firebaseapp.com",
+  projectId: "family-chore-board-666c7",
+  storageBucket: "family-chore-board-666c7.firebasestorage.app",
+  messagingSenderId: "803382955236",
+  appId: "1:803382955236:web:506b776453fd04da9670f1",
+  measurementId: "G-JJLD3HG7GY"
+};
+
+// Init Firebase
+const fbApp = initializeApp(firebaseConfig);
+const fbAuth = getAuth(fbApp);
+const fbDb = getFirestore(fbApp);
+
+// Expose for debugging in DevTools
+window.fbApp = fbApp;
+window.fbAuth = fbAuth;
+window.fbDb = fbDb;
+
+// Anonymous sign-in (needed for your Firestore rule: request.auth != null)
+signInAnonymously(fbAuth).catch((err) => {
+  console.error("Firebase anonymous sign-in failed:", {
+    code: err?.code,
+    message: err?.message,
+    err
+  });
+});
+
+onAuthStateChanged(fbAuth, async (user) => {
+  if (user) {
+    console.log("Firebase initialized and ready.", { uid: user.uid });
+
+    // One-time sanity check: prove Firestore writes work.
+    // You should see a `debug/init` document appear in Firestore.
+    try {
+      await setDoc(
+        doc(fbDb, "debug", "init"),
+        { uid: user.uid, time: serverTimestamp() },
+        { merge: true }
+      );
+      console.log("Firestore test write OK");
+    } catch (err) {
+      console.error("Firestore test write FAILED", {
+        code: err?.code,
+        message: err?.message,
+        err
+      });
+    }
+
+  } else {
+    console.log("Firebase auth state: signed out");
+  }
+});
 
 /* =========================
    THEME SYSTEM (Admin)
@@ -1359,10 +1380,6 @@ const THEME_MEMBER_COLORS = {
   }
 };
 
-
-</script>
-
-<script>
 const THEMES = {
   neonGlass: {
     name: "Neon Glass",
@@ -1409,6 +1426,586 @@ const THEMES = {
       "--shadow": "0 14px 28px rgba(20,30,40,0.18)",
       "--glassBlur": "14px",
       "--radius": "12px"
+    }
+  },
+
+  auroraNight: {
+    name: "Aurora Night",
+    dark: {
+      "--bg": "radial-gradient(1100px 900px at 20% 20%, rgba(80,255,190,0.14), transparent 55%), radial-gradient(1000px 800px at 80% 25%, rgba(120,120,255,0.14), transparent 55%), linear-gradient(180deg, #0a0f1f 0%, #070815 100%)",
+      "--headerBg": "rgba(9,12,22,0.86)",
+      "--panel": "rgba(255,255,255,0.06)",
+      "--panel2": "rgba(255,255,255,0.08)",
+      "--panel3": "rgba(0,0,0,0.26)",
+      "--border": "rgba(255,255,255,0.10)",
+      "--border2": "rgba(255,255,255,0.12)",
+      "--text": "#f4f7ff",
+      "--muted": "rgba(244,247,255,0.76)",
+      "--muted2": "rgba(244,247,255,0.60)",
+      "--btn": "rgba(255,255,255,0.10)",
+      "--btnHover": "rgba(255,255,255,0.14)",
+      "--btnActive": "#7df7c6",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.30)",
+      "--inputBorder": "rgba(255,255,255,0.14)",
+      "--ringTrack": "rgba(255,255,255,0.22)",
+      "--shadow": "0 14px 28px rgba(0,0,0,0.48)",
+      "--glassBlur": "14px",
+      "--radius": "12px"
+    },
+    light: {
+      "--bg": "radial-gradient(1100px 900px at 20% 20%, rgba(80,255,190,0.20), transparent 55%), radial-gradient(1000px 800px at 80% 25%, rgba(120,120,255,0.18), transparent 55%), linear-gradient(180deg, #f7fbff 0%, #eef3ff 100%)",
+      "--headerBg": "rgba(255,255,255,0.82)",
+      "--panel": "rgba(255,255,255,0.74)",
+      "--panel2": "rgba(255,255,255,0.82)",
+      "--panel3": "rgba(255,255,255,0.66)",
+      "--border": "rgba(20,25,40,0.10)",
+      "--border2": "rgba(20,25,40,0.12)",
+      "--text": "#0b1020",
+      "--muted": "rgba(11,16,32,0.70)",
+      "--muted2": "rgba(11,16,32,0.55)",
+      "--btn": "rgba(20,25,40,0.08)",
+      "--btnHover": "rgba(20,25,40,0.12)",
+      "--btnActive": "#3ac99f",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.80)",
+      "--inputBorder": "rgba(20,25,40,0.14)",
+      "--ringTrack": "rgba(20,25,40,0.18)",
+      "--shadow": "0 14px 28px rgba(20,30,50,0.16)",
+      "--glassBlur": "14px",
+      "--radius": "12px"
+    }
+  },
+
+  sunsetHeat: {
+    name: "Sunset Heat",
+    dark: {
+      "--bg": "radial-gradient(1100px 900px at 25% 15%, rgba(255,120,60,0.16), transparent 55%), radial-gradient(900px 700px at 75% 30%, rgba(255,0,120,0.14), transparent 55%), linear-gradient(180deg, #120a10 0%, #070508 100%)",
+      "--headerBg": "rgba(18,10,16,0.86)",
+      "--panel": "rgba(255,255,255,0.06)",
+      "--panel2": "rgba(255,255,255,0.08)",
+      "--panel3": "rgba(0,0,0,0.26)",
+      "--border": "rgba(255,255,255,0.10)",
+      "--border2": "rgba(255,255,255,0.12)",
+      "--text": "#fff6fb",
+      "--muted": "rgba(255,246,251,0.75)",
+      "--muted2": "rgba(255,246,251,0.60)",
+      "--btn": "rgba(255,255,255,0.10)",
+      "--btnHover": "rgba(255,255,255,0.14)",
+      "--btnActive": "#ffb300",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.30)",
+      "--inputBorder": "rgba(255,255,255,0.14)",
+      "--ringTrack": "rgba(255,255,255,0.22)",
+      "--shadow": "0 14px 28px rgba(0,0,0,0.50)",
+      "--glassBlur": "14px",
+      "--radius": "12px"
+    },
+    light: {
+      "--bg": "radial-gradient(1100px 900px at 25% 15%, rgba(255,120,60,0.22), transparent 55%), radial-gradient(900px 700px at 75% 30%, rgba(255,0,120,0.18), transparent 55%), linear-gradient(180deg, #fff7fb 0%, #fff0f7 100%)",
+      "--headerBg": "rgba(255,255,255,0.82)",
+      "--panel": "rgba(255,255,255,0.74)",
+      "--panel2": "rgba(255,255,255,0.82)",
+      "--panel3": "rgba(255,255,255,0.66)",
+      "--border": "rgba(30,12,20,0.10)",
+      "--border2": "rgba(30,12,20,0.12)",
+      "--text": "#1a0b14",
+      "--muted": "rgba(26,11,20,0.70)",
+      "--muted2": "rgba(26,11,20,0.55)",
+      "--btn": "rgba(30,12,20,0.08)",
+      "--btnHover": "rgba(30,12,20,0.12)",
+      "--btnActive": "#ff8f00",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.80)",
+      "--inputBorder": "rgba(30,12,20,0.14)",
+      "--ringTrack": "rgba(30,12,20,0.18)",
+      "--shadow": "0 14px 28px rgba(60,20,40,0.16)",
+      "--glassBlur": "14px",
+      "--radius": "12px"
+    }
+  },
+
+  grapeSoda: {
+    name: "Grape Soda",
+    dark: {
+      "--bg": "radial-gradient(1100px 900px at 25% 20%, rgba(171,71,188,0.16), transparent 55%), radial-gradient(900px 700px at 75% 25%, rgba(66,165,245,0.12), transparent 55%), linear-gradient(180deg, #0e0a14 0%, #070509 100%)",
+      "--headerBg": "rgba(14,10,20,0.86)",
+      "--panel": "rgba(255,255,255,0.06)",
+      "--panel2": "rgba(255,255,255,0.08)",
+      "--panel3": "rgba(0,0,0,0.26)",
+      "--border": "rgba(255,255,255,0.10)",
+      "--border2": "rgba(255,255,255,0.12)",
+      "--text": "#fbf7ff",
+      "--muted": "rgba(251,247,255,0.75)",
+      "--muted2": "rgba(251,247,255,0.60)",
+      "--btn": "rgba(255,255,255,0.10)",
+      "--btnHover": "rgba(255,255,255,0.14)",
+      "--btnActive": "#ab47bc",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.30)",
+      "--inputBorder": "rgba(255,255,255,0.14)",
+      "--ringTrack": "rgba(255,255,255,0.22)",
+      "--shadow": "0 14px 28px rgba(0,0,0,0.50)",
+      "--glassBlur": "14px",
+      "--radius": "12px"
+    },
+    light: {
+      "--bg": "radial-gradient(1100px 900px at 25% 20%, rgba(171,71,188,0.20), transparent 55%), radial-gradient(900px 700px at 75% 25%, rgba(66,165,245,0.18), transparent 55%), linear-gradient(180deg, #fbf8ff 0%, #f3effa 100%)",
+      "--headerBg": "rgba(255,255,255,0.82)",
+      "--panel": "rgba(255,255,255,0.74)",
+      "--panel2": "rgba(255,255,255,0.82)",
+      "--panel3": "rgba(255,255,255,0.66)",
+      "--border": "rgba(22,12,30,0.10)",
+      "--border2": "rgba(22,12,30,0.12)",
+      "--text": "#140a1f",
+      "--muted": "rgba(20,10,31,0.70)",
+      "--muted2": "rgba(20,10,31,0.55)",
+      "--btn": "rgba(22,12,30,0.08)",
+      "--btnHover": "rgba(22,12,30,0.12)",
+      "--btnActive": "#7e57c2",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.80)",
+      "--inputBorder": "rgba(22,12,30,0.14)",
+      "--ringTrack": "rgba(22,12,30,0.18)",
+      "--shadow": "0 14px 28px rgba(30,20,60,0.14)",
+      "--glassBlur": "14px",
+      "--radius": "12px"
+    }
+  },
+
+  // =========================
+  // PREMIUM THEMES (textured + shaded)
+  // =========================
+
+  midnightVelvet: {
+    name: "Midnight Velvet",
+    dark: {
+      "--bg": "radial-gradient(1200px 800px at 18% 12%, rgba(55,255,210,0.10), transparent 56%), radial-gradient(900px 700px at 82% 20%, rgba(255,80,210,0.10), transparent 55%), radial-gradient(1200px 900px at 55% 95%, rgba(120,140,255,0.08), transparent 60%), linear-gradient(180deg, #07080c 0%, #05060a 100%)",
+      "--headerBg": "rgba(10,10,14,0.86)",
+      "--panel": "rgba(255,255,255,0.055)",
+      "--panel2": "rgba(255,255,255,0.075)",
+      "--panel3": "rgba(0,0,0,0.30)",
+      "--border": "rgba(255,255,255,0.10)",
+      "--border2": "rgba(255,255,255,0.13)",
+      "--text": "#f6f7fb",
+      "--muted": "rgba(246,247,251,0.76)",
+      "--muted2": "rgba(246,247,251,0.60)",
+      "--btn": "rgba(255,255,255,0.095)",
+      "--btnHover": "rgba(255,255,255,0.14)",
+      "--btnActive": "#25f0b8",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.34)",
+      "--inputBorder": "rgba(255,255,255,0.16)",
+      "--ringTrack": "rgba(255,255,255,0.22)",
+      "--shadow": "0 18px 34px rgba(0,0,0,0.56)",
+      "--glassBlur": "18px",
+      "--radius": "14px"
+    },
+    light: {
+      "--bg": "radial-gradient(1100px 800px at 22% 12%, rgba(35,210,180,0.18), transparent 55%), radial-gradient(900px 700px at 78% 18%, rgba(255,90,205,0.16), transparent 55%), radial-gradient(900px 800px at 55% 92%, rgba(120,140,255,0.14), transparent 60%), linear-gradient(180deg, #f8fbff 0%, #eef2f7 100%)",
+      "--headerBg": "rgba(255,255,255,0.82)",
+      "--panel": "rgba(255,255,255,0.72)",
+      "--panel2": "rgba(255,255,255,0.82)",
+      "--panel3": "rgba(255,255,255,0.64)",
+      "--border": "rgba(10,20,30,0.10)",
+      "--border2": "rgba(10,20,30,0.13)",
+      "--text": "#0e1116",
+      "--muted": "rgba(14,17,22,0.70)",
+      "--muted2": "rgba(14,17,22,0.55)",
+      "--btn": "rgba(10,20,30,0.075)",
+      "--btnHover": "rgba(10,20,30,0.115)",
+      "--btnActive": "#18caa1",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.84)",
+      "--inputBorder": "rgba(10,20,30,0.16)",
+      "--ringTrack": "rgba(10,20,30,0.18)",
+      "--shadow": "0 16px 30px rgba(20,30,40,0.18)",
+      "--glassBlur": "16px",
+      "--radius": "14px"
+    }
+  },
+
+  carbonFiber: {
+    name: "Carbon Fiber",
+    dark: {
+      "--bg": "repeating-linear-gradient(135deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 2px, rgba(0,0,0,0.0) 2px, rgba(0,0,0,0.0) 10px), radial-gradient(1100px 900px at 22% 16%, rgba(40,255,200,0.10), transparent 55%), radial-gradient(900px 700px at 82% 24%, rgba(80,120,255,0.10), transparent 55%), linear-gradient(180deg, #070a0f 0%, #04060b 100%)",
+      "--headerBg": "rgba(9,12,18,0.88)",
+      "--panel": "rgba(255,255,255,0.055)",
+      "--panel2": "rgba(255,255,255,0.075)",
+      "--panel3": "rgba(0,0,0,0.32)",
+      "--border": "rgba(255,255,255,0.10)",
+      "--border2": "rgba(255,255,255,0.14)",
+      "--text": "#f5f7fb",
+      "--muted": "rgba(245,247,251,0.74)",
+      "--muted2": "rgba(245,247,251,0.58)",
+      "--btn": "rgba(255,255,255,0.085)",
+      "--btnHover": "rgba(255,255,255,0.13)",
+      "--btnActive": "#2af5c0",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.36)",
+      "--inputBorder": "rgba(255,255,255,0.17)",
+      "--ringTrack": "rgba(255,255,255,0.22)",
+      "--shadow": "0 18px 34px rgba(0,0,0,0.58)",
+      "--glassBlur": "14px",
+      "--radius": "12px"
+    },
+    light: {
+      "--bg": "repeating-linear-gradient(135deg, rgba(0,0,0,0.045) 0px, rgba(0,0,0,0.045) 2px, rgba(255,255,255,0.0) 2px, rgba(255,255,255,0.0) 10px), radial-gradient(1100px 900px at 22% 16%, rgba(40,210,180,0.16), transparent 55%), radial-gradient(900px 700px at 82% 24%, rgba(80,120,255,0.14), transparent 55%), linear-gradient(180deg, #fbfcff 0%, #eef2f6 100%)",
+      "--headerBg": "rgba(255,255,255,0.84)",
+      "--panel": "rgba(255,255,255,0.76)",
+      "--panel2": "rgba(255,255,255,0.85)",
+      "--panel3": "rgba(255,255,255,0.66)",
+      "--border": "rgba(10,20,30,0.10)",
+      "--border2": "rgba(10,20,30,0.13)",
+      "--text": "#0e1218",
+      "--muted": "rgba(14,18,24,0.70)",
+      "--muted2": "rgba(14,18,24,0.55)",
+      "--btn": "rgba(10,20,30,0.07)",
+      "--btnHover": "rgba(10,20,30,0.11)",
+      "--btnActive": "#17caa1",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.86)",
+      "--inputBorder": "rgba(10,20,30,0.16)",
+      "--ringTrack": "rgba(10,20,30,0.18)",
+      "--shadow": "0 16px 30px rgba(20,30,40,0.18)",
+      "--glassBlur": "12px",
+      "--radius": "12px"
+    }
+  },
+
+  royalGold: {
+    name: "Royal Gold",
+    dark: {
+      "--bg": "radial-gradient(1200px 900px at 18% 18%, rgba(217,180,90,0.14), transparent 58%), radial-gradient(900px 700px at 80% 22%, rgba(40,255,210,0.08), transparent 55%), linear-gradient(180deg, #0a0a0c 0%, #060607 100%)",
+      "--headerBg": "rgba(12,12,13,0.88)",
+      "--panel": "rgba(255,255,255,0.055)",
+      "--panel2": "rgba(255,255,255,0.075)",
+      "--panel3": "rgba(0,0,0,0.30)",
+      "--border": "rgba(255,255,255,0.10)",
+      "--border2": "rgba(255,255,255,0.14)",
+      "--text": "#fbfaf6",
+      "--muted": "rgba(251,250,246,0.74)",
+      "--muted2": "rgba(251,250,246,0.58)",
+      "--btn": "rgba(255,255,255,0.085)",
+      "--btnHover": "rgba(255,255,255,0.13)",
+      "--btnActive": "#d9b45a",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.34)",
+      "--inputBorder": "rgba(255,255,255,0.17)",
+      "--ringTrack": "rgba(255,255,255,0.22)",
+      "--shadow": "0 18px 34px rgba(0,0,0,0.56)",
+      "--glassBlur": "16px",
+      "--radius": "14px"
+    },
+    light: {
+      "--bg": "radial-gradient(1100px 900px at 18% 18%, rgba(217,180,90,0.18), transparent 58%), radial-gradient(900px 700px at 80% 22%, rgba(40,210,180,0.14), transparent 55%), linear-gradient(180deg, #ffffff 0%, #f2f4f7 100%)",
+      "--headerBg": "rgba(255,255,255,0.86)",
+      "--panel": "rgba(255,255,255,0.78)",
+      "--panel2": "rgba(255,255,255,0.86)",
+      "--panel3": "rgba(255,255,255,0.68)",
+      "--border": "rgba(10,20,30,0.10)",
+      "--border2": "rgba(10,20,30,0.13)",
+      "--text": "#121314",
+      "--muted": "rgba(18,19,20,0.70)",
+      "--muted2": "rgba(18,19,20,0.55)",
+      "--btn": "rgba(10,20,30,0.07)",
+      "--btnHover": "rgba(10,20,30,0.11)",
+      "--btnActive": "#b89133",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.88)",
+      "--inputBorder": "rgba(10,20,30,0.16)",
+      "--ringTrack": "rgba(10,20,30,0.18)",
+      "--shadow": "0 16px 30px rgba(20,30,40,0.18)",
+      "--glassBlur": "12px",
+      "--radius": "14px"
+    }
+  },
+
+  frostGlass: {
+    name: "Frost Glass",
+    dark: {
+      "--bg": "radial-gradient(1000px 800px at 22% 18%, rgba(80,190,255,0.12), transparent 55%), radial-gradient(1000px 900px at 78% 22%, rgba(160,120,255,0.10), transparent 58%), radial-gradient(1200px 900px at 50% 110%, rgba(255,255,255,0.06), transparent 60%), linear-gradient(180deg, #070b12 0%, #05070c 100%)",
+      "--headerBg": "rgba(10,12,18,0.82)",
+      "--panel": "rgba(255,255,255,0.055)",
+      "--panel2": "rgba(255,255,255,0.08)",
+      "--panel3": "rgba(0,0,0,0.26)",
+      "--border": "rgba(255,255,255,0.11)",
+      "--border2": "rgba(255,255,255,0.14)",
+      "--text": "#f6f8ff",
+      "--muted": "rgba(246,248,255,0.76)",
+      "--muted2": "rgba(246,248,255,0.60)",
+      "--btn": "rgba(255,255,255,0.09)",
+      "--btnHover": "rgba(255,255,255,0.14)",
+      "--btnActive": "#38f2d0",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.28)",
+      "--inputBorder": "rgba(255,255,255,0.17)",
+      "--ringTrack": "rgba(255,255,255,0.22)",
+      "--shadow": "0 18px 34px rgba(0,0,0,0.52)",
+      "--glassBlur": "22px",
+      "--radius": "16px"
+    },
+    light: {
+      "--bg": "radial-gradient(1000px 800px at 22% 18%, rgba(80,190,255,0.18), transparent 55%), radial-gradient(1000px 900px at 78% 22%, rgba(160,120,255,0.16), transparent 58%), radial-gradient(1200px 900px at 50% 110%, rgba(255,255,255,0.75), transparent 60%), linear-gradient(180deg, #fbfdff 0%, #eef3f9 100%)",
+      "--headerBg": "rgba(255,255,255,0.84)",
+      "--panel": "rgba(255,255,255,0.78)",
+      "--panel2": "rgba(255,255,255,0.86)",
+      "--panel3": "rgba(255,255,255,0.68)",
+      "--border": "rgba(10,20,30,0.10)",
+      "--border2": "rgba(10,20,30,0.13)",
+      "--text": "#0f1218",
+      "--muted": "rgba(15,18,24,0.70)",
+      "--muted2": "rgba(15,18,24,0.55)",
+      "--btn": "rgba(10,20,30,0.07)",
+      "--btnHover": "rgba(10,20,30,0.11)",
+      "--btnActive": "#19caa6",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.90)",
+      "--inputBorder": "rgba(10,20,30,0.16)",
+      "--ringTrack": "rgba(10,20,30,0.18)",
+      "--shadow": "0 16px 30px rgba(20,30,40,0.18)",
+      "--glassBlur": "20px",
+      "--radius": "16px"
+    }
+  },
+
+  noirVelvet: {
+    name: "Noir Velvet",
+    dark: {
+      "--bg": "radial-gradient(1200px 900px at 20% 18%, rgba(255,60,140,0.14), transparent 58%), radial-gradient(900px 700px at 78% 28%, rgba(255,200,80,0.10), transparent 55%), radial-gradient(900px 900px at 50% 120%, rgba(255,255,255,0.06), transparent 60%), linear-gradient(180deg, #070607 0%, #040304 100%)",
+      "--headerBg": "rgba(10,8,10,0.86)",
+      "--panel": "rgba(255,255,255,0.055)",
+      "--panel2": "rgba(255,255,255,0.080)",
+      "--panel3": "rgba(0,0,0,0.28)",
+      "--border": "rgba(255,255,255,0.10)",
+      "--border2": "rgba(255,255,255,0.14)",
+      "--text": "#fff7fb",
+      "--muted": "rgba(255,247,251,0.72)",
+      "--muted2": "rgba(255,247,251,0.56)",
+      "--btn": "rgba(255,255,255,0.09)",
+      "--btnHover": "rgba(255,255,255,0.14)",
+      "--btnActive": "#ff3c8c",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.30)",
+      "--inputBorder": "rgba(255,255,255,0.18)",
+      "--ringTrack": "rgba(255,255,255,0.22)",
+      "--shadow": "0 20px 40px rgba(0,0,0,0.58)",
+      "--glassBlur": "18px",
+      "--radius": "16px"
+    },
+    light: {
+      "--bg": "radial-gradient(1200px 900px at 20% 18%, rgba(255,60,140,0.18), transparent 58%), radial-gradient(900px 700px at 78% 28%, rgba(255,200,80,0.14), transparent 55%), linear-gradient(180deg, #ffffff 0%, #f2f2f6 100%)",
+      "--headerBg": "rgba(255,255,255,0.86)",
+      "--panel": "rgba(255,255,255,0.80)",
+      "--panel2": "rgba(255,255,255,0.88)",
+      "--panel3": "rgba(255,255,255,0.70)",
+      "--border": "rgba(20,10,20,0.10)",
+      "--border2": "rgba(20,10,20,0.14)",
+      "--text": "#120812",
+      "--muted": "rgba(18,8,18,0.70)",
+      "--muted2": "rgba(18,8,18,0.55)",
+      "--btn": "rgba(20,10,20,0.06)",
+      "--btnHover": "rgba(20,10,20,0.10)",
+      "--btnActive": "#ff3c8c",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.92)",
+      "--inputBorder": "rgba(20,10,20,0.16)",
+      "--ringTrack": "rgba(20,10,20,0.16)",
+      "--shadow": "0 16px 30px rgba(20,10,20,0.16)",
+      "--glassBlur": "14px",
+      "--radius": "16px"
+    }
+  },
+
+  blueprintGrid: {
+    name: "Blueprint Grid",
+    dark: {
+      "--bg": "linear-gradient(180deg, #06101d 0%, #040a13 100%), linear-gradient(rgba(90,180,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(90,180,255,0.08) 1px, transparent 1px)",
+      "--headerBg": "rgba(5,10,18,0.86)",
+      "--panel": "rgba(90,180,255,0.06)",
+      "--panel2": "rgba(90,180,255,0.08)",
+      "--panel3": "rgba(0,0,0,0.26)",
+      "--border": "rgba(90,180,255,0.16)",
+      "--border2": "rgba(90,180,255,0.22)",
+      "--text": "#eef6ff",
+      "--muted": "rgba(238,246,255,0.74)",
+      "--muted2": "rgba(238,246,255,0.58)",
+      "--btn": "rgba(90,180,255,0.10)",
+      "--btnHover": "rgba(90,180,255,0.16)",
+      "--btnActive": "#5ab4ff",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.22)",
+      "--inputBorder": "rgba(90,180,255,0.22)",
+      "--ringTrack": "rgba(90,180,255,0.22)",
+      "--shadow": "0 18px 34px rgba(0,0,0,0.55)",
+      "--glassBlur": "10px",
+      "--radius": "10px"
+    },
+    light: {
+      "--bg": "linear-gradient(180deg, #f6fbff 0%, #e9f2fb 100%), linear-gradient(rgba(30,120,200,0.10) 1px, transparent 1px), linear-gradient(90deg, rgba(30,120,200,0.10) 1px, transparent 1px)",
+      "--headerBg": "rgba(255,255,255,0.86)",
+      "--panel": "rgba(255,255,255,0.84)",
+      "--panel2": "rgba(255,255,255,0.90)",
+      "--panel3": "rgba(255,255,255,0.72)",
+      "--border": "rgba(30,120,200,0.16)",
+      "--border2": "rgba(30,120,200,0.22)",
+      "--text": "#06101d",
+      "--muted": "rgba(6,16,29,0.70)",
+      "--muted2": "rgba(6,16,29,0.55)",
+      "--btn": "rgba(30,120,200,0.08)",
+      "--btnHover": "rgba(30,120,200,0.13)",
+      "--btnActive": "#1e78c8",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.92)",
+      "--inputBorder": "rgba(30,120,200,0.20)",
+      "--ringTrack": "rgba(30,120,200,0.18)",
+      "--shadow": "0 16px 30px rgba(6,16,29,0.14)",
+      "--glassBlur": "8px",
+      "--radius": "10px"
+    }
+  },
+
+  warmClay: {
+    name: "Warm Clay",
+    dark: {
+      "--bg": "radial-gradient(1200px 900px at 18% 22%, rgba(255,160,110,0.16), transparent 58%), radial-gradient(900px 700px at 82% 24%, rgba(255,220,140,0.10), transparent 55%), linear-gradient(180deg, #1a1210 0%, #120b0a 100%)",
+      "--headerBg": "rgba(22,14,12,0.88)",
+      "--panel": "rgba(255,220,190,0.08)",
+      "--panel2": "rgba(255,220,190,0.11)",
+      "--panel3": "rgba(0,0,0,0.22)",
+      "--border": "rgba(255,220,190,0.14)",
+      "--border2": "rgba(255,220,190,0.18)",
+      "--text": "#fff4ee",
+      "--muted": "rgba(255,244,238,0.72)",
+      "--muted2": "rgba(255,244,238,0.56)",
+      "--btn": "rgba(255,220,190,0.10)",
+      "--btnHover": "rgba(255,220,190,0.16)",
+      "--btnActive": "#ff9f6e",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.18)",
+      "--inputBorder": "rgba(255,220,190,0.18)",
+      "--ringTrack": "rgba(255,255,255,0.20)",
+      "--shadow": "0 22px 44px rgba(0,0,0,0.55)",
+      "--glassBlur": "6px",
+      "--radius": "22px"
+    },
+    light: {
+      "--bg": "radial-gradient(1200px 900px at 18% 22%, rgba(255,160,110,0.24), transparent 58%), radial-gradient(900px 700px at 82% 24%, rgba(255,220,140,0.20), transparent 55%), linear-gradient(180deg, #fff8f2 0%, #f4ece6 100%)",
+      "--headerBg": "rgba(255,248,242,0.86)",
+      "--panel": "rgba(255,255,255,0.84)",
+      "--panel2": "rgba(255,255,255,0.90)",
+      "--panel3": "rgba(255,255,255,0.72)",
+      "--border": "rgba(120,60,30,0.12)",
+      "--border2": "rgba(120,60,30,0.16)",
+      "--text": "#1a1210",
+      "--muted": "rgba(26,18,16,0.70)",
+      "--muted2": "rgba(26,18,16,0.55)",
+      "--btn": "rgba(120,60,30,0.06)",
+      "--btnHover": "rgba(120,60,30,0.10)",
+      "--btnActive": "#ff7f50",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.94)",
+      "--inputBorder": "rgba(120,60,30,0.16)",
+      "--ringTrack": "rgba(26,18,16,0.16)",
+      "--shadow": "0 18px 36px rgba(60,30,10,0.16)",
+      "--glassBlur": "0px",
+      "--radius": "22px"
+    }
+  },
+
+  retroTerminal: {
+    name: "Retro Terminal",
+    dark: {
+      "--bg": "radial-gradient(1100px 900px at 50% 40%, rgba(0,255,130,0.12), transparent 62%), repeating-linear-gradient(0deg, rgba(0,0,0,0.28) 0px, rgba(0,0,0,0.28) 2px, rgba(0,0,0,0.0) 4px, rgba(0,0,0,0.0) 6px), linear-gradient(180deg, #020604 0%, #010302 100%)",
+      "--headerBg": "rgba(2,6,4,0.90)",
+      "--panel": "rgba(0,255,130,0.06)",
+      "--panel2": "rgba(0,255,130,0.09)",
+      "--panel3": "rgba(0,0,0,0.34)",
+      "--border": "rgba(0,255,130,0.16)",
+      "--border2": "rgba(0,255,130,0.22)",
+      "--text": "#d9ffe9",
+      "--muted": "rgba(217,255,233,0.74)",
+      "--muted2": "rgba(217,255,233,0.56)",
+      "--btn": "rgba(0,255,130,0.10)",
+      "--btnHover": "rgba(0,255,130,0.16)",
+      "--btnActive": "#00ff82",
+      "--danger": "#ff3b3b",
+      "--inputBg": "rgba(0,0,0,0.28)",
+      "--inputBorder": "rgba(0,255,130,0.22)",
+      "--ringTrack": "rgba(0,255,130,0.20)",
+      "--shadow": "0 18px 34px rgba(0,0,0,0.62)",
+      "--glassBlur": "0px",
+      "--radius": "8px"
+    },
+    light: {
+      "--bg": "radial-gradient(1100px 900px at 50% 40%, rgba(0,255,130,0.14), transparent 62%), repeating-linear-gradient(0deg, rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 2px, rgba(255,255,255,0.0) 4px, rgba(255,255,255,0.0) 6px), linear-gradient(180deg, #fbfffd 0%, #eefaf3 100%)",
+      "--headerBg": "rgba(255,255,255,0.86)",
+      "--panel": "rgba(255,255,255,0.84)",
+      "--panel2": "rgba(255,255,255,0.90)",
+      "--panel3": "rgba(255,255,255,0.72)",
+      "--border": "rgba(0,120,60,0.18)",
+      "--border2": "rgba(0,120,60,0.22)",
+      "--text": "#04120a",
+      "--muted": "rgba(4,18,10,0.70)",
+      "--muted2": "rgba(4,18,10,0.55)",
+      "--btn": "rgba(0,120,60,0.08)",
+      "--btnHover": "rgba(0,120,60,0.12)",
+      "--btnActive": "#00b85a",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.94)",
+      "--inputBorder": "rgba(0,120,60,0.22)",
+      "--ringTrack": "rgba(0,120,60,0.18)",
+      "--shadow": "0 16px 30px rgba(0,120,60,0.14)",
+      "--glassBlur": "0px",
+      "--radius": "8px"
+    }
+  },
+
+  comicPop: {
+    name: "Comic Pop",
+    dark: {
+      "--bg": "radial-gradient(1200px 900px at 18% 18%, rgba(255,230,0,0.10), transparent 60%), radial-gradient(900px 700px at 82% 28%, rgba(0,190,255,0.10), transparent 55%), linear-gradient(180deg, #0b0c10 0%, #06070a 100%)",
+      "--headerBg": "rgba(10,10,14,0.92)",
+      "--panel": "rgba(255,255,255,0.08)",
+      "--panel2": "rgba(255,255,255,0.11)",
+      "--panel3": "rgba(0,0,0,0.26)",
+      "--border": "rgba(255,255,255,0.16)",
+      "--border2": "rgba(255,255,255,0.22)",
+      "--text": "#ffffff",
+      "--muted": "rgba(255,255,255,0.74)",
+      "--muted2": "rgba(255,255,255,0.58)",
+      "--btn": "rgba(255,255,255,0.12)",
+      "--btnHover": "rgba(255,255,255,0.18)",
+      "--btnActive": "#ffe600",
+      "--danger": "#ff3b30",
+      "--inputBg": "rgba(0,0,0,0.22)",
+      "--inputBorder": "rgba(255,255,255,0.24)",
+      "--ringTrack": "rgba(255,255,255,0.22)",
+      "--shadow": "0 22px 44px rgba(0,0,0,0.58)",
+      "--glassBlur": "0px",
+      "--radius": "6px"
+    },
+    light: {
+      "--bg": "radial-gradient(1200px 900px at 18% 18%, rgba(255,230,0,0.20), transparent 60%), radial-gradient(900px 700px at 82% 28%, rgba(0,190,255,0.16), transparent 55%), linear-gradient(180deg, #ffffff 0%, #f4f6fb 100%)",
+      "--headerBg": "rgba(255,255,255,0.90)",
+      "--panel": "rgba(255,255,255,0.88)",
+      "--panel2": "rgba(255,255,255,0.92)",
+      "--panel3": "rgba(255,255,255,0.76)",
+      "--border": "rgba(0,0,0,0.18)",
+      "--border2": "rgba(0,0,0,0.22)",
+      "--text": "#0b0c10",
+      "--muted": "rgba(11,12,16,0.70)",
+      "--muted2": "rgba(11,12,16,0.55)",
+      "--btn": "rgba(0,0,0,0.06)",
+      "--btnHover": "rgba(0,0,0,0.10)",
+      "--btnActive": "#ff5a1f",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.94)",
+      "--inputBorder": "rgba(0,0,0,0.22)",
+      "--ringTrack": "rgba(0,0,0,0.16)",
+      "--shadow": "0 16px 30px rgba(0,0,0,0.14)",
+      "--glassBlur": "0px",
+      "--radius": "6px"
     }
   },
 
@@ -1461,7 +2058,6 @@ const THEMES = {
   }
 };
 
-
 function loadThemeState(){
   const s = jget("themeState", { themeId: "neonGlass", mode: "dark" });
   if (!s || typeof s !== "object") return { themeId: "neonGlass", mode: "dark" };
@@ -1471,46 +2067,8 @@ function loadThemeState(){
 }
 
 function saveThemeState(s){ jset("themeState", s); }
-// Member color persistence (local-only). Some older builds call these from applyTheme().
-function loadMemberColors(){
-  return jget('memberColors', {});
-}
-function saveMemberColors(obj){
-  jset('memberColors', obj || {});
-}
-
-function getMemberColorsSafe(){
-  try {
-    const mc = loadMemberColors && loadMemberColors();
-    return (mc && typeof mc === 'object') ? mc : {};
-  } catch(_) {
-    return {};
-  }
-}
-
-function getMemberColor(person){
-  const mc = getMemberColorsSafe();
-  if (mc && mc[person]) return mc[person];
-  // fallback to neonGlass preset if missing
-  const fallback = (THEME_MEMBER_COLORS && THEME_MEMBER_COLORS.neonGlass && THEME_MEMBER_COLORS.neonGlass[person]) ? THEME_MEMBER_COLORS.neonGlass[person] : '#22f0b6';
-  return fallback;
-}
-
-function applyMemberColorsToCSS(){
-  try {
-    const mc = getMemberColorsSafe();
-    const ppl = (typeof window !== 'undefined' && Array.isArray(window.PEOPLE)) ? window.PEOPLE : ["Dad","Mom","Ethan","Celo"];
-    ppl.forEach(p => {
-      const val = mc[p] || getMemberColor(p);
-      document.documentElement.style.setProperty(`--member-${p.toLowerCase()}`, val);
-    });
-  } catch(_) {}
-}
 
 function applyTheme(themeId, mode){
-  // Neon Glass is the only theme now. Ignore any other themeId.
-  themeId = 'neonGlass';
-  
   const t = THEMES[themeId];
   if (!t) return;
   const vars = (mode === "light") ? t.light : t.dark;
@@ -1526,43 +2084,30 @@ function applyTheme(themeId, mode){
 
   saveThemeState({ themeId, mode });
 
-  // Do NOT overwrite custom member colors when switching Dark/Light.
-  // Just re-apply whatever is saved in localStorage.
-  applyMemberColorsToCSS();
-}
-// Ensure member color CSS vars are applied on load as well.
-// NOTE: `jget/jset` are defined later in this file, so calling immediately can crash the theme script.
-(function(){
-  function safeApply(){
-    try { applyMemberColorsToCSS(); } catch(_) {}
-  }
-  // If storage helpers exist already, apply now; otherwise wait until DOMContentLoaded.
-  if (typeof window.jget === 'function') {
-    safeApply();
+  // Lock member colors to the selected theme (except Paper Clean)
+  if (themeId !== "paperClean") {
+    const preset = THEME_MEMBER_COLORS[themeId];
+    if (preset) {
+      saveMemberColors({ ...preset });
+    }
   } else {
-    window.addEventListener('DOMContentLoaded', safeApply);
+    // Ensure member colors exist when returning to Paper Clean
+    const current = loadMemberColors();
+    PEOPLE.forEach(p => { if (!current[p]) current[p] = THEME_MEMBER_COLORS.paperClean[p] || "#ffffff"; });
+    saveMemberColors(current);
   }
-})();
+}
 
 function themeLabel(themeId){
   return THEMES[themeId] ? THEMES[themeId].name : themeId;
 }
-
-</script>
-
-<script>
-
-// Make DAYS/PEOPLE truly global (they were block-scoped inside a try{} and later code crashed).
-var DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
-var PEOPLE = ["Dad","Mom","Ethan","Celo"];
-window.DAYS = DAYS;
-window.PEOPLE = PEOPLE;
-try {
-
+  
 /* =========================
    ROUTES + CONSTANTS
 ========================= */
 
+const DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
+const PEOPLE = ["Dad","Mom","Ethan","Celo"];
 
 function todayKey(){
   const map = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
@@ -1573,16 +2118,6 @@ function prevDayKey(dayKey){
   const idx = DAYS.indexOf(dayKey);
   if (idx === -1) return "domingo";
   return DAYS[(idx - 1 + DAYS.length) % DAYS.length];
-}
-
-function nextDayKey(dayKey){
-  const idx = DAYS.indexOf(dayKey);
-  if (idx === -1) return "lunes";
-  return DAYS[(idx + 1) % DAYS.length];
-}
-
-function goToDayKey(dayKey){
-  location.hash = "#/" + dayKey;
 }
 
 function pad2(n){ return String(n).padStart(2,"0"); }
@@ -1612,24 +2147,11 @@ function formatMMDDYYYY(d){
   return `${mm}-${dd}-${yyyy}`;
 }
 
-} catch (e) {
-  console.error('Debug: Routes + Constants crashed', e);
-  if (typeof __showFatal === 'function') __showFatal('routes/constants', e);
-}
-
-</script>
-
-<script>
-
-</script>
-
-<script>
 /* =========================
    DATA (still placeholders)
    - We'll replace DAILY_CHORES & WEEKLY_CHORES with your real lists later.
    - Bi-weekly/monthly/maintenance lists stay mostly empty until Phase 5-7.
 ========================= */
-try {
 
 // Daily chores are scheduled per day (lunes → domingo).
 // Tasks are shared objects so 2-person chores have ONE completion state.
@@ -1795,12 +2317,6 @@ const KIDS = ["Ethan", "Celo"];
 function isParent(p){ return PARENTS.includes(p); }
 function isKid(p){ return KIDS.includes(p); }
 
-// =========================
-// DAILY TASKS (STABLE)
-// =========================
-// IMPORTANT: Keep this logic boring and predictable.
-// We can reintroduce “fair shuffle/rotation” once the app is loading consistently again.
-
 // Phase 8.4: Walk alternates every other day. Mom starts on lunes.
 function walkAssigneeForDay(dayKey){
   const idx = DAYS.indexOf(dayKey);
@@ -1827,886 +2343,1991 @@ function normalizeTwoPersonTask(task){
                     (a === "Dad" && b === "Celo")  || (a === "Celo"  && b === "Dad");
   if (isAllowed) return task;
 
-  // If this is a 2-person task, force it into one of the two allowed pairings.
-  // Preference: if Mom/Ethan is present, use that pair; otherwise Dad/Celo.
+  // If we have 1 parent + 1 kid but the "wrong" kid/parent, force the correct pairing.
   const hasMom = task.assignees.includes("Mom");
+  const hasDad = task.assignees.includes("Dad");
   const hasEthan = task.assignees.includes("Ethan");
-  const fixed = (hasMom || hasEthan) ? ["Mom","Ethan"] : ["Dad","Celo"];
+  const hasCelo = task.assignees.includes("Celo");
 
-  // Keep primary consistent with the kid on the pair.
-  const primary = (fixed[1] === "Ethan") ? "Ethan" : "Celo";
-  return { ...task, assignees: fixed, primary };
+  let fixed;
+  if (hasMom || hasEthan) {
+    fixed = ["Mom", "Ethan"];
+  } else if (hasDad || hasCelo) {
+    fixed = ["Dad", "Celo"];
+  } else {
+    // Fallback: decide by primary if present
+    fixed = (task.primary === "Celo" || task.primary === "Dad") ? ["Dad", "Celo"] : ["Mom", "Ethan"];
+  }
+
+  // clone so we don't mutate the schedule literal
+  return { ...task, assignees: fixed };
 }
 
 function getTasksForDay(dayKey){
-  // Pull from schedule
+  // Pull from schedule (do NOT use checkbox state for anything here)
   const base = (DAILY_SCHEDULE[dayKey] || []).slice();
 
-  // Ensure there is exactly ONE walk task, controlled by alternation logic.
+  // Phase 8.4: remove any manually-scheduled walk tasks to avoid duplicates,
+  // then inject the automatic alternating walk task.
   const withoutWalk = base.filter(t => {
     const id = (t && t.id) ? t.id : "";
     return !id.endsWith("::walk");
   });
+
   withoutWalk.push(buildWalkTask(dayKey));
 
-  // Apply pairing guardrails (only affects 2-person chores).
+  // Phase 8.3: enforce 2-person pairing guardrails.
   return withoutWalk.map(t => normalizeTwoPersonTask(t));
 }
 const WEEKLY_CHORES = [
-  "Sweep",
-  "Mop",
-  "Vacuum",
-  "Trash",
-  "Wipe kitchen counters",
-  "Wipe dining table"
+  "Sweep backyard",
+  "Wipe inside fridge",
+  "Clean inside microwave",
+  "Clean trash can (inside & out)",
+  "Shake out entry mats",
+  "Dust ceiling fans & vents",
+  "Clean toilets",
+  "Wipe down bathroom",
+  "Clean showers",
+  "Doors & windows"
 ];
 
+// Phase 5/6 scaffolding
+const BIWEEKLY_CHORES = [
+  "Sweep the outside area",
+  "Wipe cabinet fronts & handles",
+  "Clean pet bedding (if applicable)",
+  "Wipe window sills & tracks",
+  "Wipe walls & doors",
+  "Clean windows (inside)"
+];
 
-} catch (e) {
-  console.error('Debug: DATA crashed', e);
-  if (typeof __showFatal === 'function') __showFatal('data', e);
+const MONTHLY_CHORES = ["Clean baseboards",
+  "Clean light switches & door handles",
+  "Deep clean bathrooms (grout, tub edges, behind toilet)",
+  "Clean behind large appliances (fridge, stove if movable)",
+  "Wash blankets & throws",
+  "Wash mattress protectors",
+  "Clean oven (light or self-clean)",
+  "Clean front door",
+  "Spot clean patio or porch"];    // Phase 6
+
+/* =========================
+   STORAGE HELPERS
+========================= */
+
+// Member avatars (Admin page) - stored as data URLs in localStorage
+function defaultMemberPhotos(){
+  const o = {};
+  PEOPLE.forEach(p => o[p] = "");
+  return o;
+}
+function loadMemberPhotos(){
+  const d = defaultMemberPhotos();
+  const s = jget("memberPhotos", d);
+  PEOPLE.forEach(p => { if (typeof s[p] !== "string") s[p] = ""; });
+  return s;
+}
+function saveMemberPhotos(s){ jset("memberPhotos", s); }
+
+function jget(k, fallback){
+  try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(fallback)); }
+  catch{ return fallback; }
+}
+function jset(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+
+// Member colors (Admin page)
+function defaultMemberColors(){
+  return {
+    Dad:  "#4caf50",
+    Mom:  "#ffb300",
+    Ethan:"#42a5f5",
+    Celo: "#ab47bc"
+  };
 }
 
-</script>
-
-<script>
-
-// ------------------------------
-// Storage helpers (local-only)
-// ------------------------------
-function jget(key, fallback){
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw == null) return fallback;
-    return JSON.parse(raw);
-  } catch(_) {
-    return fallback;
-  }
+// Theme member color presets are defined above in THEME_MEMBER_COLORS.
+function loadMemberColors(){
+  const d = defaultMemberColors();
+  const s = jget("memberColors", d);
+  // ensure all keys exist
+  PEOPLE.forEach(p => { if (!s[p]) s[p] = d[p] || "#ffffff"; });
+  return s;
 }
-function jset(key, value){
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch(_) {}
-}
+function saveMemberColors(s){ jset("memberColors", s); }
 
-// ------------------------------
-// Recovery constants/helpers
-// (do NOT rely on the earlier try/catch block scope)
-// ------------------------------
-const __DAYS_RECOVERY = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
-const __PEOPLE_RECOVERY = ["Dad","Mom","Ethan","Celo"];
+// Daily state (per day)
+function loadDailyState(){ return jget("dailyState", {}); }
+function saveDailyState(s){ jset("dailyState", s); }
 
-function __todayKey(){
-  const map = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
-  return map[new Date().getDay()];
-}
+// Weekly shared state
+function loadWeeklyState(){ return jget("weeklyState", { checks:{}, assign:{} }); }
+function saveWeeklyState(s){ jset("weeklyState", s); }
 
-function __pad2(n){ return String(n).padStart(2,"0"); }
+// Biweekly shared state (Phase 5)
+function loadBiweeklyState(){ return jget("biweeklyState", { checks:{}, assign:{} }); }
+function saveBiweeklyState(s){ jset("biweeklyState", s); }
 
-function __dateForDayKey(dayKey){
-  const idx = __DAYS_RECOVERY.indexOf(dayKey);
-  const now = new Date();
-  const dow = now.getDay(); // 0=Sun..6=Sat
+// Monthly shared state (Phase 6)
+function loadMonthlyState(){ return jget("monthlyState", { checks:{}, assign:{} }); }
+function saveMonthlyState(s){ jset("monthlyState", s); }
 
-  // Start of week = Monday
-  const daysSinceMonday = (dow + 6) % 7; // Mon=0..Sun=6
-  const monday = new Date(now);
-  monday.setHours(0,0,0,0);
-  monday.setDate(monday.getDate() - daysSinceMonday);
+// Maintenance log (Phase 7)
+function loadMaintState(){ return jget("maintState", { entries:[] }); }
+function saveMaintState(s){ jset("maintState", s); }
 
-  const d = new Date(monday);
-  d.setDate(monday.getDate() + (idx >= 0 ? idx : 0));
-  return d;
-}
+// Dashboard notes (no PIN) + dashboard day-notes viewer
+function loadDashState(){
+  const s = jget("dashState", {
+    dashboardNotes: "",
+    viewerDay: "",
+    viewerReadOnly: false,
+    ringFilters: {
+      daily: "All",
+      weekly: "All",
+      biweekly: "All",
+      monthly: "All"
+    }
+  });
 
-function __formatMMDDYYYY(d){
-  const mm = __pad2(d.getMonth() + 1);
-  const dd = __pad2(d.getDate());
-  const yyyy = d.getFullYear();
-  return `${mm}-${dd}-${yyyy}`;
-}
-
-function __esc(s){
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// ------------------------------
-// Completion state
-// ------------------------------
-function __taskDoneKey(taskId){ return 'done::' + taskId; }
-function __isTaskDone(taskId){ return !!jget(__taskDoneKey(taskId), false); }
-function __setTaskDone(taskId, v){ jset(__taskDoneKey(taskId), !!v); }
-
-// ------------------------------
-// Minimal UI
-// ------------------------------
-// ------------------------------
-// Minimal router + sidebar shell
-// ------------------------------
-function __route(){
-  const h = location.hash || '';
-  const m = h.match(/^#\/(.+)$/);
-  const r = m ? (m[1] || '') : '';
-  if (!r) return __todayKey();
-  return r;
-}
-
-function __isDayKey(r){
-  return __DAYS_RECOVERY.includes(r);
-}
-
-function __ensureSideShell(){
-  // One-time DOM for sidebar + overlays.
-  if (document.getElementById('sideOverlay')) return;
-
-  const overlay = document.createElement('div');
-  overlay.id = 'sideOverlay';
-  overlay.className = 'sideOverlay';
-
-  const panel = document.createElement('div');
-  panel.id = 'sidePanel';
-  panel.className = 'sidePanel';
-  panel.innerHTML = `
-    <div class="sideHeader">
-      <div class="sideTitle">Chore Board</div>
-      <button class="sideClose" id="sideCloseBtn" type="button">Close</button>
-    </div>
-
-    <div class="sideNav">
-      <button class="sideBtn" data-route="dashboard" type="button">Dashboard <span class="sideChevron">›</span></button>
-      <button class="sideBtn" data-route="admin" type="button">Admin <span class="sideChevron">›</span></button>
-      <button class="sideBtn" data-route="weekly" type="button">Weekly <span class="sideChevron">›</span></button>
-      <button class="sideBtn" data-route="maintenance" type="button">Maintenance <span class="sideChevron">›</span></button>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-  document.body.appendChild(panel);
-
-  function close(){
-    overlay.classList.remove('open');
-    panel.classList.remove('open');
-  }
-
-  overlay.addEventListener('click', close);
-  panel.querySelector('#sideCloseBtn').addEventListener('click', close);
-
-  panel.querySelectorAll('button[data-route]').forEach(b => {
-    b.addEventListener('click', () => {
-      const r = b.getAttribute('data-route');
-      close();
-      location.hash = '#/' + r;
+  // Migration from older dashState.notesByDay (Phase 7) if present
+  if (s && typeof s === "object" && s.notesByDay && typeof s.notesByDay === "object"){
+    const lines = [];
+    const order = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
+    order.forEach(k => {
+      const v = (typeof s.notesByDay[k] === "string") ? s.notesByDay[k].trim() : "";
+      if (v) lines.push(`${k}: ${v}`);
     });
-  });
-}
-
-function __openSide(){
-  __ensureSideShell();
-  const overlay = document.getElementById('sideOverlay');
-  const panel = document.getElementById('sidePanel');
-  if (overlay) overlay.classList.add('open');
-  if (panel) panel.classList.add('open');
-}
-
-function __setActiveHeaderButton(dayKey){
-  const top = document.getElementById('topNav');
-  if (!top) return;
-  top.querySelectorAll('button[data-day]').forEach(b => {
-    const dk = b.getAttribute('data-day');
-    if (dk === dayKey) b.classList.add('active');
-    else b.classList.remove('active');
-  });
-}
-
-function __renderTopNav(dayKey){
-  const top = document.getElementById('topNav');
-  if (!top) return;
-
-  __ensureSideShell();
-
-  // Theme controls (safe if THEMES missing)
-  const themeState = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
-  const themeOptions = (typeof THEMES === 'object' && THEMES)
-    ? Object.keys(THEMES).map(id => {
-        const name = (THEMES[id] && THEMES[id].name) ? THEMES[id].name : id;
-        const sel = (themeState.themeId === id) ? 'selected' : '';
-        return `<option value="${__esc(id)}" ${sel}>${__esc(name)}</option>`;
-      }).join('')
-    : `<option value="neonGlass" selected>Neon Glass</option>`;
-
-  const mode = (themeState && themeState.mode === 'light') ? 'light' : 'dark';
-
-  const btns = __DAYS_RECOVERY.map(d => {
-    const active = d === dayKey ? 'active' : '';
-    const label = d.charAt(0).toUpperCase() + d.slice(1);
-    return `<button class="navBtn ${active}" data-day="${d}" type="button">${label}</button>`;
-  }).join('');
-
-  top.innerHTML = `
-    <div class="menuWrap">
-      <button class="hamburgerBtn" id="hamburgerBtn" type="button">≡</button>
-    </div>
-
-    <button class="navBtn" id="goToday" type="button">Today</button>
-    ${btns}
-
-    <div class="spacer"></div>
-
-    <button class="navBtn" id="modeBtn" type="button">${__esc((mode === 'light') ? 'Light' : 'Dark')}</button>
-
-    <button class="navBtn" id="resetDay" type="button">Reset Day</button>
-  `;
-
-  const ham = document.getElementById('hamburgerBtn');
-  if (ham) ham.addEventListener('click', __openSide);
-
-  top.querySelectorAll('button[data-day]').forEach(b => {
-    b.addEventListener('click', () => {
-      const dk = b.getAttribute('data-day');
-      location.hash = '#/' + dk;
-    });
-  });
-
-  const todayBtn = document.getElementById('goToday');
-  if (todayBtn) todayBtn.addEventListener('click', () => {
-    location.hash = '#/' + __todayKey();
-  });
-
-  const resetBtn = document.getElementById('resetDay');
-  if (resetBtn) resetBtn.addEventListener('click', () => {
-    const tasks = (typeof getTasksForDay === 'function') ? getTasksForDay(dayKey) : [];
-    tasks.forEach(t => __setTaskDone(t.id, false));
-    __renderDay(dayKey);
-  });
-
-  // --- Mode control (Neon Glass is locked as the only theme) ---
-  const modeBtn = document.getElementById('modeBtn');
-
-  function __applyModeSafe(md){
-    if (typeof applyTheme !== 'function') {
-      console.warn('applyTheme is not defined, cannot change mode');
-      return;
+    if (!s.dashboardNotes && lines.length){
+      s.dashboardNotes = lines.join("\n\n");
     }
-    try {
-      console.log('Mode change requested:', { themeId: 'neonGlass', mode: md });
-      applyTheme('neonGlass', md);
-      if (modeBtn) modeBtn.textContent = (md === 'light') ? 'Light' : 'Dark';
-    } catch (e) {
-      console.error('Mode change failed:', e);
-      if (typeof __showFatal === 'function') __showFatal('mode', e);
-    }
+    delete s.notesByDay;
   }
 
-  function __toggleMode(){
-    const st = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
-    const md = (st.mode === 'light') ? 'dark' : 'light';
-    __applyModeSafe(md);
+  if (!s || typeof s !== "object"){
+    return { dashboardNotes: "", viewerDay: "", viewerReadOnly: false, ringFilters: { daily:"All", weekly:"All", biweekly:"All", monthly:"All" } };
   }
 
-  // Event delegation so re-rendered headers always work.
-  top.onclick = function(ev){
-    const t = ev && ev.target;
-    if (!t) return;
-    if (t.id === 'modeBtn') {
-      ev.preventDefault();
-      __toggleMode();
-      return;
-    }
+  if (typeof s.dashboardNotes !== "string") s.dashboardNotes = "";
+  if (typeof s.viewerDay !== "string") s.viewerDay = "";
+  if (typeof s.viewerReadOnly !== "boolean") s.viewerReadOnly = false;
+
+  if (!s.ringFilters || typeof s.ringFilters !== "object"){
+    s.ringFilters = { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
+  }
+  ["daily","weekly","biweekly","monthly"].forEach(k => {
+    if (!s.ringFilters[k] || typeof s.ringFilters[k] !== "string") s.ringFilters[k] = "All";
+    const v = s.ringFilters[k];
+    if (v !== "All" && !PEOPLE.includes(v)) s.ringFilters[k] = "All";
+  });
+
+  return s;
+}
+
+
+function saveDashState(s){ jset("dashState", s); }
+
+// Groceries (persistent across all pages)
+function loadGroceriesState(){
+  return jget("groceriesState", { items: [] });
+}
+function saveGroceriesState(s){ jset("groceriesState", s); }
+
+function normItemText(t){
+  return (t || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/* =========================
+   NAV + ROUTING
+========================= */
+
+function route(){
+  // Normalize: supports "#/dashboard", "#dashboard", "#//dashboard", etc.
+  const raw = (location.hash || "")
+    .replace(/^#/, "")     // remove leading "#"
+    .replace(/^\/+/, "")   // remove one or more leading "/"
+    .trim();
+
+  return raw || "dashboard";
+}
+
+function goto(path){
+  location.hash = "#/" + path;
+}
+
+function renderTopNav(){
+  const nav = document.getElementById("topNav");
+  nav.innerHTML = "";
+
+  const r = route();
+
+  // --- Hamburger on the TOP LEFT (central navigation) ---
+  const menuWrap = document.createElement("div");
+  menuWrap.className = "menuWrap";
+
+  const ham = document.createElement("button");
+  ham.className = "hamburgerBtn";
+  ham.type = "button";
+  ham.setAttribute("aria-label", "Menu");
+  ham.textContent = "☰";
+  menuWrap.appendChild(ham);
+
+  nav.appendChild(menuWrap);
+
+  // Optional: small page label (kept subtle)
+  const label = document.createElement("div");
+  label.style.marginLeft = "6px";
+  label.style.fontSize = "13px";
+  label.style.opacity = "0.8";
+  label.style.whiteSpace = "nowrap";
+  label.textContent = (r === "dashboard") ? "Dashboard" :
+    (r === "biweekly") ? "Bi-weekly" :
+    (r === "monthly") ? "Monthly" :
+    (r === "maintenance") ? "Maintenance" :
+    (r === "admin") ? "Admin" :
+    (DAYS.includes(r)) ? `Hoy • ${r}` :
+    (r === "hoy") ? `Hoy • ${todayKey()}` : "";
+  nav.appendChild(label);
+
+  // Spacer (keeps header layout stable)
+  const spacer = document.createElement("div");
+  spacer.className = "spacer";
+  nav.appendChild(spacer);
+
+  // Groceries button (persistent)
+  const groceryBtn = document.createElement("button");
+  groceryBtn.className = "groceryBtn";
+  groceryBtn.type = "button";
+  groceryBtn.setAttribute("aria-label", "Groceries");
+  groceryBtn.textContent = "🛒";
+  nav.appendChild(groceryBtn);
+
+  // Weekly reset button remains contextual on day pages
+  // (addContextResetButton handles insertion before the menuWrap in old layout;
+  // here we just let it append near the right edge)
+
+  // --- Side panel + overlay (created once) ---
+  let overlay = document.getElementById("sideOverlay");
+  let panel = document.getElementById("sidePanel");
+
+  if (!overlay){
+    overlay = document.createElement("div");
+    overlay.id = "sideOverlay";
+    overlay.className = "sideOverlay";
+    document.body.appendChild(overlay);
+  }
+
+  if (!panel){
+    panel = document.createElement("aside");
+    panel.id = "sidePanel";
+    panel.className = "sidePanel";
+    panel.setAttribute("aria-label", "App navigation");
+    panel.innerHTML = `
+      <div class="sideHeader">
+        <div class="sideTitle">Navigation</div>
+        <button class="sideClose" type="button" id="sideCloseBtn" aria-label="Close menu">✕</button>
+      </div>
+      <nav class="sideNav" id="sideNav"></nav>
+    `;
+    document.body.appendChild(panel);
+  }
+
+  const sideNav = panel.querySelector("#sideNav");
+  if (sideNav) sideNav.innerHTML = "";
+
+  function closeSide(){
+    overlay.classList.remove("open");
+    panel.classList.remove("open");
+  }
+
+  function openSide(){
+    overlay.classList.add("open");
+    panel.classList.add("open");
+  }
+
+  function navBtn(text, path, isActive){
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "sideBtn" + (isActive ? " active" : "");
+    b.textContent = text;
+    b.onclick = () => {
+      closeSide();
+      goto(path);
+    };
+    return b;
+  }
+
+  // Dashboard
+  sideNav.appendChild(navBtn("Dashboard", "dashboard", r === "dashboard"));
+
+  // Hoy (expandable) + days list
+  const hoyWrap = document.createElement("div");
+
+  const hoyBtn = document.createElement("button");
+  hoyBtn.type = "button";
+  hoyBtn.className = "sideBtn" + ((r === "hoy" || DAYS.includes(r)) ? " active" : "");
+  hoyBtn.setAttribute("aria-expanded", "false");
+  hoyBtn.innerHTML = `<span>Hoy</span><span class="sideChevron">›</span>`;
+
+  const sub = document.createElement("div");
+  sub.className = "sideSub";
+
+  // Quick link to today's day page
+  const todayBtn = document.createElement("button");
+  todayBtn.type = "button";
+  todayBtn.className = "sideBtn";
+  todayBtn.textContent = `Today (${todayKey()})`;
+  todayBtn.onclick = () => {
+    closeSide();
+    goto(todayKey());
+  };
+  sub.appendChild(todayBtn);
+
+  DAYS.forEach(d => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "sideBtn" + (r === d ? " active" : "");
+    b.textContent = d;
+    b.onclick = () => {
+      closeSide();
+      goto(d);
+    };
+    sub.appendChild(b);
+  });
+
+  hoyBtn.onclick = () => {
+    const expanded = hoyBtn.getAttribute("aria-expanded") === "true";
+    hoyBtn.setAttribute("aria-expanded", expanded ? "false" : "true");
+    sub.classList.toggle("open", !expanded);
   };
 
-  if (modeBtn) modeBtn.onclick = __toggleMode;
-  // --- End Mode control ---
-}
+  // Default open if we're on a day route
+  if (r === "hoy" || DAYS.includes(r)){
+    hoyBtn.setAttribute("aria-expanded", "true");
+    sub.classList.add("open");
+  }
 
-function __renderDay(dayKey){
-  const app = document.getElementById('app');
-  if (!app) return;
+  hoyWrap.appendChild(hoyBtn);
+  hoyWrap.appendChild(sub);
+  sideNav.appendChild(hoyWrap);
 
-  __renderTopNav(dayKey);
+  // Other primary routes
+  sideNav.appendChild(navBtn("Bi-weekly", "biweekly", r === "biweekly"));
+  sideNav.appendChild(navBtn("Monthly", "monthly", r === "monthly"));
+  sideNav.appendChild(navBtn("Maintenance", "maintenance", r === "maintenance"));
+  sideNav.appendChild(navBtn("Admin", "admin", r === "admin"));
 
-  const d = __dateForDayKey(dayKey);
-  const dateStr = __formatMMDDYYYY(d);
+  // Wire open/close behavior
+  ham.onclick = (e) => {
+    e.stopPropagation();
+    openSide();
+  };
 
-  const tasks = (typeof getTasksForDay === 'function') ? getTasksForDay(dayKey) : [];
+  const closeBtn = panel.querySelector("#sideCloseBtn");
+  if (closeBtn) closeBtn.onclick = closeSide;
 
-  // bucket tasks by person (shared chores appear in both columns)
-  const buckets = {};
-  __PEOPLE_RECOVERY.forEach(p => buckets[p] = []);
-  tasks.forEach(t => {
-    (t.assignees || []).forEach(p => {
-      if (buckets[p]) buckets[p].push(t);
-    });
-  });
+  overlay.onclick = closeSide;
 
-  const cols = __PEOPLE_RECOVERY.map(p => {
-    const list = (buckets[p] || []).map(t => {
-      const checked = __isTaskDone(t.id) ? 'checked' : '';
-      const label = __esc(t.text);
-      return `
-        <div class="chore">
-          <label class="choreLabel">
-            <input type="checkbox" data-task="${__esc(t.id)}" ${checked} />
-            <span>${label}</span>
-          </label>
-        </div>
-      `;
-    }).join('');
+  // --- Notes overlay (created once) ---
+  let nOverlay = document.getElementById("notesOverlay");
+  let nPanel = document.getElementById("notesPanel");
 
-    return `
-      <section class="column" style="border-top:4px solid ${__esc(getMemberColor(p))};">
-        <div class="dayHeaderBar">
-          <h2 class="dayTitle">${__esc(p)}</h2>
-          <div class="dayDate">${__esc(dateStr)}</div>
-        </div>
-        ${list || '<div class="hint">No tasks.</div>'}
-      </section>
-    `;
-  }).join('');
+  if (!nOverlay){
+    nOverlay = document.createElement("div");
+    nOverlay.id = "notesOverlay";
+    nOverlay.className = "notesOverlay";
+    document.body.appendChild(nOverlay);
+  }
 
-  app.innerHTML = `
-    <div class="panel">
-      <div style="font-weight:900;font-size:16px;">Recovery Mode: Day View</div>
-      <div class="hint">This is a minimal renderer to get you unstuck. Once the full UI/router code is restored, we can remove this block and the debug markers.</div>
-    </div>
-    <div class="columns">${cols}</div>
-  `;
-
-  // wire checkboxes
-  app.querySelectorAll('input[type="checkbox"][data-task]').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const id = cb.getAttribute('data-task');
-      __setTaskDone(id, cb.checked);
-    });
-  });
-}
-
-
-function __renderDashboard(){
-  const app = document.getElementById('app');
-  if (!app) return;
-
-  const dayKey = __currentRouteDayKey();
-  __renderTopNav(dayKey);
-
-  const tasks = (typeof getTasksForDay === 'function') ? getTasksForDay(dayKey) : [];
-  const totals = {};
-  const dones = {};
-  __PEOPLE_RECOVERY.forEach(p => { totals[p] = 0; dones[p] = 0; });
-
-  // Count per-person (shared chores count for each assignee, matching what the day view shows)
-  tasks.forEach(t => {
-    (t.assignees || []).forEach(p => {
-      if (totals[p] == null) return;
-      totals[p] += 1;
-      if (__isTaskDone(t.id)) dones[p] += 1;
-    });
-  });
-
-  const overallTotal = Object.values(totals).reduce((a,b) => a + b, 0);
-  const overallDone = Object.values(dones).reduce((a,b) => a + b, 0);
-  const pct = (overallTotal ? Math.round((overallDone/overallTotal)*100) : 0);
-
-  const cards = __PEOPLE_RECOVERY.map(p => {
-    const t = totals[p] || 0;
-    const d = dones[p] || 0;
-    const pctx = t ? Math.round((d/t)*100) : 0;
-    return `
-      <div class="ringCard">
-        <div class="ringMeta">
-          <div style="font-weight:900;font-size:16px;">${__esc(p)}</div>
-          <div style="font-size:12px;opacity:.8;">${d}/${t}</div>
-        </div>
-        <div class="ringSvgWrap">
-          <div class="pct">${pctx}%</div>
-          <svg viewBox="0 0 120 120" width="128" height="128" aria-hidden="true">
-            <circle cx="60" cy="60" r="46" fill="none" stroke="var(--ringTrack)" stroke-width="12" class="chalkTrack" />
-            <circle cx="60" cy="60" r="46" fill="none" stroke="${__esc(getMemberColor(p))}" stroke-width="12" stroke-linecap="round"
-              stroke-dasharray="${Math.round(2*Math.PI*46)}" stroke-dashoffset="${Math.round((1-(pctx/100))*2*Math.PI*46)}" class="chalkStroke" />
-          </svg>
-        </div>
+  if (!nPanel){
+    nPanel = document.createElement("div");
+    nPanel.id = "notesPanel";
+    nPanel.className = "notesPanel";
+    nPanel.setAttribute("aria-label", "Day notes");
+    nPanel.innerHTML = `
+      <div class="notesHeader">
+        <div class="notesTitle" id="notesPanelTitle">Notas</div>
+        <button class="notesClose" type="button" id="notesCloseBtn" aria-label="Close notes">✕</button>
+      </div>
+      <div class="notesBody">
+        <div class="hint" id="notesPanelHint">Read-only</div>
+        <textarea id="notesPanelText" readonly placeholder="No notes yet..."></textarea>
       </div>
     `;
-  }).join('');
+    document.body.appendChild(nPanel);
+  }
 
-  const notesKey = 'notes::' + dayKey;
-  const notesVal = jget(notesKey, '');
+  function closeNotes(){
+    nOverlay.classList.remove("open");
+    nPanel.classList.remove("open");
+  }
+
+  function openNotesForDay(dayKey){
+    const ds = loadDailyState();
+    const note = (ds[dayKey] && typeof ds[dayKey].notes === "string") ? ds[dayKey].notes : "";
+
+    const titleEl = document.getElementById("notesPanelTitle");
+    const hintEl = document.getElementById("notesPanelHint");
+    const taEl = document.getElementById("notesPanelText");
+
+    if (titleEl) titleEl.textContent = `Notas para ${dayKey}`;
+    if (hintEl) hintEl.textContent = "Read-only (edit on Dashboard)";
+    if (taEl){
+      taEl.value = note || "";
+      taEl.placeholder = `Notas para ${dayKey}...`;
+    }
+
+    nOverlay.classList.add("open");
+    nPanel.classList.add("open");
+  }
+
+  window.__openNotesForDay = openNotesForDay;
+
+  const notesCloseBtn = document.getElementById("notesCloseBtn");
+  if (notesCloseBtn) notesCloseBtn.onclick = closeNotes;
+  nOverlay.onclick = closeNotes;
+
+  // --- Groceries overlay (created once) ---
+  let gOverlay = document.getElementById("groceryOverlay");
+  let gPanel = document.getElementById("groceryPanel");
+
+  if (!gOverlay){
+    gOverlay = document.createElement("div");
+    gOverlay.id = "groceryOverlay";
+    gOverlay.className = "groceryOverlay";
+    document.body.appendChild(gOverlay);
+  }
+
+  if (!gPanel){
+    gPanel = document.createElement("div");
+    gPanel.id = "groceryPanel";
+    gPanel.className = "groceryPanel";
+    gPanel.setAttribute("aria-label", "Groceries");
+    gPanel.innerHTML = `
+      <div class="groceryHeader">
+        <div class="groceryTitle">Groceries</div>
+        <button class="groceryClose" type="button" id="groceryCloseBtn" aria-label="Close groceries">✕</button>
+      </div>
+      <div class="groceryBody">
+        <div class="hint" style="margin-top:0;">Add items as you notice them running low. One tap beats arguing later.</div>
+
+        <div class="groceryForm">
+          <input id="groceryText" placeholder="Add item…" />
+          <button id="groceryAdd" type="button">Add</button>
+        </div>
+
+        <div class="groceryActions">
+          <button class="groceryReset" id="groceryReset" type="button">Reset list</button>
+        </div>
+
+        <div class="groceryList" id="groceryList"></div>
+      </div>
+    `;
+    document.body.appendChild(gPanel);
+  }
+
+  function closeGroceries(){
+    gOverlay.classList.remove("open");
+    gPanel.classList.remove("open");
+  }
+
+  function openGroceries(){
+    // Ensure UI is up to date
+    renderGroceriesPanel();
+    gOverlay.classList.add("open");
+    gPanel.classList.add("open");
+
+    // focus input for fast entry
+    const input = document.getElementById("groceryText");
+    if (input) setTimeout(() => input.focus(), 0);
+  }
+
+  window.__openGroceries = openGroceries;
+
+  const gClose = document.getElementById("groceryCloseBtn");
+  if (gClose) gClose.onclick = closeGroceries;
+  gOverlay.onclick = closeGroceries;
+
+  // Wire header button
+  groceryBtn.onclick = (e) => {
+    e.stopPropagation();
+    openGroceries();
+  };
+
+  // Escape closes both side menu and notes overlay
+  document.onkeydown = (ev) => {
+    if (ev.key === "Escape"){
+      closeSide();
+      closeNotes();
+    }
+  };
+}
+
+window.addEventListener("hashchange", renderApp);
+
+/* =========================
+   RING CALCULATIONS
+========================= */
+
+function emptyContribution(){
+  const byPerson = {};
+  PEOPLE.forEach(p => byPerson[p] = 0);
+  return byPerson;
+}
+
+function calcDailyProgress(){
+  const day = todayKey();
+  const s = loadDailyState();
+  const dayObj = s[day] || { checks:{} };
+
+  const tasks = getTasksForDay(day);
+
+  // Daily progress is tracked per-person per-assignment.
+  // Two-person chores are NOT shared anymore.
+  let total = 0;
+  let done = 0;
+  const byPerson = emptyContribution();
+  const totalByPerson = emptyContribution();
+
+  for (const t of tasks){
+    const assignees = Array.isArray(t.assignees) ? t.assignees : [];
+    for (const person of assignees){
+      if (!PEOPLE.includes(person)) continue;
+      total++;
+      totalByPerson[person] = (totalByPerson[person] || 0) + 1;
+
+      const key = `${t.id}::${person}`;
+      const checked = !!(dayObj.checks && dayObj.checks[key]);
+      if (checked){
+        done++;
+        byPerson[person] = (byPerson[person] || 0) + 1;
+      }
+    }
+  }
+
+  return { done, total, byPerson, totalByPerson };
+}
+
+/**
+ * Shared progress calc for list+assignment sections (Semanal/Bi-weekly/Monthly).
+ * A chore counts as done ONLY when:
+ *  - assigned to someone AND
+ *  - checked complete
+ * Contribution credit goes to the assigned person.
+ */
+function calcAssignedListProgress(list, loadFn){
+  const total = list.length;
+  const s = loadFn();
+  const byPerson = emptyContribution();
+  const totalByPerson = emptyContribution();
+
+  let done = 0;
+  list.forEach(item => {
+    const checked  = !!(s.checks && s.checks[item]);
+    const assigned = (s.assign && s.assign[item]) ? s.assign[item] : "";
+
+    // Per-person totals are based on assignments.
+    if (assigned && totalByPerson[assigned] !== undefined){
+      totalByPerson[assigned] = (totalByPerson[assigned] || 0) + 1;
+    }
+
+    // A chore counts as done ONLY when assigned AND checked.
+    if (checked && assigned){
+      done++;
+      if (byPerson[assigned] !== undefined) byPerson[assigned] = (byPerson[assigned] || 0) + 1;
+    }
+  });
+
+  return { done, total, byPerson, totalByPerson };
+}
+
+function calcWeeklyProgress(){
+  return calcAssignedListProgress(WEEKLY_CHORES, loadWeeklyState);
+}
+
+function calcBiweeklyProgress(){
+  return calcAssignedListProgress(BIWEEKLY_CHORES, loadBiweeklyState);
+}
+
+function calcMonthlyProgress(){
+  return calcAssignedListProgress(MONTHLY_CHORES, loadMonthlyState);
+}
+
+function pct(done, total){
+  if (!total) return 0;
+  return Math.round((done / total) * 100);
+}
+/* =========================
+   DASHBOARD RENDER
+========================= */
+
+function ringFilterOptions(selected){
+  const opts = ["All", ...PEOPLE];
+  return opts.map(v => `<option value="${escapeHtml(v)}" ${v===selected?"selected":""}>${escapeHtml(v)}</option>`).join("");
+}
+
+function applyRingFilter(progressObj, selected){
+  // progressObj: { done,total,byPerson,totalByPerson }
+  if (!progressObj) return { done:0, total:0, byPerson: emptyContribution(), totalByPerson: emptyContribution() };
+  if (!selected || selected === "All") return progressObj;
+
+  const personDone = (progressObj.byPerson && typeof progressObj.byPerson[selected] === "number") ? progressObj.byPerson[selected] : 0;
+  const personTotal = (progressObj.totalByPerson && typeof progressObj.totalByPerson[selected] === "number") ? progressObj.totalByPerson[selected] : 0;
+
+  const by = emptyContribution();
+  by[selected] = personDone;
+
+  const totBy = emptyContribution();
+  totBy[selected] = personTotal;
+
+  return { done: personDone, total: personTotal, byPerson: by, totalByPerson: totBy };
+}
+
+function renderDashboard(){
+  const app = document.getElementById("app");
+
+  const w = calcWeeklyProgress();
+  const b = calcBiweeklyProgress();
+  const m = calcMonthlyProgress();
+  const d = calcDailyProgress();
+
+  // Extract filters and apply per-ring
+  const dash = loadDashState();
+  const filters = dash.ringFilters || { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
+
+  const df = applyRingFilter(d, filters.daily);
+  const wf = applyRingFilter(w, filters.weekly);
+  const bf = applyRingFilter(b, filters.biweekly);
+  const mf = applyRingFilter(m, filters.monthly);
+
+  const dpF = pct(df.done, df.total);
+  const wpF = pct(wf.done, wf.total);
+  const bpF = pct(bf.done, bf.total);
+  const mpF = pct(mf.done, mf.total);
 
   app.innerHTML = `
     <div class="dashGrid">
       <div class="panel">
         <div class="dashHeaderRow">
-          <h2>Dashboard</h2>
-          <div style="font-size:12px;opacity:.8;">Today: ${__esc(dayKey)} (${__esc(__formatMMDDYYYY(__dateForDayKey(dayKey)))})</div>
+          <h2>Progress Dashboard</h2>
+          <button class="navBtn" type="button" onclick="goto(todayKey())">Hoy</button>
         </div>
+        <div class="hint">Rings track completion for Daily (Hoy), Semanal, Bi-weekly, and Monthly. (Maintenance not included yet.)</div>
 
         <div class="rings">
-          <div class="ringCard">
-            <div class="ringMeta">
-              <div style="font-weight:900;font-size:16px;">Overall</div>
-              <div style="font-size:12px;opacity:.8;">${overallDone}/${overallTotal} tasks</div>
-            </div>
-            <div class="ringSvgWrap">
-              <div class="pct">${pct}%</div>
-              <svg viewBox="0 0 120 120" width="128" height="128" aria-hidden="true">
-                <circle cx="60" cy="60" r="46" fill="none" stroke="var(--ringTrack)" stroke-width="12" class="chalkTrack" />
-                <circle cx="60" cy="60" r="46" fill="none" stroke="var(--btnActive)" stroke-width="12" stroke-linecap="round"
-                  stroke-dasharray="${Math.round(2*Math.PI*46)}" stroke-dashoffset="${Math.round((1-(pct/100))*2*Math.PI*46)}" class="chalkStroke" />
-              </svg>
-            </div>
-            <div class="dashNav">
-              <button class="navBtn" id="dashGoDay" type="button">Go to Today</button>
-            </div>
-          </div>
-
-          ${cards}
+          ${ringCard("Daily (Hoy)", "daily", df, dpF)}
+          ${ringCard("Semanal", "weekly", wf, wpF)}
+          ${ringCard("Bi-weekly", "biweekly", bf, bpF)}
+          ${ringCard("Monthly", "monthly", mf, mpF)}
         </div>
       </div>
 
       <div class="panel notesBox">
-        <div class="dashHeaderRow">
-          <h2>Notes (Today)</h2>
-          <div style="font-size:12px;opacity:.8;">Saved automatically on this device</div>
-        </div>
-        <textarea id="dashNotes" placeholder="Add notes for today...">${__esc(notesVal)}</textarea>
-        <div class="hint">Notes are stored locally for now (sync can come later).</div>
+        <h2>Notas</h2>
+        <div class="hint">Two fields: general dashboard notes, plus day-specific notes viewer.</div>
+
+        <textarea id="dashNotes" placeholder="Write dashboard notes..."></textarea>
+
+        <div style="height:10px;"></div>
+
+        <div class="hint" id="dayNotesLabel"></div>
+        <textarea id="dayNotes" placeholder=""></textarea>
       </div>
     </div>
   `;
 
-  const go = document.getElementById('dashGoDay');
-  if (go) go.addEventListener('click', () => { location.hash = '#/' + dayKey; });
+  // Wire dashboard notes + day-notes viewer
+  const dash2 = loadDashState();
+  const dashTA = document.getElementById("dashNotes");
+  const dayTA = document.getElementById("dayNotes");
+  const dayLabel = document.getElementById("dayNotesLabel");
 
-  const ta = document.getElementById('dashNotes');
-  if (ta) ta.addEventListener('input', () => { jset(notesKey, ta.value); });
+  // Dashboard notes (general)
+  dashTA.value = dash2.dashboardNotes || "";
+  dashTA.oninput = () => {
+    const cur = loadDashState();
+    cur.dashboardNotes = dashTA.value;
+    saveDashState(cur);
+  };
+
+  // Day notes: default to today when arriving normally
+  const selectedDay = (dash2.viewerDay && DAYS.includes(dash2.viewerDay)) ? dash2.viewerDay : todayKey();
+  const ro = !!dash2.viewerReadOnly;
+
+  const ds = loadDailyState();
+  ds[selectedDay] = ds[selectedDay] || { checks:{}, notes:"" };
+
+  if (dayLabel) dayLabel.textContent = `Notas para ${selectedDay}...`;
+  dayTA.value = ds[selectedDay].notes || "";
+  dayTA.placeholder = `Notas para ${selectedDay}...`;
+  dayTA.readOnly = ro;
+  dayTA.style.opacity = ro ? "0.85" : "1";
+
+  // Only allow editing when not read-only AND the selected day is today
+  dayTA.oninput = () => {
+    const curDash = loadDashState();
+    const currentSelected = (curDash.viewerDay && DAYS.includes(curDash.viewerDay)) ? curDash.viewerDay : todayKey();
+
+    // Guardrails: only editable when viewerReadOnly is false AND day is today
+    if (curDash.viewerReadOnly) return;
+    if (currentSelected !== todayKey()) return;
+
+    const dss = loadDailyState();
+    dss[currentSelected] = dss[currentSelected] || { checks:{}, notes:"" };
+    dss[currentSelected].notes = dayTA.value;
+    saveDailyState(dss);
+  };
+
+  // After rendering the dashboard, reset viewer mode back to normal defaults
+  // so the dashboard behaves as “today notes editable” next time unless explicitly invoked.
+  dash2.viewerDay = todayKey();
+  dash2.viewerReadOnly = false;
+  saveDashState(dash2);
+
+  // Wire ring filter dropdowns
+  document.querySelectorAll(".ringFilter").forEach(sel => {
+    sel.onchange = () => {
+      const key = sel.getAttribute("data-ring");
+      const val = sel.value;
+      const cur = loadDashState();
+      cur.ringFilters = cur.ringFilters || { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
+      if (key) cur.ringFilters[key] = val;
+      saveDashState(cur);
+      renderDashboard();
+    };
+  });
 }
 
-function __weeklyKey(){
-  // key for the current week, anchored to Monday
-  const now = new Date();
-  const dow = now.getDay();
-  const daysSinceMonday = (dow + 6) % 7;
-  const monday = new Date(now);
-  monday.setHours(0,0,0,0);
-  monday.setDate(monday.getDate() - daysSinceMonday);
-  const yyyy = monday.getFullYear();
-  const mm = __pad2(monday.getMonth()+1);
-  const dd = __pad2(monday.getDate());
-  return `${yyyy}-${mm}-${dd}`;
-}
+function ringSVG(done, total, byPerson){
+  const r = 30;
+  const cx = 38, cy = 38;
+  const c = 2 * Math.PI * r;
 
-function __renderWeekly(){
-  const app = document.getElementById('app');
-  if (!app) return;
+  const safeTotal = Math.max(0, Number(total) || 0);
+  const safeDone  = Math.max(0, Math.min(safeTotal, Number(done) || 0));
+  const p = safeTotal ? (safeDone / safeTotal) : 0;
 
-  const dayKey = __currentRouteDayKey();
-  __renderTopNav(dayKey);
+  const filled = p * c; // how much of the ring is filled overall
 
-  const wk = __weeklyKey();
-  const list = Array.isArray(WEEKLY_CHORES) ? WEEKLY_CHORES : [];
+  const colors = loadMemberColors();
 
-  const state = jget('weekly::' + wk, {});
-  const assigned = jget('weeklyAssign::' + wk, {});
+  // Build ordered segments (stable order: Dad, Mom, Ethan, Celo)
+  const segments = [];
+  PEOPLE.forEach(person => {
+    const count = byPerson && typeof byPerson[person] === "number" ? byPerson[person] : 0;
+    if (count > 0 && safeDone > 0){
+      segments.push({
+        person,
+        count,
+        color: colors[person] || "rgba(255,255,255,0.9)"
+      });
+    }
+  });
 
-  const items = list.map((name, idx) => {
-    const id = `w::${wk}::${idx}`;
-    const done = !!state[id];
-    const who = assigned[id] || '';
-    const peopleOpts = ['','Dad','Mom','Ethan','Celo'].map(p => {
-      const label = p ? p : 'Unassigned';
-      const sel = (who === p) ? 'selected' : '';
-      return `<option value="${__esc(p)}" ${sel}>${__esc(label)}</option>`;
-    }).join('');
-
-    return `
-      <div class="weeklyItem">
-        <input type="checkbox" data-wid="${__esc(id)}" ${done ? 'checked' : ''} />
-        <div class="label">${__esc(name)}</div>
-        <select class="assignSelect" data-wassign="${__esc(id)}">${peopleOpts}</select>
-      </div>
+  let offset = 0;
+  const segSvgs = segments.map(seg => {
+    const segLen = (seg.count / safeDone) * filled;
+    const svg = `
+      <circle class="chalkStroke" cx="${cx}" cy="${cy}" r="${r}"
+        stroke="${seg.color}" stroke-width="10" fill="none"
+        stroke-linecap="round"
+        stroke-dasharray="${segLen} ${Math.max(0, c - segLen)}"
+        stroke-dashoffset="${-offset}"
+        transform="rotate(-90 ${cx} ${cy})" />
     `;
-  }).join('');
+    offset += segLen;
+    return svg;
+  }).join("");
+
+  return `
+    <svg width="128" height="128" viewBox="0 0 76 76" aria-hidden="true">
+      <circle class="chalkTrack" cx="${cx}" cy="${cy}" r="${r}"
+        stroke="var(--ringTrack)" stroke-width="10" fill="none" />
+      ${segSvgs}
+    </svg>
+  `;
+}
+
+function ringCard(title, ringKey, prog, percent){
+  const dash = loadDashState();
+  const filters = dash.ringFilters || { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
+  const selected = filters[ringKey] || "All";
+
+  const done = prog ? (prog.done || 0) : 0;
+  const total = prog ? (prog.total || 0) : 0;
+  const byPerson = prog ? (prog.byPerson || emptyContribution()) : emptyContribution();
+
+  const sub = total ? `${done}/${total} complete` : `0/0`;
+
+  return `
+    <div class="ringCard">
+      <div class="ringSvgWrap">
+        ${ringSVG(done, total, byPerson)}
+        <div class="pct">${percent}%</div>
+      </div>
+      <div class="ringMeta">
+        <div class="title">${title}</div>
+        <select class="ringFilter" data-ring="${escapeHtml(ringKey)}">
+          ${ringFilterOptions(selected)}
+        </select>
+        <div class="sub">${sub}</div>
+      </div>
+    </div>
+  `;
+}
+
+
+
+/* =========================
+   DAY VIEW RENDER
+   - Layout switch implemented here: columns first, then semanal panel.
+========================= */
+
+function renderDay(dayKey){
+  const app = document.getElementById("app");
+
+  const dayState = loadDailyState();
+  dayState[dayKey] = dayState[dayKey] || { checks:{}, notes:"" };
+
+  const dayDate = formatMMDDYYYY(dateForDayKey(dayKey));
 
   app.innerHTML = `
-    <div class="panel">
+    <section class="panel" aria-label="Day header">
+      <div class="dayHeaderBar">
+        <h2 class="dayTitle">${dayKey}</h2>
+        <div class="dayDate">${dayDate}</div>
+      </div>
+    </section>
+
+    <div class="columns" id="columns"></div>
+
+    <section class="panel" aria-label="Weekly chores">
+      <h3>Semanal</h3>
+      <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
+      <div class="weeklyGrid" id="weeklyGrid"></div>
+    </section>
+
+    <section class="panel" aria-label="Validation chores">
+      <h3 id="validationTitle">Validation chores</h3>
+      <div class="hint">Shows who had what assigned yesterday. Completion does not matter here.</div>
+      <div class="yesterdayGrid" id="validationGrid"></div>
+    </section>
+  `;
+
+  renderDailyColumns(dayKey);
+  renderWeekly();
+  renderYesterday(dayKey);
+}
+
+function renderDailyColumns(dayKey){
+  const columns = document.getElementById("columns");
+  columns.innerHTML = "";
+
+  const state = loadDailyState();
+  state[dayKey] = state[dayKey] || { checks:{}, notes:"" };
+
+  PEOPLE.forEach(person => {
+    const col = document.createElement("div");
+    col.className = "column";
+
+    const colors = loadMemberColors();
+    const pc = colors[person] || "#ffffff";
+
+    // Outline each member column with that member's color
+    col.style.border = `2px solid ${pc}`;
+    col.style.boxShadow = `0 0 0 1px rgba(255,255,255,0.06), 0 14px 28px rgba(0,0,0,0.28)`;
+
+    const header = document.createElement("div");
+    header.className = "memberHeader";
+    header.style.display = "flex";
+    header.style.flexDirection = "column";
+    header.style.alignItems = "center";
+    header.style.gap = "8px";
+
+    const photos = loadMemberPhotos();
+    const url = (photos && typeof photos[person] === "string") ? photos[person] : "";
+
+    let avatar;
+    if (url){
+      avatar = document.createElement("div");
+      avatar.className = "avatarCircle";
+      avatar.style.width = "72px";
+      avatar.style.height = "72px";
+
+      const img = document.createElement("img");
+      img.alt = `${person} avatar`;
+      img.src = url;
+      img.style.width = "100%";
+      img.style.height = "100%";
+      img.style.objectFit = "cover";
+      avatar.appendChild(img);
+    } else {
+      avatar = document.createElement("div");
+      avatar.className = "avatarFallback";
+      avatar.style.width = "72px";
+      avatar.style.height = "72px";
+      avatar.style.display = "flex";
+      avatar.style.alignItems = "center";
+      avatar.style.justifyContent = "center";
+      avatar.textContent = (person || "").slice(0,2).toUpperCase();
+    }
+
+    const h = document.createElement("h2");
+    h.textContent = person;
+    h.style.color = pc;
+    h.style.margin = "0";
+    h.style.fontSize = "18px";
+    h.style.textAlign = "center";
+
+    header.appendChild(avatar);
+    header.appendChild(h);
+    col.appendChild(header);
+
+    const tasks = getTasksForDay(dayKey).filter(t => (t.assignees || []).includes(person));
+
+    tasks.forEach(t => {
+      const row = document.createElement("div");
+      row.className = "chore";
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      // Apply member color to checkbox for quick visual association
+      try{ cb.style.accentColor = pc; }catch(e){}
+      cb.id = `${t.id}__${person}`;
+      cb.checked = !!state[dayKey].checks[`${t.id}::${person}`];
+      cb.onchange = () => {
+        const s = loadDailyState();
+        s[dayKey] = s[dayKey] || { checks:{}, notes:"" };
+        const key = `${t.id}::${person}`;
+        s[dayKey].checks[key] = cb.checked;
+        saveDailyState(s);
+        // Re-render to refresh pressed styling, but do NOT sync other people's checkboxes.
+        renderDailyColumns(dayKey);
+      };
+
+      // Label wraps checkbox + text so the text is part of the tap target
+      const wrap = document.createElement("label");
+      wrap.className = "choreLabel";
+      if (cb.checked) wrap.classList.add("pressed");
+      wrap.htmlFor = cb.id;
+
+      const text = document.createElement("span");
+
+      // Friendly labels for 2-person chores (mirrors v1 text style)
+      if ((t.assignees || []).length === 2) {
+        const other = (t.assignees || []).find(p => p !== person) || "";
+        const base = (t.text || "").trim();
+        text.textContent = other ? `${base} (with ${other})` : base;
+      } else {
+        text.textContent = (t.text || "").trim();
+      }
+
+      wrap.appendChild(cb);
+      wrap.appendChild(text);
+      row.appendChild(wrap);
+      col.appendChild(row);
+    });
+
+    columns.appendChild(col);
+  });
+}
+
+function renderDayNotes(dayKey){
+  const state = loadDailyState();
+  state[dayKey] = state[dayKey] || { checks:{}, notes:"" };
+
+  const notes = document.getElementById("dailyNotes");
+  notes.value = state[dayKey].notes || "";
+  notes.oninput = () => {
+    const s = loadDailyState();
+    s[dayKey] = s[dayKey] || { checks:{}, notes:"" };
+    s[dayKey].notes = notes.value;
+    saveDailyState(s);
+  };
+}
+
+function renderWeekly(){
+  const grid = document.getElementById("weeklyGrid");
+  grid.innerHTML = "";
+
+  const w = loadWeeklyState();
+  w.checks = w.checks || {};
+  w.assign = w.assign || {};
+
+  WEEKLY_CHORES.forEach(chore => {
+    const row = document.createElement("div");
+    row.className = "weeklyItem";
+    if (!!w.checks[chore]) row.classList.add("pressed");
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !!w.checks[chore];
+    cb.onchange = () => {
+      const ws = loadWeeklyState();
+      ws.checks = ws.checks || {};
+      ws.checks[chore] = cb.checked;
+      saveWeeklyState(ws);
+      renderWeekly();
+      // update dashboard ring if open later
+    };
+
+    cb.id = `weekly__${chore}`;
+    const wlab = document.createElement("label");
+    wlab.className = "label";
+    wlab.htmlFor = cb.id;
+    wlab.textContent = chore;
+
+    const sel = document.createElement("select");
+    const blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = "Asignar…";
+    sel.appendChild(blank);
+
+    PEOPLE.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p;
+      opt.textContent = p;
+      sel.appendChild(opt);
+    });
+
+    sel.value = w.assign[chore] || "";
+    sel.onchange = () => {
+      const ws = loadWeeklyState();
+      ws.assign = ws.assign || {};
+      ws.assign[chore] = sel.value;
+      saveWeeklyState(ws);
+    };
+
+    row.appendChild(cb);
+    row.appendChild(wlab);
+    row.appendChild(sel);
+    grid.appendChild(row);
+  });
+
+  saveWeeklyState(w);
+}
+
+function renderYesterday(dayKey){
+  const y = prevDayKey(dayKey);
+
+  const title = document.getElementById("validationTitle");
+  if (title) title.textContent = `Validation chores (from ${y})`;
+
+  const grid = document.getElementById("validationGrid");
+  if (!grid) return;
+  grid.innerHTML = "";
+
+  const yTasks = getTasksForDay(y);
+
+  // Show what each person had assigned yesterday (regardless of completion).
+  // For 2-person chores, show the friendly "(with X)" label.
+  // Special rule: in this section ONLY, omit Celo's backpack + Apple Watch chores.
+  PEOPLE.forEach(person => {
+    const items = yTasks
+      .filter(t => (t.assignees || []).includes(person))
+      .filter(t => {
+        if (person !== "Celo") return true;
+
+        const id = (t.id || "");
+        const text = (t.text || "").toLowerCase();
+
+        // omit only from validation section
+        if (id.endsWith("::prepBackpack") || id.endsWith("::appleWatch")) return false;
+        if (text.includes("prepare backpack for tomorrow")) return false;
+        if (text.includes("where's your apple watch")) return false;
+
+        return true;
+      });
+
+    const card = document.createElement("div");
+    card.className = "yCard";
+
+    const t = document.createElement("div");
+    t.className = "yTitle";
+    t.textContent = person;
+    card.appendChild(t);
+
+    if (!items.length){
+      const none = document.createElement("div");
+      none.className = "yLine";
+      none.style.opacity = "0.65";
+      none.textContent = "(No chores)";
+      card.appendChild(none);
+    } else {
+      items.forEach(task => {
+        const line = document.createElement("div");
+        line.className = "yLine";
+
+        // No "NAME –" prefix. The column header already tells you who.
+        if ((task.assignees || []).length === 2) {
+          const other = (task.assignees || []).find(p => p !== person) || "";
+          const base = (task.text || "").trim();
+          line.textContent = other ? `${base} (with ${other})` : base;
+        } else {
+          line.textContent = (task.text || "").trim();
+        }
+
+        card.appendChild(line);
+      });
+    }
+
+    grid.appendChild(card);
+  });
+}
+
+/* =========================
+   BIWEEKLY / MONTHLY / MAINTENANCE (scaffold pages)
+   - These are intentionally minimal in Phase 4.
+========================= */
+
+function renderChecklistPage(kind){
+  const app = document.getElementById("app");
+  const isBi = kind === "biweekly";
+  const title = isBi ? "Bi-weekly" : "Monthly";
+  const list = isBi ? BIWEEKLY_CHORES : MONTHLY_CHORES;
+
+  app.innerHTML = `
+    <section class="panel">
       <div class="toolbar">
         <div class="left">
-          <h2 style="margin:0;">Weekly</h2>
-          <div class="hint" style="margin:0;">Week of ${__esc(wk)}. Weekly chores are tracked per-week on this device (local only).</div>
+          <h2 style="margin:0;">${title}</h2>
+          <div class="hint" style="margin:0;">Check items as you complete them. Use the reset button to clear this section only.</div>
         </div>
         <div class="right">
-          <button class="navBtn danger" id="resetWeekly" type="button">Reset Weekly</button>
+          <button class="danger" id="btnReset">${title} Reset</button>
         </div>
       </div>
-      <div class="weeklyGrid">${items || '<div class="hint">No weekly chores configured.</div>'}</div>
-    </div>
+      <div class="listGrid" id="listGrid"></div>
+    </section>
   `;
 
-  app.querySelectorAll('input[type="checkbox"][data-wid]').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const id = cb.getAttribute('data-wid');
-      const cur = jget('weekly::' + wk, {});
-      cur[id] = !!cb.checked;
-      jset('weekly::' + wk, cur);
-    });
-  });
+  const grid = document.getElementById("listGrid");
+  grid.innerHTML = "";
 
-  app.querySelectorAll('select[data-wassign]').forEach(sel => {
-    sel.addEventListener('change', () => {
-      const id = sel.getAttribute('data-wassign');
-      const cur = jget('weeklyAssign::' + wk, {});
-      cur[id] = sel.value;
-      jset('weeklyAssign::' + wk, cur);
-    });
-  });
+  if (list.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "panel";
+    empty.style.background = "transparent";
+    empty.style.borderStyle = "dashed";
+    empty.style.color = "rgba(245,245,245,0.7)";
+    empty.textContent = "No items yet. We'll add them next phase.";
+    grid.appendChild(empty);
+  } else {
+    const state = isBi ? loadBiweeklyState() : loadMonthlyState();
+    state.checks = state.checks || {};
+    state.assign = state.assign || {};
 
-  const reset = document.getElementById('resetWeekly');
-  if (reset) reset.addEventListener('click', () => {
-    jset('weekly::' + wk, {});
-    jset('weeklyAssign::' + wk, {});
-    __renderWeekly();
-  });
+    list.forEach(item => {
+      const row = document.createElement("div");
+      row.className = "listItem";
+      if (!!state.checks[item]) row.classList.add("pressed");
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.id = `${kind}__${item}`;
+      cb.checked = !!state.checks[item];
+      cb.onchange = () => {
+        const s = isBi ? loadBiweeklyState() : loadMonthlyState();
+        s.checks = s.checks || {};
+        s.checks[item] = cb.checked;
+        isBi ? saveBiweeklyState(s) : saveMonthlyState(s);
+        renderChecklistPage(kind);
+      };
+
+      const name = document.createElement("label");
+      name.className = "name";
+      name.htmlFor = cb.id;
+      name.style.cursor = "pointer";
+      name.textContent = item;
+
+      row.appendChild(cb);
+      row.appendChild(name);
+
+      // Assignment dropdown (bi-weekly + monthly)
+      state.assign = state.assign || {};
+
+      const sel = document.createElement("select");
+      sel.className = "assignSelect";
+
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = "Asignar…";
+      sel.appendChild(blank);
+
+      PEOPLE.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p;
+        opt.textContent = p;
+        sel.appendChild(opt);
+      });
+
+      sel.value = state.assign[item] || "";
+
+      sel.onchange = () => {
+        const s = isBi ? loadBiweeklyState() : loadMonthlyState();
+        s.assign = s.assign || {};
+        s.assign[item] = sel.value;
+        if (isBi) saveBiweeklyState(s);
+        else saveMonthlyState(s);
+      };
+
+      row.appendChild(sel);
+
+      grid.appendChild(row);
+    });
+
+    isBi ? saveBiweeklyState(state) : saveMonthlyState(state);
+  }
+
+  document.getElementById("btnReset").onclick = () => {
+    if (!confirm(`Reset ${title} items?`)) return;
+    localStorage.removeItem(isBi ? "biweeklyState" : "monthlyState");
+    renderChecklistPage(kind);
+  };
 }
 
-function __renderAdmin(){
-  const app = document.getElementById('app');
-  if (!app) return;
-
-  const dayKey = __currentRouteDayKey();
-  __renderTopNav(dayKey);
-
-  // We are locking the theme to Neon Glass. Admin only controls:
-  // - Dark/Light mode
-  // - Member accent colors
-  const themeState = (typeof loadThemeState === 'function') ? loadThemeState() : { themeId: 'neonGlass', mode: 'dark' };
-  const currentMode = (themeState && themeState.mode === 'light') ? 'light' : 'dark';
-
-  const colors = getMemberColorsSafe();
-
-  const colorRows = __PEOPLE_RECOVERY.map(p => {
-    const c = colors[p] || getMemberColor(p);
-    return `
-      <div class="adminRow">
-        <div class="adminName">${__esc(p)}</div>
-        <input class="colorInput" type="color" data-mcolor="${__esc(p)}" value="${__esc(c)}" />
-      </div>
-    `;
-  }).join('');
+function renderAdmin(){
+  const app = document.getElementById("app");
+  const colors = loadMemberColors();
 
   app.innerHTML = `
-    <div class="panel">
-      <h2>Admin</h2>
-      <div class="hint">Neon Glass is the default theme. Use this page to set member accent colors and switch between Dark and Light mode.</div>
+    <section class="panel">
+      <div class="toolbar">
+        <div class="left">
+          <h2 style="margin:0;">Admin</h2>
+          <div class="hint" style="margin:0;">Pick a theme + mode for the whole app, then (optionally) set member colors.</div>
+        </div>
+        <div class="right">
+          <button class="danger" id="btnResetColors">Reset Colors</button>
+        </div>
+      </div>
 
-      <div class="themeGrid" style="grid-template-columns: 1fr;">
+      <div class="themeGrid">
+        <div class="themeRow">
+          <label for="themeSelect">Theme</label>
+          <select id="themeSelect"></select>
+        </div>
+
         <div class="themeRow">
           <label>Mode</label>
           <div class="modeBtns">
-            <button class="navBtn" id="adminModeDark" type="button">Dark</button>
-            <button class="navBtn" id="adminModeLight" type="button">Light</button>
+            <button id="modeDark" type="button">Dark</button>
+            <button id="modeLight" type="button">Light</button>
           </div>
         </div>
       </div>
 
-      <div style="margin-top:10px;"></div>
-      <h3 style="margin:0 0 8px 0;">Member Colors</h3>
-      <div class="hint" style="margin-top:-2px;">These colors drive the accent border on each person’s column and their ring on the Dashboard.</div>
-      <div class="adminGrid">${colorRows}</div>
-    </div>
+      <div class="hint" style="margin-top:10px;">Themes apply across the entire web app (colors, panels, buttons, inputs, menus, rings). Member colors still control the ring segments and column name color.</div>
+
+      <div style="height:10px;"></div>
+
+      <div class="adminGrid" id="adminGrid"></div>
+
+      <div class="hint" style="margin-top:10px;">Tip: Think of member colors as each person's "signature" in the rings.</div>
+
+      <div style="height:10px;"></div>
+
+      <h3 style="margin:0;">Daily Notes (pre-write for the week)</h3>
+      <div class="hint" style="margin-top:4px;">Enter notes ahead of time. These are the same day notes you can still edit on the Dashboard when that day arrives.</div>
+      <div class="adminNotesGrid" id="adminNotesGrid"></div>
+    </section>
   `;
 
-  // Set active state for mode buttons
-  const bDark = document.getElementById('adminModeDark');
-  const bLight = document.getElementById('adminModeLight');
-  if (bDark && bLight) {
-    if (currentMode === 'light') {
-      bLight.classList.add('active');
-      bDark.classList.remove('active');
-    } else {
-      bDark.classList.add('active');
-      bLight.classList.remove('active');
-    }
+  const grid = document.getElementById("adminGrid");
+  grid.innerHTML = "";
+
+  // --- NEW: Theme lock state and sync ---
+  const tsAtRender = loadThemeState();
+  const colorsLocked = tsAtRender.themeId !== "paperClean";
+
+  // If locked, force the preset colors to be the source of truth
+  if (colorsLocked && THEME_MEMBER_COLORS[tsAtRender.themeId]) {
+    const preset = THEME_MEMBER_COLORS[tsAtRender.themeId];
+    saveMemberColors({ ...preset });
   }
 
-  // Wire mode toggles (locks themeId to neonGlass)
-  function setMode(md){
-    if (typeof applyTheme === 'function') {
-      try {
-        applyTheme('neonGlass', md);
-      } catch (e) {
-        console.error('Admin mode toggle failed:', e);
-        if (typeof __showFatal === 'function') __showFatal('admin-mode', e);
-      }
-    } else {
-      console.warn('applyTheme is not defined; cannot change mode');
-    }
+  // Theme picker wiring
+  const ts = loadThemeState();
+  const themeSelect = document.getElementById("themeSelect");
 
-    // Re-render to reflect active button state
-    __renderAdmin();
+  themeSelect.innerHTML = Object.keys(THEMES)
+    .map(id => `<option value="${escapeHtml(id)}">${escapeHtml(themeLabel(id))}</option>`)
+    .join("");
+
+  themeSelect.value = ts.themeId;
+
+  const btnDark = document.getElementById("modeDark");
+  const btnLight = document.getElementById("modeLight");
+
+  function paintModeButtons(){
+    btnDark.classList.toggle("active", ts.mode === "dark");
+    btnLight.classList.toggle("active", ts.mode === "light");
   }
+  paintModeButtons();
 
-  if (bDark) bDark.addEventListener('click', () => setMode('dark'));
-  if (bLight) bLight.addEventListener('click', () => setMode('light'));
+  themeSelect.onchange = () => {
+    ts.themeId = themeSelect.value;
+    applyTheme(ts.themeId, ts.mode);
+    // Re-render so member color controls reflect lock/unlock state + preset colors
+    renderAdmin();
+  };
 
-  // Wire color inputs (always enabled)
-  app.querySelectorAll('input[type="color"][data-mcolor]').forEach(inp => {
-    inp.addEventListener('input', () => {
-      const person = inp.getAttribute('data-mcolor');
-      const cur = getMemberColorsSafe();
-      cur[person] = inp.value;
-      saveMemberColors(cur);
-      applyMemberColorsToCSS();
-    });
+  btnDark.onclick = () => {
+    ts.mode = "dark";
+    applyTheme(ts.themeId, ts.mode);
+    // No need to re-render entire page; just repaint buttons
+    paintModeButtons();
+  };
+
+  btnLight.onclick = () => {
+    ts.mode = "light";
+    applyTheme(ts.themeId, ts.mode);
+    // No need to re-render entire page; just repaint buttons
+    paintModeButtons();
+  };
+
+  PEOPLE.forEach(person => {
+    const row = document.createElement("div");
+    row.className = "adminRow";
+
+    const left = document.createElement("div");
+    left.className = "adminName";
+
+    const dot = document.createElement("div");
+    dot.style.width = "14px";
+    dot.style.height = "14px";
+    dot.style.borderRadius = "999px";
+    dot.style.background = colors[person];
+    dot.style.border = "1px solid rgba(255,255,255,0.25)";
+
+    const name = document.createElement("div");
+    name.textContent = person;
+
+    left.appendChild(dot);
+    left.appendChild(name);
+
+    const picker = document.createElement("input");
+    picker.type = "color";
+    picker.className = "colorInput";
+    picker.value = colors[person] || "#ffffff";
+    picker.disabled = colorsLocked;
+    picker.title = colorsLocked ? "Locked by theme" : "Edit member color";
+    picker.style.opacity = colorsLocked ? "0.55" : "1";
+    picker.style.pointerEvents = colorsLocked ? "none" : "auto";
+    picker.oninput = () => {
+      if (colorsLocked) return;
+      const c = loadMemberColors();
+      c[person] = picker.value;
+      saveMemberColors(c);
+      dot.style.background = picker.value;
+    };
+
+    row.appendChild(left);
+    row.appendChild(picker);
+    grid.appendChild(row);
   });
-}
 
-// ------------------------------
-// Maintenance (local-only)
-// ------------------------------
-function __maintStorageKey(){
-  return 'maintenance::items';
-}
+  // --- Admin: member avatar uploads (stored locally) ---
+  const photos = loadMemberPhotos();
 
-function __loadMaintenance(){
-  const v = jget(__maintStorageKey(), []);
-  return Array.isArray(v) ? v : [];
-}
+  const avatarTitle = document.createElement("h3");
+  avatarTitle.style.margin = "14px 0 0 0";
+  avatarTitle.textContent = "Member Avatars";
+  app.querySelector(".panel").appendChild(avatarTitle);
 
-function __saveMaintenance(items){
-  jset(__maintStorageKey(), Array.isArray(items) ? items : []);
-}
+  const avatarHint = document.createElement("div");
+  avatarHint.className = "hint";
+  avatarHint.style.marginTop = "4px";
+  avatarHint.textContent = "Upload a photo for each member. Stored on this device (localStorage).";
+  app.querySelector(".panel").appendChild(avatarHint);
 
-function __uuid(){
-  return 'm_' + Math.random().toString(16).slice(2) + '_' + Date.now();
-}
+  PEOPLE.forEach(person => {
+    const row = document.createElement("div");
+    row.className = "adminAvatarRow";
 
-function __renderMaintenance(){
-  const app = document.getElementById('app');
-  if (!app) return;
+    const left = document.createElement("div");
+    left.className = "adminAvatarLeft";
 
-  const dayKey = __currentRouteDayKey();
-  __renderTopNav(dayKey);
+    const name = document.createElement("div");
+    name.className = "adminAvatarName";
+    name.textContent = person;
 
-  const items = __loadMaintenance();
+    const previewWrap = document.createElement("div");
+    const url = (photos && typeof photos[person] === "string") ? photos[person] : "";
 
-  const PEOPLE_OPTS = ['','Dad','Mom','Ethan','Celo'];
-  const INTERVAL_OPTS = ['Weekly','Biweekly','Monthly','Quarterly','Yearly','Once'];
+    if (url){
+      previewWrap.className = "avatarCircle";
+      const img = document.createElement("img");
+      img.alt = `${person} avatar`;
+      img.src = url;
+      previewWrap.appendChild(img);
+    } else {
+      previewWrap.className = "avatarFallback";
+      previewWrap.textContent = (person || "").slice(0,2).toUpperCase();
+    }
 
-  function __buildPeopleOptions(selected){
-    return PEOPLE_OPTS.map(p => {
-      const label = p ? p : 'Unassigned';
-      const sel = (String(selected || '') === String(p)) ? 'selected' : '';
-      return `<option value="${__esc(p)}" ${sel}>${__esc(label)}</option>`;
-    }).join('');
+    left.appendChild(previewWrap);
+    left.appendChild(name);
+
+    const right = document.createElement("div");
+    right.className = "adminAvatarRight";
+
+    const file = document.createElement("input");
+    file.type = "file";
+    file.accept = "image/*";
+    file.className = "fileInput";
+
+    const clear = document.createElement("button");
+    clear.type = "button";
+    clear.className = "ghostBtn";
+    clear.textContent = "Clear";
+
+    file.onchange = () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const size = 160;
+          const canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext("2d");
+
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          const cur = loadMemberPhotos();
+          cur[person] = dataUrl;
+          saveMemberPhotos(cur);
+          renderAdmin();
+        };
+        img.src = String(reader.result || "");
+      };
+      reader.readAsDataURL(f);
+    };
+
+    clear.onclick = () => {
+      const cur = loadMemberPhotos();
+      cur[person] = "";
+      saveMemberPhotos(cur);
+      renderAdmin();
+    };
+
+    right.appendChild(file);
+    right.appendChild(clear);
+
+    row.appendChild(left);
+    row.appendChild(right);
+
+    app.querySelector(".panel").appendChild(row);
+  });
+
+  // --- Admin: pre-write day notes for the week (shared with Dashboard day notes) ---
+  const notesGrid = document.getElementById("adminNotesGrid");
+  if (notesGrid){
+    notesGrid.innerHTML = "";
+
+    const ds = loadDailyState();
+
+    DAYS.forEach(dayKey => {
+      ds[dayKey] = ds[dayKey] || { checks:{}, notes:"" };
+
+      const card = document.createElement("div");
+      card.className = "adminNoteCard";
+
+      const title = document.createElement("div");
+      title.className = "adminNoteTitle";
+      title.textContent = `Notas para ${dayKey}...`;
+
+      const ta = document.createElement("textarea");
+      ta.placeholder = `Notas para ${dayKey}...`;
+      ta.value = (typeof ds[dayKey].notes === "string") ? ds[dayKey].notes : "";
+
+      ta.oninput = () => {
+        const cur = loadDailyState();
+        cur[dayKey] = cur[dayKey] || { checks:{}, notes:"" };
+        cur[dayKey].notes = ta.value;
+        saveDailyState(cur);
+      };
+
+      card.appendChild(title);
+      card.appendChild(ta);
+      notesGrid.appendChild(card);
+    });
+
+    // Ensure any missing day buckets are persisted
+    saveDailyState(ds);
   }
 
-  function __buildIntervalOptions(selected){
-    return INTERVAL_OPTS.map(v => {
-      const sel = (String(selected || '') === String(v)) ? 'selected' : '';
-      return `<option value="${__esc(v)}" ${sel}>${__esc(v)}</option>`;
-    }).join('');
+  // Disable reset button if locked
+  const resetBtn = document.getElementById("btnResetColors");
+  if (resetBtn) {
+    resetBtn.disabled = colorsLocked;
+    resetBtn.style.opacity = colorsLocked ? "0.55" : "1";
+    resetBtn.style.pointerEvents = colorsLocked ? "none" : "auto";
+    resetBtn.title = colorsLocked ? "Member colors are locked for this theme" : "Reset member colors";
   }
 
-  const rows = items.map(it => {
-    const done = !!it.done;
-    const who = it.assignee || '';
-    const interval = it.interval || 'Monthly';
-    const created = it.createdAt ? new Date(it.createdAt) : null;
-    const createdStr = created ? created.toLocaleDateString() : '';
+  document.getElementById("btnResetColors").onclick = () => {
+    const tsNow = loadThemeState();
+    if (tsNow.themeId !== "paperClean") return;
+    if (!confirm("Reset member colors to defaults?")) return;
+    saveMemberColors(THEME_MEMBER_COLORS.paperClean);
+    renderAdmin();
+  };
+}
 
-    const subBits = [];
-    if (createdStr) subBits.push('Added ' + createdStr);
+function renderMaintenance(){
+  const app = document.getElementById("app");
+  const s = loadMaintState();
+  s.entries = s.entries || [];
+
+  // Phase 7.1: migrate legacy entries (no id) so delete works reliably
+  let changed = false;
+  s.entries = s.entries.map(e => {
+    if (!e || typeof e !== "object") return e;
+    if (!e.id) {
+      changed = true;
+      return { ...e, id: makeId() };
+    }
+    return e;
+  });
+  if (changed) saveMaintState(s);
+
+  // Sort newest first (by date)
+  const entries = [...s.entries].sort((a, b) => {
+    const da = (a.date || "");
+    const db = (b.date || "");
+    if (da === db) return 0;
+    return da < db ? 1 : -1;
+  });
+
+  // Build options for completedBy
+  const peopleOpts = PEOPLE.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join("");
+
+  // Simple suggested tasks (you can type anything)
+  const suggestions = [
+    "Change AC filter",
+    "AC Flush",
+    "Pool Filter clean/change"
+  ];
+
+  const suggestionOptions = suggestions
+    .map(t => `<option value="${escapeHtml(t)}"></option>`)
+    .join("");
+
+  app.innerHTML = `
+    <section class="panel">
+      <div class="toolbar">
+        <div class="left">
+          <h2 style="margin:0;">House Maintenance</h2>
+          <div class="hint" style="margin:0;">Log entries with task, completed by, and date. Stored locally on this device.</div>
+        </div>
+        <div class="right">
+          <button class="danger" id="btnResetMaint">Maintenance Reset</button>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:12px;">
+        <div class="hint" style="margin-top:0;">Add a new entry</div>
+
+        <div class="maintForm">
+          <div class="field">
+            <label>Task</label>
+            <input id="maintTask" list="maintTaskSuggestions" placeholder="Type a task (or pick a suggestion)..." />
+            <datalist id="maintTaskSuggestions">
+              ${suggestionOptions}
+            </datalist>
+          </div>
+
+          <div class="field">
+            <label>Completed by</label>
+            <select id="maintBy">
+              <option value="">Select…</option>
+              ${peopleOpts}
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Date</label>
+            <input id="maintDate" type="date" />
+          </div>
+
+          <div class="field actions">
+            <label>&nbsp;</label>
+            <button id="btnAddMaint">Add entry</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:12px;">
+        <div class="toolbar" style="margin-bottom:8px;">
+          <div class="left">
+            <div class="hint" style="margin:0;">History</div>
+          </div>
+          <div class="right">
+            <div class="hint" style="margin:0;">${entries.length} entr${entries.length === 1 ? "y" : "ies"}</div>
+          </div>
+        </div>
+
+        <div id="maintEmpty" class="panel" style="display:${entries.length ? "none" : "block"};background:transparent;border-style:dashed;color:rgba(245,245,245,0.7);">
+          No maintenance entries yet. Which is either amazing or terrifying.
+        </div>
+
+        <div class="maintList" id="maintList"></div>
+      </div>
+    </section>
+  `;
+
+  // Default the date to today
+  const dateEl = document.getElementById("maintDate");
+  dateEl.value = isoToday();
+
+  // Render list
+  const list = document.getElementById("maintList");
+  list.innerHTML = entries.map(e => {
+    const task = escapeHtml(e.task || "");
+    const by = escapeHtml(e.by || "");
+    const date = escapeHtml(e.date || "");
 
     return `
-      <div class="maintRow" data-mid="${__esc(it.id)}">
-        <div style="min-width:0;">
-          <div class="maintTask">${__esc(it.text || '')}</div>
-          <div class="maintSub">${__esc(subBits.filter(Boolean).join(' • '))}</div>
+      <div class="maintRow">
+        <div class="maintMeta">
+          <div class="maintTask">${task || "(No task)"}</div>
+          <div class="maintSub">${by || "(No person)"} • ${date || "(No date)"}</div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end;">
-          <select class="assignSelect" data-minterval="${__esc(it.id)}" title="Interval">
-            ${__buildIntervalOptions(interval)}
-          </select>
-          <select class="assignSelect" data-massign="${__esc(it.id)}" title="Assignee">
-            ${__buildPeopleOptions(who)}
-          </select>
-          <label class="choreLabel" style="padding:6px 10px;box-shadow: var(--neuOutShadowSoft);">
-            <input type="checkbox" data-mdone="${__esc(it.id)}" ${done ? 'checked' : ''} />
-            <span style="flex:0 0 auto;">Done</span>
-          </label>
-          <button class="ghost" type="button" data-mremove="${__esc(it.id)}">Remove</button>
+        <div class="maintActions">
+          <button class="ghost" data-id="${escapeHtml(e.id || "")}" title="Delete entry">Delete</button>
         </div>
       </div>
     `;
-  }).join('');
+  }).join("");
 
-  const peopleOpts = __buildPeopleOptions('');
+  // Delete handlers
+  list.querySelectorAll("[data-id]").forEach(btn => {
+    btn.onclick = () => {
+      const id = (btn.getAttribute("data-id") || "").trim();
+      if (!id) return;
 
-  const intervalOpts = INTERVAL_OPTS.map(v => {
-    return `<option value="${__esc(v)}">${__esc(v)}</option>`;
-  }).join('');
+      if (!confirm("Delete this maintenance entry?")) return;
 
-  app.innerHTML = `
-    <div class="panel">
-      <div class="toolbar">
-        <div class="left">
-          <h2 style="margin:0;">Maintenance</h2>
-          <div class="hint" style="margin:0;">Local-only for now. This is the real list (not a placeholder). Add tasks you want tracked over time.</div>
-        </div>
-        <div class="right">
-          <button class="navBtn danger" id="resetMaintenance" type="button">Reset Maintenance</button>
-        </div>
-      </div>
-
-      <div class="maintForm" style="margin-top:10px;">
-        <div class="field">
-          <label>Task</label>
-          <input id="mTask" type="text" placeholder="e.g., Replace AC filter" />
-        </div>
-
-        <div class="field">
-          <label>Interval</label>
-          <select id="mInterval">
-            ${intervalOpts}
-          </select>
-        </div>
-
-        <div class="field">
-          <label>Assignee</label>
-          <select id="mAssignee">
-            ${peopleOpts}
-          </select>
-        </div>
-
-        <div class="actions">
-          <button class="navBtn" id="mAdd" type="button">Add</button>
-        </div>
-      </div>
-
-      <div class="maintList" style="margin-top:12px;">
-        ${rows || '<div class="hint">No maintenance tasks yet. Add one above.</div>'}
-      </div>
-    </div>
-  `;
-
-  const addBtn = document.getElementById('mAdd');
-  const taskEl = document.getElementById('mTask');
-  const intervalEl = document.getElementById('mInterval');
-  const whoEl = document.getElementById('mAssignee');
-
-  function add(){
-    const text = (taskEl && taskEl.value) ? taskEl.value.trim() : '';
-    if (!text) return;
-    const it = {
-      id: __uuid(),
-      text,
-      interval: intervalEl ? intervalEl.value : 'Monthly',
-      assignee: whoEl ? whoEl.value : '',
-      createdAt: Date.now(),
-      done: false
+      const current = loadMaintState();
+      current.entries = (current.entries || []).filter(e => e.id !== id);
+      saveMaintState(current);
+      renderMaintenance();
     };
-    const cur = __loadMaintenance();
-    cur.unshift(it);
-    __saveMaintenance(cur);
-    __renderMaintenance();
+  });
+
+  // Add entry handler
+  document.getElementById("btnAddMaint").onclick = () => {
+    const task = (document.getElementById("maintTask").value || "").trim();
+    const by = (document.getElementById("maintBy").value || "").trim();
+    const date = (document.getElementById("maintDate").value || "").trim();
+
+    if (!task) { alert("Task is required."); return; }
+    if (!by) { alert("Completed by is required."); return; }
+    if (!date) { alert("Date is required."); return; }
+
+    const current = loadMaintState();
+    current.entries = current.entries || [];
+    current.entries.push({ id: makeId(), task, by, date });
+    saveMaintState(current);
+
+    renderMaintenance();
+  };
+
+  // Reset button
+  document.getElementById("btnResetMaint").onclick = () => {
+    if (!confirm("Reset maintenance log?")) return;
+    localStorage.removeItem("maintState");
+    renderMaintenance();
+  };
+}
+
+/* =========================
+   WEEKLY RESET (per your rules)
+   - resets daily pages (checkboxes + notes)
+   - resets weekly chores (checks + assignments)
+   - DOES NOT touch dashboard notes/pin
+   - DOES NOT touch biweekly/monthly/maintenance
+========================= */
+
+function weeklyReset(){
+  if (!confirm("Weekly Reset: clear daily checkboxes + daily notes + weekly chores assignments/checks?")) return;
+  localStorage.removeItem("dailyState");
+  localStorage.removeItem("weeklyState");
+  // stay on current page, re-render
+  renderApp();
+}
+
+/* =========================
+   APP RENDER
+========================= */
+
+function renderApp(){
+  renderTopNav();
+  const r = route();
+  console.log("HASH:", location.hash, "ROUTE:", r);
+
+  // add a contextual reset button to top nav only when on a day page
+  // (keeps screen real estate used but avoids clutter on dashboard)
+  addContextResetButton(r);
+
+  if (r === "dashboard"){
+    const dash = loadDashState();
+    // If not explicitly invoked, default viewer to today (editable)
+    if (!dash.viewerDay) dash.viewerDay = todayKey();
+    if (dash.viewerReadOnly !== true) dash.viewerReadOnly = false;
+    saveDashState(dash);
+    return renderDashboard();
   }
+  if (r === "biweekly") return renderChecklistPage("biweekly");
+  if (r === "monthly") return renderChecklistPage("monthly");
+  if (r === "maintenance") return renderMaintenance();
+  if (r === "admin") return renderAdmin();
 
-  if (addBtn) addBtn.addEventListener('click', add);
-  if (taskEl) taskEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') add();
-  });
+  // day route
+  if (DAYS.includes(r)) return renderDay(r);
 
+  // special alias: "hoy" means today's day page
+  if (r === "hoy") return renderDay(todayKey());
 
-  app.querySelectorAll('input[type="checkbox"][data-mdone]').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const id = cb.getAttribute('data-mdone');
-      const cur = __loadMaintenance();
-      const idx = cur.findIndex(x => x && x.id === id);
-      if (idx >= 0) {
-        cur[idx].done = !!cb.checked;
-        __saveMaintenance(cur);
-      }
-    });
-  });
-
-  app.querySelectorAll('select[data-massign]').forEach(sel => {
-    sel.addEventListener('change', () => {
-      const id = sel.getAttribute('data-massign');
-      const cur = __loadMaintenance();
-      const idx = cur.findIndex(x => x && x.id === id);
-      if (idx >= 0) {
-        cur[idx].assignee = sel.value || '';
-        __saveMaintenance(cur);
-      }
-    });
-  });
-
-  app.querySelectorAll('select[data-minterval]').forEach(sel => {
-    sel.addEventListener('change', () => {
-      const id = sel.getAttribute('data-minterval');
-      const cur = __loadMaintenance();
-      const idx = cur.findIndex(x => x && x.id === id);
-      if (idx >= 0) {
-        cur[idx].interval = sel.value || 'Monthly';
-        __saveMaintenance(cur);
-      }
-    });
-  });
-
-  app.querySelectorAll('button[data-mremove]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.getAttribute('data-mremove');
-      const cur = __loadMaintenance().filter(x => x && x.id !== id);
-      __saveMaintenance(cur);
-      __renderMaintenance();
-    });
-  });
-
-  const resetBtn = document.getElementById('resetMaintenance');
-  if (resetBtn) resetBtn.addEventListener('click', () => {
-    __saveMaintenance([]);
-    __renderMaintenance();
-  });
+  // unknown route: go home instead of silently showing today
+  return goto("dashboard");
 }
 
-function __renderRoute(){
-  const r = __route();
+function addContextResetButton(r){
+  const nav = document.getElementById("topNav");
+  const existing = document.getElementById("ctxReset");
+  if (existing) existing.remove();
 
-  // Day routes
-  if (__isDayKey(r)) {
-    __renderDay(r);
-    return;
+  if (DAYS.includes(r)){
+    // Read-only day-notes viewer shortcut
+    const notesBtn = document.createElement("button");
+    notesBtn.id = "ctxViewNotes";
+    notesBtn.className = "navBtn";
+    notesBtn.textContent = "View notes";
+    notesBtn.onclick = () => {
+      // If we're on today's page, show a quick overlay instead of navigating away
+      if (r === todayKey()){
+        // Ensure the notes UI exists (renderTopNav() creates it). Then open it.
+        const openFn = window.__openNotesForDay;
+        if (typeof openFn === "function"){
+          openFn(r);
+          return;
+        }
+      }
+
+      // Otherwise: jump to dashboard and show read-only notes there
+      const dash = loadDashState();
+      dash.viewerDay = r;
+      dash.viewerReadOnly = true;
+      saveDashState(dash);
+      goto("dashboard");
+    };
+    nav.appendChild(notesBtn);
+
+    const btn = document.createElement("button");
+    btn.id = "ctxReset";
+    btn.className = "navBtn danger";
+    btn.textContent = "Weekly Reset";
+    btn.onclick = weeklyReset;
+    nav.appendChild(btn);
   }
-
-  // Non-day routes
-  if (r === 'dashboard') { __renderDashboard(); return; }
-  if (r === 'weekly') { __renderWeekly(); return; }
-  if (r === 'admin') { __renderAdmin(); return; }
-  if (r === 'maintenance') { __renderMaintenance(); return; }
-
-  // Unknown route -> dashboard (safe)
-  location.hash = '#/dashboard';
 }
 
-function __currentRouteDayKey(){
-  const r = __route();
-  return __isDayKey(r) ? r : __todayKey();
-}
 
-function __bootRecovery(){
-  // Apply default theme if possible (theme functions expect jget/jset)
-  try {
-    if (typeof loadThemeState === 'function' && typeof applyTheme === 'function') {
-      const s = loadThemeState();
-      applyTheme(s.themeId, s.mode);
+/* =========================
+   GROCERIES PANEL RENDER
+========================= */
+
+function renderGroceriesPanel(){
+  const listEl = document.getElementById("groceryList");
+  const inputEl = document.getElementById("groceryText");
+  const addBtn = document.getElementById("groceryAdd");
+  const resetBtn = document.getElementById("groceryReset");
+
+  // Panel may not exist yet (only created by renderTopNav)
+  if (!listEl || !inputEl || !addBtn || !resetBtn) return;
+
+  const state = loadGroceriesState();
+  state.items = Array.isArray(state.items) ? state.items : [];
+
+  function redraw(){
+    const s = loadGroceriesState();
+    const items = Array.isArray(s.items) ? s.items : [];
+
+    if (!items.length){
+      listEl.innerHTML = `<div class="hint" style="margin-top:6px;">List is empty. For once, everyone is innocent.</div>`;
+      return;
     }
-  } catch(_) {}
 
-  // Default landing page: dashboard (unless the hash is already a valid route)
-  if (!location.hash || location.hash === '#/' || location.hash === '#') {
-    location.hash = '#/dashboard';
-    return;
+    listEl.innerHTML = items.map(it => {
+      const txt = escapeHtml(it.text || "");
+      const qty = Number(it.qty || 1);
+      const qtyChip = (qty > 1) ? `<span class="groceryQty">x${qty}</span>` : "";
+      return `
+        <div class="groceryRow">
+          <div class="groceryMeta">
+            <div class="groceryItem">${txt}</div>
+            <div class="grocerySub">
+              ${qtyChip}
+            </div>
+          </div>
+          <button class="remove" type="button" data-gid="${escapeHtml(it.id || "")}" aria-label="Remove">✕</button>
+        </div>
+      `;
+    }).join("");
+
+    // Remove handlers
+    listEl.querySelectorAll("[data-gid]").forEach(btn => {
+      btn.onclick = () => {
+        const id = (btn.getAttribute("data-gid") || "").trim();
+        if (!id) return;
+        const cur = loadGroceriesState();
+        cur.items = (cur.items || []).filter(x => x.id !== id);
+        saveGroceriesState(cur);
+        redraw();
+      };
+    });
   }
-  __renderRoute();
+
+  // Add handler (dedupe + bump)
+  function addItem(){
+    const text = (inputEl.value || "").trim();
+    if (!text) return;
+
+    const cur = loadGroceriesState();
+    cur.items = Array.isArray(cur.items) ? cur.items : [];
+
+    const n = normItemText(text);
+    // Dedupe by normalized text only
+    const existingIdx = cur.items.findIndex(x => normItemText(x.text) === n);
+
+    if (existingIdx >= 0){
+      const existing = cur.items[existingIdx];
+      existing.qty = Number(existing.qty || 1) + 1;
+      // bump to top
+      cur.items.splice(existingIdx, 1);
+      cur.items.unshift(existing);
+    } else {
+      cur.items.unshift({ id: makeId(), text, qty: 1, createdAt: Date.now() });
+    }
+
+    saveGroceriesState(cur);
+    inputEl.value = "";
+    redraw();
+  }
+
+  // Wire once (idempotent)
+  addBtn.onclick = addItem;
+  inputEl.onkeydown = (e) => {
+    if (e.key === "Enter"){
+      e.preventDefault();
+      addItem();
+    }
+  };
+
+  resetBtn.onclick = () => {
+    if (!confirm("Reset groceries list?")) return;
+    localStorage.removeItem("groceriesState");
+    redraw();
+  };
+
+  // Initial draw
+  saveGroceriesState(state);
+  redraw();
 }
 
-window.addEventListener('hashchange', __renderRoute);
-__bootRecovery();
+/* =========================
+   UTIL
+========================= */
+
+function escapeHtml(str){
+  return (str || "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;");
+}
+function isoToday(){
+  // Returns YYYY-MM-DD in local time
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function makeId(){
+  // Prefer native UUID; fall back for older Safari just in casex
+  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+
+/* =========================
+   INIT
+========================= */
+
+// Default to dashboard if no hash
+// Apply saved theme first (so the first render uses the right look)
+const __ts = loadThemeState();
+applyTheme(__ts.themeId, __ts.mode);
+
+// Default to dashboard if no hash
+if (!location.hash){
+  goto("dashboard");
+}
+renderApp();
+
+/* =========================
+   SERVICE WORKER
+========================= */
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./service-worker.js");
+}
 </script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBdyYUuBWizQCGvd4pWdUy5i6lMKHV53Y8",
+    authDomain: "family-chore-board-666c7.firebaseapp.com",
+    projectId: "family-chore-board-666c7",
+    storageBucket: "family-chore-board-666c7.firebasestorage.app",
+    messagingSenderId: "803382955236",
+    appId: "1:803382955236:web:506b776453fd04da9670f1",
+    measurementId: "G-JJLD3HG7GY"
+  };
+
+  const app = initializeApp(firebaseConfig);
+
+  const auth = getAuth(app);
+  signInAnonymously(auth).catch((err) => {
+    console.error("Firebase auth failed:", err);
+  });
+
+  const db = getFirestore(app);
+
+  // Expose Firebase helpers globally for later sync steps
+  window.FirebaseSync = {
+    db,
+    doc,
+    getDoc,
+    setDoc,
+    onSnapshot
+  };
+
+  console.log("Firebase initialized and ready.");
+</script>
+</body>
+</html>
