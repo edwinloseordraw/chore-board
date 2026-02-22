@@ -2558,7 +2558,7 @@ const CELO_SCHOOL_CALENDAR = {
   monthLabel: "February",
   // TODO: Replace with the new calendar image data URL each month.
   // Format: "data:image/png;base64,AAAA..."
-  imgDataUrl: "february.png"
+  imgDataUrl: "./february.png"
 };
 
 function renderCeloSchool(){
@@ -2578,7 +2578,7 @@ function renderCeloSchool(){
       ${hasImg ? `
         <div class="panel" style="margin-top:12px; padding:12px;">
           <img
-            src="${CELO_SCHOOL_CALENDAR.imgDataUrl}"
+            src="${CELO_SCHOOL_CALENDAR.imgDataUrl}?v=${encodeURIComponent(CELO_SCHOOL_CALENDAR.monthLabel)}"
             alt="${escapeHtml(CELO_SCHOOL_CALENDAR.title)} calendar"
             style="width:100%; max-width:1100px; display:block; margin:0 auto; border-radius:12px;"
           />
