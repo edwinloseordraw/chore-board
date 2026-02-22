@@ -639,6 +639,37 @@
       white-space:nowrap;
     }
 
+    .dayProgress{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:0 12px 10px 12px;
+      margin-top:-6px;
+    }
+    .dayProgress .count{
+      font-size:12px;
+      font-weight:900;
+      color:var(--muted2);
+      white-space:nowrap;
+    }
+    .progTrack{
+      flex:1;
+      height:8px;
+      border-radius:999px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.10);
+      overflow:hidden;
+      box-shadow: var(--neuInShadowSoft);
+    }
+    .progFill{
+      height:100%;
+      width:0%;
+      border-radius:999px;
+      background: var(--btnActive);
+      box-shadow: 0 0 10px rgba(255,255,255,0.12);
+    }
+
     .column h2{
       margin:0 0 8px 0;
       text-align:center;
@@ -2144,7 +2175,12 @@ function __renderDay(dayKey){
   });
 
   const cols = __PEOPLE_RECOVERY.map(p => {
-    const list = (buckets[p] || []).map(t => {
+    const tasksForPerson = (buckets[p] || []);
+    const total = tasksForPerson.length;
+    const doneCount = tasksForPerson.reduce((acc, t) => acc + (__isTaskDone(t.id) ? 1 : 0), 0);
+    const pct = total ? Math.round((doneCount / total) * 100) : 0;
+
+    const list = tasksForPerson.map(t => {
       const checked = __isTaskDone(t.id) ? 'checked' : '';
       const label = __esc(t.text);
       return `
@@ -2157,11 +2193,17 @@ function __renderDay(dayKey){
       `;
     }).join('');
 
+    const accent = __esc(getMemberColor(p));
+
     return `
-      <section class="column" style="border-top:4px solid ${__esc(getMemberColor(p))};">
+      <section class="column" style="border-top:4px solid ${accent};">
         <div class="dayHeaderBar">
           <h2 class="dayTitle">${__esc(p)}</h2>
           <div class="dayDate">${__esc(dateStr)}</div>
+        </div>
+        <div class="dayProgress">
+          <div class="progTrack"><div class="progFill" style="width:${pct}%; background:${accent};"></div></div>
+          <div class="count">${doneCount}/${total}</div>
         </div>
         ${list || '<div class="hint">No tasks.</div>'}
       </section>
@@ -2320,8 +2362,8 @@ function __renderWeekly(){
 
     return `
       <div class="weeklyItem">
-        <input type="checkbox" data-wid="${__esc(id)}" ${done ? 'checked' : ''} />
-        <div class="label">${__esc(name)}</div>
+        <input type="checkbox" id="wk_${__esc(id)}" data-wid="${__esc(id)}" ${done ? 'checked' : ''} />
+        <label class="label" for="wk_${__esc(id)}">${__esc(name)}</label>
         <select class="assignSelect" data-wassign="${__esc(id)}">${peopleOpts}</select>
       </div>
     `;
