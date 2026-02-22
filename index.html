@@ -2688,59 +2688,11 @@ function renderTopNav(){
     return b;
   }
 
+  // Hoy (simple)
+  sideNav.appendChild(navBtn("Hoy", "hoy", (r === "hoy" || DAYS.includes(r))));
+
   // Dashboard
   sideNav.appendChild(navBtn("Dashboard", "dashboard", r === "dashboard"));
-
-  // Hoy (expandable) + days list
-  const hoyWrap = document.createElement("div");
-
-  const hoyBtn = document.createElement("button");
-  hoyBtn.type = "button";
-  hoyBtn.className = "sideBtn" + ((r === "hoy" || DAYS.includes(r)) ? " active" : "");
-  hoyBtn.setAttribute("aria-expanded", "false");
-  hoyBtn.innerHTML = `<span>Hoy</span><span class="sideChevron">›</span>`;
-
-  const sub = document.createElement("div");
-  sub.className = "sideSub";
-
-  // Quick link to today's day page
-  const todayBtn = document.createElement("button");
-  todayBtn.type = "button";
-  todayBtn.className = "sideBtn";
-  todayBtn.textContent = `Today (${todayKey()})`;
-  todayBtn.onclick = () => {
-    closeSide();
-    goto(todayKey());
-  };
-  sub.appendChild(todayBtn);
-
-  DAYS.forEach(d => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "sideBtn" + (r === d ? " active" : "");
-    b.textContent = d;
-    b.onclick = () => {
-      closeSide();
-      goto(d);
-    };
-    sub.appendChild(b);
-  });
-
-  hoyBtn.onclick = () => {
-    const expanded = hoyBtn.getAttribute("aria-expanded") === "true";
-    hoyBtn.setAttribute("aria-expanded", expanded ? "false" : "true");
-    sub.classList.toggle("open", !expanded);
-  };
-
-  // Default open if we're on a day route
-  if (r === "hoy" || DAYS.includes(r)){
-    hoyBtn.setAttribute("aria-expanded", "true");
-    sub.classList.add("open");
-  }
-
-  hoyWrap.appendChild(hoyBtn);
-  hoyWrap.appendChild(sub);
-  sideNav.appendChild(hoyWrap);
 
   // Other primary routes
   sideNav.appendChild(navBtn("Bi-weekly", "biweekly", r === "biweekly"));
