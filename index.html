@@ -1874,7 +1874,7 @@ function getTasksForDay(dayKey){
   // Apply pairing guardrails (only affects 2-person chores).
   return withoutWalk.map(t => normalizeTwoPersonTask(t));
 }
-const WEEKLY_CHORES = [
+window.WEEKLY_CHORES = [
   "Sweep",
   "Mop",
   "Vacuum",
@@ -2318,7 +2318,7 @@ function __renderWeekly(){
   __renderTopNav(dayKey);
 
   const wk = __weeklyKey();
-  const list = Array.isArray(WEEKLY_CHORES) ? WEEKLY_CHORES : [];
+  const list = (typeof window !== 'undefined' && Array.isArray(window.WEEKLY_CHORES)) ? window.WEEKLY_CHORES : [];
 
   const state = jget('weekly::' + wk, {});
   const assigned = jget('weeklyAssign::' + wk, {});
