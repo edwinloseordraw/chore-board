@@ -2190,7 +2190,6 @@ const ROTATING_SOLO_CHORES = [
   { slug: "cabinets",    text: "Cabinets",                when: "all" },
   { slug: "feedDogs",    text: "Feed dogs",               when: "all" },
   { slug: "dogPoop",     text: "Dog poop",                when: "all" },
-  { slug: "brushHarvey", text: "Brush Harvey",            when: "all" },
   { slug: "read",        text: "Read for 20 min",         when: "all" }
 ];
 
@@ -2198,7 +2197,10 @@ const ROTATING_SOLO_CHORES = [
 const FIXED_SOLO_CHORES = [
   // Celo-only weekday reminders (Mon–Fri)
   { slug: "prepBackpack", text: "Reminder: Prep backpack for tomorrow", person: "Celo", when: "weekdays" },
-  { slug: "appleWatch",   text: "Reminder: Where's your Apple Watch?",  person: "Celo", when: "weekdays" }
+  { slug: "appleWatch",   text: "Reminder: Where's your Apple Watch?",  person: "Celo", when: "weekdays" },
+  { slug: "brushHarvey", text: "Brush Harvey", person: "Dad", when: "mwf" },
+  { slug: "brushHarvey2", text: "Brush Harvey", person: "Dad", when: "mwf" },
+  { slug: "brushHarvey3", text: "Brush Harvey", person: "Dad", when: "mwf" }
 ];
 
 function isWeekday(dayKey){
@@ -2294,6 +2296,10 @@ function buildDailyBaseTasks(dayKey){
   // --- Fixed chores (personal reminders) ---
   FIXED_SOLO_CHORES.forEach(c => {
     if (c.when === "weekdays" && !isWeekday(dayKey)) return;
+    if (c.when === "mwf"){
+      // Brush Harvey: Monday, Wednesday, Friday only
+      if (!(dayKey === "lunes" || dayKey === "miercoles" || dayKey === "viernes")) return;
+    }
     if (!PEOPLE.includes(c.person)) return;
     tasks.push(makeTask(dayKey, c.slug, c.text, [c.person], c.person));
   });
