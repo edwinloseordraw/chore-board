@@ -2204,7 +2204,8 @@ const FIXED_SOLO_CHORES = [
   { slug: "prepBackpack", text: "Reminder: Prep backpack for tomorrow", person: "Celo", when: "weekdays" },
   { slug: "appleWatch",   text: "Reminder: Where's your Apple Watch?",  person: "Celo", when: "weekdays" },
   { slug: "read20", text: "Read for 20 min", person: "Celo", when: "monfri" },
-  { slug: "brushHarvey", text: "Brush Harvey", person: "Dad", when: "mwf" }
+  { slug: "brushHarvey", text: "Brush Harvey", person: "Dad", when: "monwed" },
+  { slug: "brushHarvey", text: "Brush Harvey", person: "Ethan", when: "fri" }
 ];
 
 function isWeekday(dayKey){
@@ -2303,9 +2304,13 @@ function buildDailyBaseTasks(dayKey){
     if (c.when === "weekdays"){
       if (!(dayKey === "domingo" || dayKey === "lunes" || dayKey === "martes" || dayKey === "miercoles" || dayKey === "jueves")) return;
     }
-    if (c.when === "mwf"){
-      // Brush Harvey: Monday, Wednesday, Friday only
-      if (!(dayKey === "lunes" || dayKey === "miercoles" || dayKey === "viernes")) return;
+    if (c.when === "monwed"){
+      // Brush Harvey (Dad): Monday + Wednesday
+      if (!(dayKey === "lunes" || dayKey === "miercoles")) return;
+    }
+    if (c.when === "fri"){
+      // Brush Harvey (Ethan): Friday only
+      if (dayKey !== "viernes") return;
     }
     if (c.when === "monfri"){
       // Monday through Friday only
@@ -2314,6 +2319,40 @@ function buildDailyBaseTasks(dayKey){
     if (!PEOPLE.includes(c.person)) return;
     tasks.push(makeTask(dayKey, c.slug, c.text, [c.person], c.person));
   });
+
+  // Keep Celo reminder chores at the bottom of the list whenever they appear.
+  // (Only these two reminders move; everything else stays in the same relative order.)
+  const REMINDER_SLUGS_BOTTOM = new Set(["prepBackpack", "appleWatch"]);
+  const reminders = [];
+  const others = [];
+  tasks.forEach(t => {
+    const slug = String(t?.id || "").split("::")[1] || "";
+    if (REMINDER_SLUGS_BOTTOM.has(slug)) reminders.push(t);
+    else others.push(t);
+  });
+  tasks.length = 0;
+  others.forEach(t => tasks.push(t));
+  reminders.forEach(t => tasks.push(t));
+
+  // --- Manual day-specific tweaks (keep Ethan from having light days) ---
+  function forceSoloTo(slug, person){
+    const t = tasks.find(x => String(x?.id || "") === `${dayKey}::${slug}`);
+    if (!t) return;
+    t.assignees = [person];
+    t.primary = person;
+  }
+
+  if (dayKey === "lunes"){
+    // Move Wipe kitchen counters to Ethan
+    forceSoloTo("counters", "Ethan");
+    // Move Wipe dining table to Ethan
+    forceSoloTo("dining", "Ethan");
+  }
+
+  if (dayKey === "viernes"){
+    // Move Wipe dining table to Ethan
+    forceSoloTo("dining", "Ethan");
+  }
 
   return tasks;
 }
