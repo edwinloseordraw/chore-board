@@ -2578,10 +2578,12 @@ function renderCeloSchool(){
       ${hasImg ? `
         <div class="panel" style="margin-top:12px; padding:12px;">
           <img
-            src="${CELO_SCHOOL_CALENDAR.imgDataUrl}?v=${encodeURIComponent(CELO_SCHOOL_CALENDAR.monthLabel)}"
+            id="celoSchoolImg"
+            src=""
             alt="${escapeHtml(CELO_SCHOOL_CALENDAR.title)} calendar"
             style="width:100%; max-width:1100px; display:block; margin:0 auto; border-radius:12px;"
           />
+          <div id="celoSchoolImgStatus" class="hint" style="margin-top:10px; text-align:center;"></div>
         </div>
       ` : `
         <div class="panel" style="margin-top:12px; background:transparent; border-style:dashed;">
@@ -2591,6 +2593,74 @@ function renderCeloSchool(){
       `}
     </section>
   `;
+
+  // Try multiple candidate URLs so we can survive GitHub Pages path/case issues.
+  const imgEl = document.getElementById("celoSchoolImg");
+  const statusEl = document.getElementById("celoSchoolImgStatus");
+
+  if (imgEl && statusEl) {
+    const raw = String(CELO_SCHOOL_CALENDAR.imgDataUrl || "").trim();
+    const clean = raw.replace(/^\.\/?/, ""); // strip leading ./ or /
+
+    const candidates = [];
+
+    // 1) Resolve relative to the current document URL
+    try { candidates.push(new URL(raw, location.href).href); } catch(e) {}
+
+    // 2) Resolve relative to the site root folder path (drops the hash route)
+    try {
+      const basePath = location.origin + location.pathname.replace(/\/[^\/]*$/, "/");
+      candidates.push(new URL(raw, basePath).href);
+    } catch(e) {}
+
+    // 3) Known GitHub Pages repo-path fallback (adjusts if app is served from /chore-board/)
+    if (clean) {
+      candidates.push(location.origin + "/chore-board/" + clean);
+    }
+
+    // 4) Raw GitHub fallback (works if the file exists in the repo but Pages isn't updated)
+    if (clean) {
+      candidates.push("https://raw.githubusercontent.com/edwinloseordraw/chore-board/main/" + clean);
+    }
+
+    // De-dupe while preserving order
+    const seen = new Set();
+    const urls = candidates.filter(u => {
+      if (!u || seen.has(u)) return false;
+      seen.add(u);
+      return true;
+    });
+
+    let i = 0;
+    const v = encodeURIComponent(String(CELO_SCHOOL_CALENDAR.monthLabel || ""));
+
+    function setStatus(html) {
+      statusEl.innerHTML = html;
+    }
+
+    function next() {
+      if (i >= urls.length) {
+        setStatus(
+          `Could not load calendar image. Last tried: <code>${escapeHtml(raw || "(empty)")}</code><br>` +
+          `Make sure the file exists in the GitHub Pages folder (same folder as <code>index.html</code>).`
+        );
+        return;
+      }
+
+      const url = urls[i++];
+      const display = escapeHtml(url);
+      const withBust = url.startsWith("data:") ? url : (url + (url.includes("?") ? "&" : "?") + "v=" + v);
+
+      setStatus(`Loading image from: <a href="${display}" target="_blank" rel="noopener">${display}</a>`);
+      imgEl.src = withBust;
+    }
+
+    imgEl.onload = () => setStatus("");
+    imgEl.onerror = () => next();
+
+    // Kick it off
+    next();
+  }
 }
 
 /* =========================
