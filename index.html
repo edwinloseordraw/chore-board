@@ -400,6 +400,16 @@
   height:40px;
   box-shadow: var(--neuOutShadowSoft);
 }
+/* iPad/iOS Safari: date inputs render taller unless you tame them */
+.maintForm input[type="date"]{
+  -webkit-appearance: none;
+  appearance: none;
+  height:40px;
+  min-height:40px;
+  line-height:40px;
+  padding:0 12px;          /* override iOS odd padding */
+  font-size:14px;          /* keeps it from scaling */
+}
 .maintForm .actions button{
   width:100%;
 }
