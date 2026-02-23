@@ -2658,6 +2658,221 @@ const MONTHLY_CHORES = ["Clean baseboards",
    STORAGE HELPERS
 ========================= */
 
+// =========================
+// FIRESTORE SYNC (single-document state)
+// - localStorage stays the fast/offline cache
+// - Firestore holds the shared source of truth
+// - Conflict resolution: newest updatedAt wins
+// =========================
+
+// Keys we want synced across devices
+const SYNC_KEYS = new Set([
+  "dailyState",
+  "weeklyState",
+  "biweeklyState",
+  "monthlyState",
+  "maintState",
+  "dashState",
+  "groceriesState",
+  "memberColors",
+  "memberPhotos",
+  "themeState"
+]);
+
+// Internal sync guards
+let __syncReady = false;           // only true AFTER first pull finishes
+let __applyingRemote = false;      // prevents loops when writing remote -> local
+let __pushTimer = null;
+
+function readSyncMeta(){
+  try{
+    const raw = localStorage.getItem("syncMeta");
+    const m = raw ? JSON.parse(raw) : null;
+    if (!m || typeof m !== "object") return { updatedAt: 0, lastPulledAt: 0 };
+    return {
+      updatedAt: Number(m.updatedAt || 0),
+      lastPulledAt: Number(m.lastPulledAt || 0)
+    };
+  }catch{
+    return { updatedAt: 0, lastPulledAt: 0 };
+  }
+}
+
+function writeSyncMeta(meta){
+  try{
+    localStorage.setItem("syncMeta", JSON.stringify({
+      updatedAt: Number(meta.updatedAt || 0),
+      lastPulledAt: Number(meta.lastPulledAt || 0)
+    }));
+  }catch{}
+}
+
+function markLocalDirty(){
+  const m = readSyncMeta();
+  m.updatedAt = Date.now();
+  writeSyncMeta(m);
+}
+
+function buildLocalStateBlob(){
+  const out = {};
+  SYNC_KEYS.forEach(k => {
+    try{
+      const raw = localStorage.getItem(k);
+      out[k] = raw ? JSON.parse(raw) : null;
+    }catch{
+      out[k] = null;
+    }
+  });
+  const m = readSyncMeta();
+  out.updatedAt = Number(m.updatedAt || 0);
+  out.lastWriter = (window.FirebaseSync && window.FirebaseSync.uid) ? window.FirebaseSync.uid : "";
+  return out;
+}
+
+function applyRemoteToLocal(remote){
+  if (!remote || typeof remote !== "object") return;
+
+  __applyingRemote = true;
+
+  // Write synced keys without calling jset (avoids triggering schedulePush)
+  SYNC_KEYS.forEach(k => {
+    try{
+      if (remote[k] === undefined) return;
+      localStorage.setItem(k, JSON.stringify(remote[k]));
+    }catch{}
+  });
+
+  // Remote meta becomes our local meta
+  writeSyncMeta({
+    updatedAt: Number(remote.updatedAt || 0),
+    lastPulledAt: Date.now()
+  });
+
+  __applyingRemote = false;
+
+  // Refresh UI after sync apply
+  try{ renderApp(); }catch{}
+}
+
+async function pullFromFirestoreOnce(){
+  const fs = window.FirebaseSync;
+  if (!fs || !fs.db || !fs.getDoc || !fs.doc) return;
+
+  const ref = fs.doc(fs.db, "appState", "main");
+
+  try{
+    const snap = await fs.getDoc(ref);
+    if (!snap.exists()) return;
+
+    const remote = snap.data();
+    const remoteUpdated = Number(remote && remote.updatedAt ? remote.updatedAt : 0);
+    const localUpdated = Number(readSyncMeta().updatedAt || 0);
+
+    // Newest wins
+    if (remoteUpdated > localUpdated){
+      applyRemoteToLocal(remote);
+    }
+  }catch(e){
+    console.error("Firestore pull failed:", e);
+  }
+}
+
+async function pushToFirestoreNow(reason){
+  const fs = window.FirebaseSync;
+  if (!__syncReady) return;
+  if (__applyingRemote) return;
+  if (!fs || !fs.db || !fs.setDoc || !fs.doc) return;
+
+  const ref = fs.doc(fs.db, "appState", "main");
+
+  try{
+    const blob = buildLocalStateBlob();
+    // If local meta is 0, treat this as first writer (but do NOT overwrite newer remote)
+    const localMeta = readSyncMeta();
+    if (!localMeta.updatedAt){
+      blob.updatedAt = Date.now();
+      writeSyncMeta({ updatedAt: blob.updatedAt, lastPulledAt: localMeta.lastPulledAt || 0 });
+    }
+
+    await fs.setDoc(ref, blob);
+
+    // Confirm our local updatedAt reflects the push time
+    const m = readSyncMeta();
+    if (!m.updatedAt){
+      m.updatedAt = Date.now();
+      writeSyncMeta(m);
+    }
+
+    if (reason) console.log("Firestore push OK:", reason);
+  }catch(e){
+    console.error("Firestore push failed:", e);
+  }
+}
+
+function schedulePush(reason){
+  if (!__syncReady) return;
+  if (__applyingRemote) return;
+
+  clearTimeout(__pushTimer);
+  __pushTimer = setTimeout(() => {
+    pushToFirestoreNow(reason || "debounced");
+  }, 700);
+}
+
+window.initFirestoreSync = initFirestoreSync;
+async function initFirestoreSync(){
+  // Wait until FirebaseSync exists (module script sets it)
+  const waitStart = Date.now();
+  while (!(window.FirebaseSync && window.FirebaseSync.db) && (Date.now() - waitStart < 15000)){
+    await new Promise(r => setTimeout(r, 50));
+  }
+
+  if (!(window.FirebaseSync && window.FirebaseSync.db)){
+    console.warn("Firestore sync not initialized (FirebaseSync missing).");
+    return;
+  }
+
+  // FIRST: pull remote so we do not overwrite shared state with an empty local cache
+  await pullFromFirestoreOnce();
+
+  // NOW: enable pushes
+  __syncReady = true;
+
+  // If Firestore is empty (first run), push our current local as seed
+  try{
+    const fs = window.FirebaseSync;
+    const ref = fs.doc(fs.db, "appState", "main");
+    const snap = await fs.getDoc(ref);
+    if (!snap.exists()){
+      markLocalDirty();
+      await pushToFirestoreNow("seed");
+    }
+  }catch{}
+
+  // Realtime listener: if another device writes newer state, we adopt it
+  try{
+    const fs = window.FirebaseSync;
+    const ref = fs.doc(fs.db, "appState", "main");
+    fs.onSnapshot(ref, (snap) => {
+      if (!snap.exists()) return;
+      const remote = snap.data();
+      const remoteUpdated = Number(remote && remote.updatedAt ? remote.updatedAt : 0);
+      const localUpdated = Number(readSyncMeta().updatedAt || 0);
+
+      // Only apply if remote is newer than what we have
+      if (remoteUpdated > localUpdated){
+        applyRemoteToLocal(remote);
+      }
+    });
+
+    console.log("Firestore realtime listener active.");
+  }catch(e){
+    console.warn("Firestore listener failed:", e);
+  }
+
+  console.log("Firestore sync ready.");
+}
+
 // Member avatars (Admin page) - stored as data URLs in localStorage
 function defaultMemberPhotos(){
   const o = {};
@@ -2679,9 +2894,14 @@ function jget(k, fallback){
 function jset(k, v){
   localStorage.setItem(k, JSON.stringify(v));
 
-  // Firestore sync: push when any synced key changes
+  // Firestore sync: mark dirty + push (but never during remote-apply)
   try{
-    if (SYNC_KEYS && SYNC_KEYS.has(k)) schedulePush();
+    if (SYNC_KEYS && SYNC_KEYS.has(k)){
+      if (!__applyingRemote){
+        markLocalDirty();
+        schedulePush("jset:" + k);
+      }
+    }
   } catch {}
 }
 
@@ -4574,28 +4794,51 @@ if ("serviceWorker" in navigator) {
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+  // firebaseConfig is defined in the main script scope above
   const app = initializeApp(firebaseConfig);
-
   const auth = getAuth(app);
-  signInAnonymously(auth).catch((err) => {
-    console.error("Firebase auth failed:", err);
-  });
-
   const db = getFirestore(app);
 
-  // Expose Firebase helpers globally for later sync steps
+  // Expose Firestore helpers globally
   window.FirebaseSync = {
     db,
     doc,
     getDoc,
     setDoc,
-    onSnapshot
+    onSnapshot,
+    uid: ""
   };
 
+  // Ensure we are signed in anonymously (each device gets its own uid, but we use a shared doc)
+  try{
+    await signInAnonymously(auth);
+  }catch(e){
+    console.error("Firebase anonymous sign-in failed:", e);
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    window.FirebaseSync.uid = user ? (user.uid || "") : "";
+    if (user) console.log("Firebase auth: signed in (anon)");
+    else console.log("Firebase auth: signed out");
+  });
+
   console.log("Firebase initialized and ready.");
+
+  // Kick off the Firestore sync AFTER Firebase is ready.
+  // This function lives in the main (non-module) script.
+  try{
+    if (typeof window.initFirestoreSync === "function"){
+      window.initFirestoreSync();
+    } else {
+      // If not attached yet, call the global name (defined in main script scope)
+      if (typeof initFirestoreSync === "function") initFirestoreSync();
+    }
+  }catch(e){
+    console.warn("initFirestoreSync() failed to start:", e);
+  }
 </script>
 </body>
 </html>
