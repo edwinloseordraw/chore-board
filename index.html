@@ -2682,6 +2682,7 @@ function renderTopNav(){
   else if (r === "monthly") lbl = "Monthly";
   else if (r === "maintenance") lbl = "Maintenance";
   else if (r === "admin") lbl = "Admin";
+  else if (r === "celos-school") lbl = "Celo's School";
   else if (r === "hoy") lbl = `Hoy • ${today}`;
   else if (DAYS.includes(r)) lbl = (r === today) ? `Hoy • ${today}` : r;
   label.textContent = lbl;
@@ -2760,6 +2761,9 @@ function renderTopNav(){
 
   // Dashboard
   sideNav.appendChild(navBtn("Dashboard", "dashboard", r === "dashboard"));
+
+  // Celo's School calendar
+  sideNav.appendChild(navBtn("Celo's School", "celos-school", r === "celos-school"));
 
   // Other primary routes
   sideNav.appendChild(navBtn("Bi-weekly", "biweekly", r === "biweekly"));
@@ -3524,6 +3528,38 @@ function renderYesterday(dayKey){
   });
 }
 
+function renderCeloSchool(){
+  const app = document.getElementById("app");
+
+  // Monthly cache-bust without needing HTML edits each month.
+  // (Even though month.png is excluded from SW cache, Safari can still be clingy.)
+  const d = new Date();
+  const v = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+  app.innerHTML = `
+    <section class="panel">
+      <div class="toolbar">
+        <div class="left">
+          <h2 style="margin:0;">Celo's School</h2>
+          <div class="hint" style="margin:0;">Calendar of events</div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:12px; padding:12px;">
+        <img
+          src="month.png?v=${encodeURIComponent(v)}"
+          alt="Celo's School calendar"
+          style="width:100%; max-width:1100px; display:block; margin:0 auto; border-radius:12px;"
+        />
+      </div>
+
+      <div class="hint" style="margin-top:10px; text-align:center;">
+        Replace <code>month.png</code> in GitHub each month. No HTML edits needed.
+      </div>
+    </section>
+  `;
+}
+
 /* =========================
    BIWEEKLY / MONTHLY / MAINTENANCE (scaffold pages)
    - These are intentionally minimal in Phase 4.
@@ -4141,6 +4177,7 @@ function renderApp(){
   if (r === "monthly") return renderChecklistPage("monthly");
   if (r === "maintenance") return renderMaintenance();
   if (r === "admin") return renderAdmin();
+  if (r === "celos-school") return renderCeloSchool();
 
   // day route
   if (DAYS.includes(r)) return renderDay(r);
