@@ -2677,12 +2677,100 @@ function jget(k, fallback){
   catch{ return fallback; }
 }
 function jset(k, v){
+  // During remote-apply we write directly to localStorage without re-triggering pushes.
+  try{
+    if (window.__FS_SYNC && window.__FS_SYNC.applyingRemote){
+      localStorage.setItem(k, JSON.stringify(v));
+      return;
+    }
+  } catch {}
+
   localStorage.setItem(k, JSON.stringify(v));
 
-  // Firestore sync: push when any synced key changes
+  // Firestore sync: push when any synced key changes (debounced).
   try{
-    if (SYNC_KEYS && SYNC_KEYS.has(k)) schedulePush();
+    if (window.SYNC_KEYS && window.SYNC_KEYS.has(k) && typeof window.__firebaseSyncSchedulePush === "function"){
+      window.__firebaseSyncSchedulePush(k);
+    }
   } catch {}
+}
+
+/* =========================
+   FIRESTORE SYNC (cross-device)
+   - localStorage remains the cache
+   - Firestore is the shared source of truth
+   - pull-first, then allow pushes
+========================= */
+
+// Keys we want synced across devices
+window.SYNC_KEYS = new Set([
+  "dailyState",
+  "weeklyState",
+  "biweeklyState",
+  "monthlyState",
+  "maintState",
+  "dashState",
+  "groceriesState",
+  "memberColors",
+  "memberPhotos",
+  "themeState"
+]);
+
+// Sync runtime state (kept global so both scripts can see it)
+window.__FS_SYNC = window.__FS_SYNC || {
+  ready: false,
+  applyingRemote: false,
+  lastRemoteUpdatedAt: 0,
+  lastLocalUpdatedAt: 0
+};
+
+function __getLocalItemParsed(key, fallback){
+  try{ return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
+  catch{ return fallback; }
+}
+
+function __buildLocalSyncBlob(){
+  return {
+    dailyState: __getLocalItemParsed("dailyState", {}),
+    weeklyState: __getLocalItemParsed("weeklyState", { checks:{}, assign:{} }),
+    biweeklyState: __getLocalItemParsed("biweeklyState", { checks:{}, assign:{} }),
+    monthlyState: __getLocalItemParsed("monthlyState", { checks:{}, assign:{} }),
+    maintState: __getLocalItemParsed("maintState", { entries:[] }),
+    dashState: __getLocalItemParsed("dashState", {
+      dashboardNotes: "",
+      viewerDay: "",
+      viewerReadOnly: false,
+      ringFilters: { daily:"All", weekly:"All", biweekly:"All", monthly:"All" }
+    }),
+    groceriesState: __getLocalItemParsed("groceriesState", { items:[] }),
+    memberColors: __getLocalItemParsed("memberColors", defaultMemberColors()),
+    memberPhotos: __getLocalItemParsed("memberPhotos", defaultMemberPhotos()),
+    themeState: __getLocalItemParsed("themeState", { themeId:"neonGlass", mode:"dark" }),
+    updatedAt: Date.now()
+  };
+}
+
+function __applyRemoteSyncBlob(remote){
+  if (!remote || typeof remote !== "object") return;
+
+  // Guard: never let a blank/empty remote wipe local by accident.
+  // If remote has no updatedAt and no known keys, ignore it.
+  const hasKnownKey = Array.from(window.SYNC_KEYS).some(k => Object.prototype.hasOwnProperty.call(remote, k));
+  if (!hasKnownKey) return;
+
+  window.__FS_SYNC.applyingRemote = true;
+  try{
+    Array.from(window.SYNC_KEYS).forEach(k => {
+      if (Object.prototype.hasOwnProperty.call(remote, k)){
+        localStorage.setItem(k, JSON.stringify(remote[k]));
+      }
+    });
+  } finally {
+    window.__FS_SYNC.applyingRemote = false;
+  }
+
+  // After applying remote state, refresh UI safely
+  try{ renderApp(); } catch {}
 }
 
 // Member colors (Admin page)
@@ -4577,12 +4665,9 @@ if ("serviceWorker" in navigator) {
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-  const app = initializeApp(firebaseConfig);
+  const app = initializeApp(window.firebaseConfig || firebaseConfig);
 
   const auth = getAuth(app);
-  signInAnonymously(auth).catch((err) => {
-    console.error("Firebase auth failed:", err);
-  });
 
   const db = getFirestore(app);
 
@@ -4596,6 +4681,81 @@ if ("serviceWorker" in navigator) {
   };
 
   console.log("Firebase initialized and ready.");
+
+  // -------- Firestore single-document sync --------
+  const stateRef = doc(db, "appState", "main");
+
+  // Debounced push scheduler exposed to the non-module script
+  let __pushTimer = null;
+  let __pendingKey = null;
+
+  window.__firebaseSyncSchedulePush = (changedKey) => {
+    // Do nothing until we have pulled at least once.
+    if (!window.__FS_SYNC || window.__FS_SYNC.ready !== true) return;
+    if (window.__FS_SYNC.applyingRemote) return;
+
+    __pendingKey = changedKey || __pendingKey;
+
+    clearTimeout(__pushTimer);
+    __pushTimer = setTimeout(async () => {
+      try{
+        const blob = __buildLocalSyncBlob();
+        window.__FS_SYNC.lastLocalUpdatedAt = blob.updatedAt;
+        await setDoc(stateRef, blob, { merge: false });
+        // optional debug
+        // console.log("Firestore push OK", __pendingKey);
+        __pendingKey = null;
+      } catch (e){
+        console.error("Firestore push failed:", e);
+      }
+    }, 450);
+  };
+
+  // Ensure we are signed in before enabling sync
+  try{
+    await signInAnonymously(auth);
+  } catch (e){
+    console.error("Firebase anonymous sign-in failed:", e);
+  }
+
+  // Pull-first + realtime listener
+  onSnapshot(stateRef, (snap) => {
+    const data = snap.exists() ? snap.data() : null;
+
+    // First snapshot: establish readiness and prevent "empty local" from overwriting remote.
+    if (!window.__FS_SYNC.ready){
+      window.__FS_SYNC.ready = true;
+
+      if (data && typeof data.updatedAt === "number"){
+        window.__FS_SYNC.lastRemoteUpdatedAt = data.updatedAt;
+      }
+
+      if (data && typeof data === "object"){
+        // Remote exists: apply it to local
+        __applyRemoteSyncBlob(data);
+      } else {
+        // No remote doc yet: create it from local (first device wins)
+        const blob = __buildLocalSyncBlob();
+        window.__FS_SYNC.lastLocalUpdatedAt = blob.updatedAt;
+        setDoc(stateRef, blob, { merge:false }).catch(e => console.error("Initial Firestore setDoc failed:", e));
+      }
+
+      return;
+    }
+
+    // Subsequent snapshots: last-write-wins by updatedAt
+    const remoteUpdatedAt = (data && typeof data.updatedAt === "number") ? data.updatedAt : 0;
+
+    // If remote is newer than what we last applied, apply it.
+    if (data && remoteUpdatedAt > (window.__FS_SYNC.lastRemoteUpdatedAt || 0)){
+      window.__FS_SYNC.lastRemoteUpdatedAt = remoteUpdatedAt;
+      __applyRemoteSyncBlob(data);
+    }
+  }, (err) => {
+    console.error("Firestore listener error:", err);
+  });
+
+  console.log("Firestore sync ready.");
 </script>
 </body>
 </html>
