@@ -1333,6 +1333,9 @@ let isApplyingRemote = false;
 let lastRemoteUpdatedAt = 0;
 let pushTimer = null;
 
+// Gate: do NOT allow any pushes until we've completed the initial pull.
+let syncReady = false;
+
 function loadSyncMeta(){
   try{
     const raw = localStorage.getItem("syncMeta");
@@ -1415,6 +1418,7 @@ async function pullLatestFromFirestore(){
 
 async function pushStateToFirestore(){
   await fbReady;
+  if (!syncReady) return;
 
   const payload = packAppState();
 
@@ -1430,6 +1434,7 @@ async function pushStateToFirestore(){
 }
 
 function schedulePush(){
+  if (!syncReady) return;
   if (isApplyingRemote) return;
   if (pushTimer) clearTimeout(pushTimer);
   pushTimer = setTimeout(() => {
@@ -1443,13 +1448,23 @@ async function initFirestoreSync(){
   lastRemoteUpdatedAt = meta.lastRemoteUpdatedAt || 0;
 
   // Step 1: pull latest once and overwrite local cache
+  // IMPORTANT: always learn the remote updatedAt (even if we don't apply) so a fresh device
+  // can't push defaults and overwrite the shared doc.
   try{
     const remote = await pullLatestFromFirestore();
     if (remote && typeof remote.updatedAt === "number") {
-      if (remote.updatedAt > lastRemoteUpdatedAt) applyRemoteState(remote);
+      // Always record the remote timestamp as soon as we see it.
+      lastRemoteUpdatedAt = remote.updatedAt;
+      saveSyncMeta({ lastRemoteUpdatedAt });
+
+      // If remote is newer than what we previously applied, apply it.
+      if (remote.updatedAt > (meta.lastRemoteUpdatedAt || 0)) applyRemoteState(remote);
     }
   } catch (err) {
     console.error("Firestore initial pull FAILED", { code: err?.code, message: err?.message, err });
+  } finally {
+    // Enable pushes only after the initial pull attempt completes.
+    syncReady = true;
   }
 
   // Step 2 (reliable on Safari): polling pull for multi-device updates
