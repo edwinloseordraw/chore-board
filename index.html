@@ -1242,7 +1242,7 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBdyYuUBWiZQCGvd4pWdUy5i6lMKHV53Y8",
@@ -1273,8 +1273,14 @@ signInAnonymously(fbAuth).catch((err) => {
   });
 });
 
+// Small ready-gate so the rest of the app can safely use Firestore
+let fbUid = null;
+let fbReadyResolve;
+const fbReady = new Promise((res) => { fbReadyResolve = res; });
+
 onAuthStateChanged(fbAuth, async (user) => {
   if (user) {
+    fbUid = user.uid;
     console.log("Firebase initialized and ready.", { uid: user.uid });
 
     // One-time sanity check: prove Firestore writes work.
@@ -1294,10 +1300,178 @@ onAuthStateChanged(fbAuth, async (user) => {
       });
     }
 
+    fbReadyResolve(true);
+
   } else {
     console.log("Firebase auth state: signed out");
   }
 });
+
+/* =========================
+   FIRESTORE SYNC (single doc)
+   - localStorage remains the fast/offline cache
+   - Firestore is the source of truth across devices
+========================= */
+
+const SYNC_DOC = doc(fbDb, "appState", "main");
+const SYNC_KEYS = new Set([
+  "dailyState",
+  "weeklyState",
+  "biweeklyState",
+  "monthlyState",
+  "dashState",
+  "groceriesState",
+  "memberColors",
+  "memberPhotos",
+  "themeState",
+  "maintState"
+]);
+
+let isApplyingRemote = false;
+let lastRemoteUpdatedAt = 0;
+let pushTimer = null;
+
+function loadSyncMeta(){
+  try{
+    const raw = localStorage.getItem("syncMeta");
+    if (!raw) return { lastRemoteUpdatedAt: 0 };
+    const o = JSON.parse(raw);
+    if (!o || typeof o !== "object") return { lastRemoteUpdatedAt: 0 };
+    if (typeof o.lastRemoteUpdatedAt !== "number") o.lastRemoteUpdatedAt = 0;
+    return o;
+  } catch {
+    return { lastRemoteUpdatedAt: 0 };
+  }
+}
+
+function saveSyncMeta(meta){
+  try{
+    localStorage.setItem("syncMeta", JSON.stringify(meta));
+  } catch {}
+}
+
+// Pack your app state from localStorage into one payload
+function packAppState(){
+  const payload = {
+    dailyState: loadDailyState(),
+    weeklyState: loadWeeklyState(),
+    biweeklyState: loadBiweeklyState(),
+    monthlyState: loadMonthlyState(),
+    dashState: loadDashState(),
+    groceriesState: loadGroceriesState(),
+    memberColors: loadMemberColors(),
+    memberPhotos: loadMemberPhotos(),
+    themeState: loadThemeState(),
+    maintState: loadMaintState(),
+    updatedAt: Date.now(),
+    updatedAtServer: serverTimestamp(),
+    uid: fbUid || null
+  };
+  return payload;
+}
+
+// Apply Firestore payload into localStorage (our cache)
+function applyRemoteState(data){
+  if (!data || typeof data !== "object") return;
+
+  isApplyingRemote = true;
+  try{
+    if (data.dailyState) saveDailyState(data.dailyState);
+    if (data.weeklyState) saveWeeklyState(data.weeklyState);
+    if (data.biweeklyState) saveBiweeklyState(data.biweeklyState);
+    if (data.monthlyState) saveMonthlyState(data.monthlyState);
+    if (data.dashState) saveDashState(data.dashState);
+    if (data.groceriesState) saveGroceriesState(data.groceriesState);
+    if (data.memberColors) saveMemberColors(data.memberColors);
+    if (data.memberPhotos) saveMemberPhotos(data.memberPhotos);
+    if (data.themeState) saveThemeState(data.themeState);
+    if (data.maintState) saveMaintState(data.maintState);
+
+    // Keep a local note of the latest remote timestamp we've applied
+    if (typeof data.updatedAt === "number") {
+      lastRemoteUpdatedAt = data.updatedAt;
+      saveSyncMeta({ lastRemoteUpdatedAt });
+    }
+  } finally {
+    isApplyingRemote = false;
+  }
+
+  // Re-render after state changes
+  try{
+    if (typeof route === "function") route();
+  } catch (e) {
+    console.warn("Sync applied, but UI refresh failed", e);
+  }
+}
+
+async function pullLatestFromFirestore(){
+  await fbReady;
+  const snap = await getDoc(SYNC_DOC);
+  if (!snap.exists()) return null;
+  return snap.data();
+}
+
+async function pushStateToFirestore(){
+  await fbReady;
+
+  const payload = packAppState();
+
+  // If we've already applied something newer from Firestore, don't overwrite it.
+  // (This is a simple safety net; Firestore snapshot listener is still the real glue.)
+  if (lastRemoteUpdatedAt && payload.updatedAt < lastRemoteUpdatedAt) return;
+
+  try{
+    await setDoc(SYNC_DOC, payload, { merge: true });
+  } catch (err) {
+    console.error("Firestore push FAILED", { code: err?.code, message: err?.message, err });
+  }
+}
+
+function schedulePush(){
+  if (isApplyingRemote) return;
+  if (pushTimer) clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => {
+    pushStateToFirestore();
+  }, 500);
+}
+
+async function initFirestoreSync(){
+  // restore lastRemoteUpdatedAt from local
+  const meta = loadSyncMeta();
+  lastRemoteUpdatedAt = meta.lastRemoteUpdatedAt || 0;
+
+  // Step 1: pull latest once and overwrite local cache
+  try{
+    const remote = await pullLatestFromFirestore();
+    if (remote && typeof remote.updatedAt === "number") {
+      if (remote.updatedAt > lastRemoteUpdatedAt) applyRemoteState(remote);
+    }
+  } catch (err) {
+    console.error("Firestore initial pull FAILED", { code: err?.code, message: err?.message, err });
+  }
+
+  // Step 2 (optional but recommended): live listener for multi-device updates
+  try{
+    onSnapshot(SYNC_DOC, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      if (!data || typeof data !== "object") return;
+      if (typeof data.updatedAt !== "number") return;
+
+      // Ignore our own stale echoes
+      if (data.updatedAt <= lastRemoteUpdatedAt) return;
+
+      applyRemoteState(data);
+    }, (err) => {
+      console.error("Firestore onSnapshot FAILED", { code: err?.code, message: err?.message, err });
+    });
+  } catch (err) {
+    console.error("Firestore listener init FAILED", err);
+  }
+}
+
+// Kick off sync as early as possible
+initFirestoreSync();
 
 /* =========================
    THEME SYSTEM (Admin)
@@ -2501,7 +2675,14 @@ function jget(k, fallback){
   try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(fallback)); }
   catch{ return fallback; }
 }
-function jset(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+function jset(k, v){
+  localStorage.setItem(k, JSON.stringify(v));
+
+  // Firestore sync: push when any synced key changes
+  try{
+    if (SYNC_KEYS && SYNC_KEYS.has(k)) schedulePush();
+  } catch {}
+}
 
 // Member colors (Admin page)
 function defaultMemberColors(){
