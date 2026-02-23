@@ -1253,6 +1253,8 @@ const firebaseConfig = {
   appId: "1:803382955236:web:506b776453fd04da9670f1",
   measurementId: "G-JJLD3HG7GY"
 };
+// Expose for any non-module code that expects a global
+window.firebaseConfig = firebaseConfig;
 
 // Init Firebase
 const fbApp = initializeApp(firebaseConfig);
@@ -1450,23 +1452,22 @@ async function initFirestoreSync(){
     console.error("Firestore initial pull FAILED", { code: err?.code, message: err?.message, err });
   }
 
-  // Step 2 (optional but recommended): live listener for multi-device updates
+  // Step 2 (reliable on Safari): polling pull for multi-device updates
+  // Firestore realtime Listen can get blocked by browser/network CORS checks.
+  // Polling is boring, but it works.
   try{
-    onSnapshot(SYNC_DOC, (snap) => {
-      if (!snap.exists()) return;
-      const data = snap.data();
-      if (!data || typeof data !== "object") return;
-      if (typeof data.updatedAt !== "number") return;
-
-      // Ignore our own stale echoes
-      if (data.updatedAt <= lastRemoteUpdatedAt) return;
-
-      applyRemoteState(data);
-    }, (err) => {
-      console.error("Firestore onSnapshot FAILED", { code: err?.code, message: err?.message, err });
-    });
+    setInterval(async () => {
+      try{
+        const remote = await pullLatestFromFirestore();
+        if (!remote || typeof remote.updatedAt !== "number") return;
+        if (remote.updatedAt <= lastRemoteUpdatedAt) return;
+        applyRemoteState(remote);
+      } catch (err) {
+        console.error("Firestore poll FAILED", { code: err?.code, message: err?.message, err });
+      }
+    }, 5000);
   } catch (err) {
-    console.error("Firestore listener init FAILED", err);
+    console.error("Firestore polling init FAILED", err);
   }
 }
 
