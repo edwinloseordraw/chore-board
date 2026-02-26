@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2281,7 +2280,7 @@ function applyTheme(themeId, mode){
   const vars = (mode === "light") ? t.light : t.dark;
 
   Object.keys(vars).forEach(k => {
-    document.documentElement.style.setProperty(k, vars[k]);
+    document.documentElement.style.setProperty(k, vars);
   });
 
   // match browser chrome on mobile
@@ -2300,7 +2299,7 @@ function applyTheme(themeId, mode){
   } else {
     // Ensure member colors exist when returning to Paper Clean
     const current = loadMemberColors();
-    PEOPLE.forEach(p => { if (!current[p]) current[p] = THEME_MEMBER_COLORS.paperClean[p] || "#ffffff"; });
+    PEOPLE.forEach(p => { if (!current) current = THEME_MEMBER_COLORS.paperClean || "#ffffff"; });
     saveMemberColors(current);
   }
 }
@@ -2386,11 +2385,12 @@ function makeTask(dayKey, slug, text, assignees, primary){
 //      * Dad + Celo
 //  - Rotation is deterministic per-week (stable), so it doesn't reshuffle every refresh.
 
-// Core daily chores (rotate fairly)
+// Core daily chores (rotate fairly) — these are ALWAYS 2-person chores
 const ROTATING_PAIR_CHORES = [
-  { slug: "vacuum", text: "Vacuum" },
-  { slug: "dishes", text: "Wash dishes" },
-  { slug: "trash",  text: "Take out trash" }
+  { slug: "vacuum",  text: "Vacuum" },
+  { slug: "dishes",  text: "Wash dishes" },
+  { slug: "trash",   text: "Take out trash" },
+  { slug: "feedDogs", text: "Feed dogs" }
 ];
 
 // Solo chores. These rotate across ALL people unless restricted.
@@ -2401,7 +2401,6 @@ const ROTATING_SOLO_CHORES = [
   { slug: "mop",         text: "Mop",                     when: "all" },
   { slug: "dust",        text: "Dust",                    when: "all" },
   { slug: "cabinets",    text: "Cabinets",                when: "all" },
-  { slug: "feedDogs",    text: "Feed dogs",               when: "all" },
   { slug: "dogPoop",     text: "Dog poop",                when: "all" }
 ];
 
@@ -2456,7 +2455,7 @@ function seededShuffle(arr, seed){
   const rand = seededRandFactory(seed);
   for (let i = a.length - 1; i > 0; i--){
     const j = Math.floor(rand() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    [a, a] = [a, a];
   }
   return a;
 }
@@ -2468,13 +2467,18 @@ function rotateArray(arr, offset){
   return a.slice(o).concat(a.slice(0, o));
 }
 
-function allowedPairsForWeek(seed){
-  // We shuffle the pair order per-week so Dad+Celo aren't always "pair A".
-  const pairs = [
-    ["Dad", "Celo"],
-    ["Mom", "Ethan"]
-  ];
-  return seededShuffle(pairs, seed + 101);
+function pairForChore(seed){
+  // Deterministic 2-person pairing from ANY two distinct PEOPLE.
+  // We intentionally do NOT enforce old group pairings.
+  const order = seededShuffle(PEOPLE, seed);
+  const a = order;
+  const b = order || order;
+  // Safety: ensure distinct
+  if (a === b){
+    const fallback = PEOPLE.find(p => p !== a) || a;
+    return [a, fallback];
+  }
+  return [a, b];
 }
 
 function buildDailyBaseTasks(dayKey){
@@ -2486,15 +2490,15 @@ function buildDailyBaseTasks(dayKey){
   const todayOrder = rotateArray(weeklyPeopleOrder, dayIdx);
 
   // Pair chores rotate between the two allowed pairs, with a per-chore offset
-  const pairs = allowedPairsForWeek(seed);
-
   const tasks = [];
 
   // --- Pair chores ---
+  // Each pair chore gets ANY 2-person pairing (varied per-day and per-chore).
   ROTATING_PAIR_CHORES.forEach((c, i) => {
-    const pair = pairs[(dayIdx + i) % pairs.length];
-    // Primary is the 2nd person, so each pair gets credit spread over time.
-    tasks.push(makeTask(dayKey, c.slug, c.text, pair.slice(), pair[1]));
+    const pairSeed = seed + (dayIdx * 1000) + (i * 101);
+    const pair = pairForChore(pairSeed);
+    // Primary can just be the first person; this field is not used for checkbox sharing.
+    tasks.push(makeTask(dayKey, c.slug, c.text, pair.slice(), pair));
   });
 
   // --- Solo chores ---
@@ -2533,7 +2537,7 @@ function buildDailyBaseTasks(dayKey){
   const reminders = [];
   const others = [];
   tasks.forEach(t => {
-    const slug = String(t?.id || "").split("::")[1] || "";
+    const slug = String(t?.id || "").split("::") || "";
     if (REMINDER_SLUGS_BOTTOM.has(slug)) reminders.push(t);
     else others.push(t);
   });
@@ -2587,38 +2591,25 @@ function buildWalkTask(dayKey){
   return makeTask(dayKey, "walk", "Walk with Celo", [who], who);
 }
 
-// Phase 8.3: Enforce the ONLY allowed 2-person pairings:
-//   - Mom + Ethan
-//   - Dad + Celo
+// 2-person chores: allow ANY two distinct members.
 // If schedule data ever drifts, we auto-correct deterministically.
 function normalizeTwoPersonTask(task){
-  if (!task || !Array.isArray(task.assignees) || task.assignees.length !== 2) return task;
+  if (!task || !Array.isArray(task.assignees)) return task;
 
-  const a = task.assignees[0];
-  const b = task.assignees[1];
-
-  const isAllowed = (a === "Mom" && b === "Ethan") || (a === "Ethan" && b === "Mom") ||
-                    (a === "Dad" && b === "Celo")  || (a === "Celo"  && b === "Dad");
-  if (isAllowed) return task;
-
-  // If we have 1 parent + 1 kid but the "wrong" kid/parent, force the correct pairing.
-  const hasMom = task.assignees.includes("Mom");
-  const hasDad = task.assignees.includes("Dad");
-  const hasEthan = task.assignees.includes("Ethan");
-  const hasCelo = task.assignees.includes("Celo");
-
-  let fixed;
-  if (hasMom || hasEthan) {
-    fixed = ["Mom", "Ethan"];
-  } else if (hasDad || hasCelo) {
-    fixed = ["Dad", "Celo"];
-  } else {
-    // Fallback: decide by primary if present
-    fixed = (task.primary === "Celo" || task.primary === "Dad") ? ["Dad", "Celo"] : ["Mom", "Ethan"];
+  // If already a valid 2-person task with distinct, known people, keep it.
+  if (task.assignees.length === 2 &&
+      PEOPLE.includes(task.assignees) &&
+      PEOPLE.includes(task.assignees) &&
+      task.assignees !== task.assignees){
+    return task;
   }
 
-  // clone so we don't mutate the schedule literal
-  return { ...task, assignees: fixed };
+  // If it's meant to be 2-person but is malformed, fix deterministically based on task id.
+  const idStr = String(task.id || "");
+  const fixSeed = hashSeed("pairfix::" + idStr);
+  const pair = pairForChore(fixSeed);
+
+  return { ...task, assignees: pair, primary: pair };
 }
 
 function getTasksForDay(dayKey){
@@ -2676,13 +2667,13 @@ const MONTHLY_CHORES = ["Clean baseboards",
 // Member avatars (Admin page) - stored as data URLs in localStorage
 function defaultMemberPhotos(){
   const o = {};
-  PEOPLE.forEach(p => o[p] = "");
+  PEOPLE.forEach(p => o = "");
   return o;
 }
 function loadMemberPhotos(){
   const d = defaultMemberPhotos();
   const s = jget("memberPhotos", d);
-  PEOPLE.forEach(p => { if (typeof s[p] !== "string") s[p] = ""; });
+  PEOPLE.forEach(p => { if (typeof s !== "string") s = ""; });
   return s;
 }
 function saveMemberPhotos(s){ jset("memberPhotos", s); }
@@ -2777,7 +2768,7 @@ function __applyRemoteSyncBlob(remote){
   try{
     Array.from(window.SYNC_KEYS).forEach(k => {
       if (Object.prototype.hasOwnProperty.call(remote, k)){
-        localStorage.setItem(k, JSON.stringify(remote[k]));
+        localStorage.setItem(k, JSON.stringify(remote));
       }
     });
   } finally {
@@ -2803,7 +2794,7 @@ function loadMemberColors(){
   const d = defaultMemberColors();
   const s = jget("memberColors", d);
   // ensure all keys exist
-  PEOPLE.forEach(p => { if (!s[p]) s[p] = d[p] || "#ffffff"; });
+  PEOPLE.forEach(p => { if (!s) s = d || "#ffffff"; });
   return s;
 }
 function saveMemberColors(s){ jset("memberColors", s); }
@@ -2847,7 +2838,7 @@ function loadDashState(){
     const lines = [];
     const order = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
     order.forEach(k => {
-      const v = (typeof s.notesByDay[k] === "string") ? s.notesByDay[k].trim() : "";
+      const v = (typeof s.notesByDay === "string") ? s.notesByDay.trim() : "";
       if (v) lines.push(`${k}: ${v}`);
     });
     if (!s.dashboardNotes && lines.length){
@@ -2868,9 +2859,9 @@ function loadDashState(){
     s.ringFilters = { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
   }
   ["daily","weekly","biweekly","monthly"].forEach(k => {
-    if (!s.ringFilters[k] || typeof s.ringFilters[k] !== "string") s.ringFilters[k] = "All";
-    const v = s.ringFilters[k];
-    if (v !== "All" && !PEOPLE.includes(v)) s.ringFilters[k] = "All";
+    if (!s.ringFilters || typeof s.ringFilters !== "string") s.ringFilters = "All";
+    const v = s.ringFilters;
+    if (v !== "All" && !PEOPLE.includes(v)) s.ringFilters = "All";
   });
 
   return s;
@@ -3220,7 +3211,7 @@ window.addEventListener("hashchange", renderApp);
 
 function emptyContribution(){
   const byPerson = {};
-  PEOPLE.forEach(p => byPerson[p] = 0);
+  PEOPLE.forEach(p => byPerson = 0);
   return byPerson;
 }
 
@@ -3427,7 +3418,7 @@ function renderDashboard(){
   };
 
   // After rendering the dashboard, reset viewer mode back to normal defaults
-  // so the dashboard behaves as “today notes editable” next time unless explicitly invoked.
+  // so the dashboard behaves as "today notes editable" next time unless explicitly invoked.
   dash2.viewerDay = todayKey();
   dash2.viewerReadOnly = false;
   saveDashState(dash2);
@@ -4163,7 +4154,7 @@ function renderAdmin(){
     clear.textContent = "Clear";
 
     file.onchange = () => {
-      const f = file.files && file.files[0];
+      const f = file.files && file.files;
       if (!f) return;
 
       const reader = new FileReader();
