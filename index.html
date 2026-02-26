@@ -2381,16 +2381,15 @@ function makeTask(dayKey, slug, text, assignees, primary){
 // Instead of hard-coding who does what every day, we build a weekly-rotating roster.
 // Goals:
 //  - Everyone gets variety across the week.
-//  - 2-person chores ONLY use the allowed pairs:
-//      * Mom + Ethan
-//      * Dad + Celo
+//  - 2-person chores pick ANY 2 members (no fixed pairing groups).
 //  - Rotation is deterministic per-week (stable), so it doesn't reshuffle every refresh.
 
 // Core daily chores (rotate fairly)
 const ROTATING_PAIR_CHORES = [
-  { slug: "vacuum", text: "Vacuum" },
-  { slug: "dishes", text: "Wash dishes" },
-  { slug: "trash",  text: "Take out trash" }
+  { slug: "vacuum",   text: "Vacuum" },
+  { slug: "dishes",   text: "Wash dishes" },
+  { slug: "trash",    text: "Take out trash" },
+  { slug: "feedDogs", text: "Feed dogs" }
 ];
 
 // Solo chores. These rotate across ALL people unless restricted.
@@ -2401,7 +2400,6 @@ const ROTATING_SOLO_CHORES = [
   { slug: "mop",         text: "Mop",                     when: "all" },
   { slug: "dust",        text: "Dust",                    when: "all" },
   { slug: "cabinets",    text: "Cabinets",                when: "all" },
-  { slug: "feedDogs",    text: "Feed dogs",               when: "all" },
   { slug: "dogPoop",     text: "Dog poop",                when: "all" }
 ];
 
@@ -2469,12 +2467,10 @@ function rotateArray(arr, offset){
 }
 
 function allowedPairsForWeek(seed){
-  // We shuffle the pair order per-week so Dad+Celo aren't always "pair A".
-  const pairs = [
-    ["Dad", "Celo"],
-    ["Mom", "Ethan"]
-  ];
-  return seededShuffle(pairs, seed + 101);
+  // Legacy name kept for minimal disruption.
+  // We no longer enforce fixed pairing groups.
+  // Instead, return a deterministic per-week shuffled people list used for pairing variety.
+  return seededShuffle(PEOPLE, seed + 101);
 }
 
 function buildDailyBaseTasks(dayKey){
@@ -2485,15 +2481,27 @@ function buildDailyBaseTasks(dayKey){
   const weeklyPeopleOrder = seededShuffle(PEOPLE, seed + 7);
   const todayOrder = rotateArray(weeklyPeopleOrder, dayIdx);
 
-  // Pair chores rotate between the two allowed pairs, with a per-chore offset
-  const pairs = allowedPairsForWeek(seed);
+  // 2-person chores: pick ANY 2 members (deterministic), no fixed pairing groups.
+  const weeklyPairPool = allowedPairsForWeek(seed);
+  const pairRand = seededRandFactory(seed + 1000 + (dayIdx * 97));
+
+  function pickTwoDistinct(){
+    const a = weeklyPairPool[Math.floor(pairRand() * weeklyPairPool.length)];
+    let b = weeklyPairPool[Math.floor(pairRand() * weeklyPairPool.length)];
+    if (weeklyPairPool.length > 1){
+      while (b === a){
+        b = weeklyPairPool[Math.floor(pairRand() * weeklyPairPool.length)];
+      }
+    }
+    return [a, b];
+  }
 
   const tasks = [];
 
   // --- Pair chores ---
   ROTATING_PAIR_CHORES.forEach((c, i) => {
-    const pair = pairs[(dayIdx + i) % pairs.length];
-    // Primary is the 2nd person, so each pair gets credit spread over time.
+    const pair = pickTwoDistinct();
+    // Primary is the 2nd person for a tiny bit of accountability variety.
     tasks.push(makeTask(dayKey, c.slug, c.text, pair.slice(), pair[1]));
   });
 
@@ -2587,38 +2595,22 @@ function buildWalkTask(dayKey){
   return makeTask(dayKey, "walk", "Walk with Celo", [who], who);
 }
 
-// Phase 8.3: Enforce the ONLY allowed 2-person pairings:
-//   - Mom + Ethan
-//   - Dad + Celo
-// If schedule data ever drifts, we auto-correct deterministically.
+// Two-person chores safeguard: keep exactly two distinct assignees.
+// No fixed pairing groups anymore.
 function normalizeTwoPersonTask(task){
-  if (!task || !Array.isArray(task.assignees) || task.assignees.length !== 2) return task;
+  if (!task || !Array.isArray(task.assignees)) return task;
+  if (task.assignees.length !== 2) return task;
 
   const a = task.assignees[0];
   const b = task.assignees[1];
+  if (a && b && a !== b) return task;
 
-  const isAllowed = (a === "Mom" && b === "Ethan") || (a === "Ethan" && b === "Mom") ||
-                    (a === "Dad" && b === "Celo")  || (a === "Celo"  && b === "Dad");
-  if (isAllowed) return task;
-
-  // If we have 1 parent + 1 kid but the "wrong" kid/parent, force the correct pairing.
-  const hasMom = task.assignees.includes("Mom");
-  const hasDad = task.assignees.includes("Dad");
-  const hasEthan = task.assignees.includes("Ethan");
-  const hasCelo = task.assignees.includes("Celo");
-
-  let fixed;
-  if (hasMom || hasEthan) {
-    fixed = ["Mom", "Ethan"];
-  } else if (hasDad || hasCelo) {
-    fixed = ["Dad", "Celo"];
-  } else {
-    // Fallback: decide by primary if present
-    fixed = (task.primary === "Celo" || task.primary === "Dad") ? ["Dad", "Celo"] : ["Mom", "Ethan"];
-  }
-
-  // clone so we don't mutate the schedule literal
-  return { ...task, assignees: fixed };
+  // Repair duplicates/nulls deterministically.
+  const seed = hashSeed("pairfix::" + (task.id || ""));
+  const pool = seededShuffle(PEOPLE, seed);
+  const fixedA = pool[0];
+  const fixedB = pool[1] || pool[0];
+  return { ...task, assignees: [fixedA, fixedB], primary: fixedB };
 }
 
 function getTasksForDay(dayKey){
@@ -2633,7 +2625,7 @@ function getTasksForDay(dayKey){
 
   withoutWalk.push(buildWalkTask(dayKey));
 
-  // Phase 8.3: enforce 2-person pairing guardrails.
+  // Safeguard 2-person chores (must remain 2 distinct people).
   return withoutWalk.map(t => normalizeTwoPersonTask(t));
 }
 const WEEKLY_CHORES = [
