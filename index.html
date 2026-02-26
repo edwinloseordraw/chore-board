@@ -2399,7 +2399,7 @@ const ROTATING_SOLO_CHORES = [
   { slug: "dining",      text: "Wipe dining table",       when: "all" },
   { slug: "mop",         text: "Mop",                     when: "all" },
   { slug: "dust",        text: "Dust",                    when: "all" },
-  { slug: "cabinets",    text: "Cabinets",                when: "all" },
+  { slug: "cabinets",    text: "Wipe down cabinets",      when: "all" },
   { slug: "dogPoop",     text: "Dog poop",                when: "all" }
 ];
 
@@ -2550,11 +2550,20 @@ function buildDailyBaseTasks(dayKey){
   reminders.forEach(t => tasks.push(t));
 
   // --- Manual day-specific tweaks (keep Ethan from having light days) ---
-  function forceSoloTo(slug, person){
+  function forceSoloTo(slug, person, newText){
     const t = tasks.find(x => String(x?.id || "") === `${dayKey}::${slug}`);
     if (!t) return;
     t.assignees = [person];
     t.primary = person;
+    if (newText) t.text = newText;
+  }
+
+  function forcePairTo(slug, personA, personB){
+    const t = tasks.find(x => String(x?.id || "") === `${dayKey}::${slug}`);
+    if (!t) return;
+    if (!personA || !personB || personA === personB) return;
+    t.assignees = [personA, personB];
+    t.primary = personB;
   }
 
   if (dayKey === "lunes"){
@@ -2564,10 +2573,51 @@ function buildDailyBaseTasks(dayKey){
     forceSoloTo("dining", "Ethan");
   }
 
+  if (dayKey === "lunes"){
+    // Wash dishes should be Mom + Ethan
+    forcePairTo("dishes", "Mom", "Ethan");
+  }
+
+  if (dayKey === "martes"){
+    // Move Cabinets (renamed) to Mom
+    forceSoloTo("cabinets", "Mom", "Wipe down kitchen cabinets");
+    // Move Wipe kitchen counters to Mom
+    forceSoloTo("counters", "Mom");
+  }
+
+  if (dayKey === "miercoles"){
+    // Protect Mom: move Dog poop to Dad
+    forceSoloTo("dogPoop", "Dad");
+  }
+
+  if (dayKey === "jueves"){
+    // Move Dog poop to Ethan
+    forceSoloTo("dogPoop", "Ethan");
+
+    // Vacuum should be Mom + Ethan
+    forcePairTo("vacuum", "Mom", "Ethan");
+
+    // Take out trash should be Celo + Ethan
+    forcePairTo("trash", "Celo", "Ethan");
+  }
+
   if (dayKey === "viernes"){
     // Move Wipe dining table to Ethan
     forceSoloTo("dining", "Ethan");
+    // Wash dishes should be Mom + Dad
+    forcePairTo("dishes", "Mom", "Dad");
   }
+
+  if (dayKey === "domingo"){
+    // Protect Mom: move Dog poop to Dad
+    forceSoloTo("dogPoop", "Dad");
+  }
+
+  // Give Fynn his teeth treat (rotates by day)
+  const treatRotation = ["Dad","Mom","Ethan","Celo","Dad","Mom","Ethan"];
+  const treatIdx = DAYS.indexOf(dayKey);
+  const treatPerson = treatRotation[treatIdx] || "Dad";
+  tasks.push(makeTask(dayKey, "fynnTreat", "Give Fynn his teeth treat", [treatPerson], treatPerson));
 
   return tasks;
 }
