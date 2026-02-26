@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -398,6 +399,16 @@
   color:var(--text);
   height:40px;
   box-shadow: var(--neuOutShadowSoft);
+}
+/* iPad/iOS Safari: date inputs render taller unless you tame them */
+.maintForm input[type="date"]{
+  -webkit-appearance: none;
+  appearance: none;
+  height:40px;
+  min-height:40px;
+  line-height:40px;
+  padding:0 12px;          /* override iOS odd padding */
+  font-size:14px;          /* keeps it from scaling */
 }
 .maintForm .actions button{
   width:100%;
@@ -1231,10 +1242,10 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBdyYuUBWiZQCGvd4pWdUy5i6lMKHV53Y8",
+  apiKey: "AIzaSyBdyYUuBWizQCGvd4pWdUy5i6lMKHV53Y8",
   authDomain: "family-chore-board-666c7.firebaseapp.com",
   projectId: "family-chore-board-666c7",
   storageBucket: "family-chore-board-666c7.firebasestorage.app",
@@ -1242,6 +1253,8 @@ const firebaseConfig = {
   appId: "1:803382955236:web:506b776453fd04da9670f1",
   measurementId: "G-JJLD3HG7GY"
 };
+// Expose for any non-module code that expects a global
+window.firebaseConfig = firebaseConfig;
 
 // Init Firebase
 const fbApp = initializeApp(firebaseConfig);
@@ -1262,8 +1275,14 @@ signInAnonymously(fbAuth).catch((err) => {
   });
 });
 
+// Small ready-gate so the rest of the app can safely use Firestore
+let fbUid = null;
+let fbReadyResolve;
+const fbReady = new Promise((res) => { fbReadyResolve = res; });
+
 onAuthStateChanged(fbAuth, async (user) => {
   if (user) {
+    fbUid = user.uid;
     console.log("Firebase initialized and ready.", { uid: user.uid });
 
     // One-time sanity check: prove Firestore writes work.
@@ -1283,10 +1302,192 @@ onAuthStateChanged(fbAuth, async (user) => {
       });
     }
 
+    fbReadyResolve(true);
+
   } else {
     console.log("Firebase auth state: signed out");
   }
 });
+
+/* =========================
+   FIRESTORE SYNC (single doc)
+   - localStorage remains the fast/offline cache
+   - Firestore is the source of truth across devices
+========================= */
+
+const SYNC_DOC = doc(fbDb, "appState", "main");
+const SYNC_KEYS = new Set([
+  "dailyState",
+  "weeklyState",
+  "biweeklyState",
+  "monthlyState",
+  "dashState",
+  "groceriesState",
+  "memberColors",
+  "memberPhotos",
+  "themeState",
+  "maintState"
+]);
+
+let isApplyingRemote = false;
+let lastRemoteUpdatedAt = 0;
+let pushTimer = null;
+
+// Gate: do NOT allow any pushes until we've completed the initial pull.
+let syncReady = false;
+
+function loadSyncMeta(){
+  try{
+    const raw = localStorage.getItem("syncMeta");
+    if (!raw) return { lastRemoteUpdatedAt: 0 };
+    const o = JSON.parse(raw);
+    if (!o || typeof o !== "object") return { lastRemoteUpdatedAt: 0 };
+    if (typeof o.lastRemoteUpdatedAt !== "number") o.lastRemoteUpdatedAt = 0;
+    return o;
+  } catch {
+    return { lastRemoteUpdatedAt: 0 };
+  }
+}
+
+function saveSyncMeta(meta){
+  try{
+    localStorage.setItem("syncMeta", JSON.stringify(meta));
+  } catch {}
+}
+
+// Pack your app state from localStorage into one payload
+function packAppState(){
+  const payload = {
+    dailyState: loadDailyState(),
+    weeklyState: loadWeeklyState(),
+    biweeklyState: loadBiweeklyState(),
+    monthlyState: loadMonthlyState(),
+    dashState: loadDashState(),
+    groceriesState: loadGroceriesState(),
+    memberColors: loadMemberColors(),
+    memberPhotos: loadMemberPhotos(),
+    themeState: loadThemeState(),
+    maintState: loadMaintState(),
+    updatedAt: Date.now(),
+    updatedAtServer: serverTimestamp(),
+    uid: fbUid || null
+  };
+  return payload;
+}
+
+// Apply Firestore payload into localStorage (our cache)
+function applyRemoteState(data){
+  if (!data || typeof data !== "object") return;
+
+  isApplyingRemote = true;
+  try{
+    if (data.dailyState) saveDailyState(data.dailyState);
+    if (data.weeklyState) saveWeeklyState(data.weeklyState);
+    if (data.biweeklyState) saveBiweeklyState(data.biweeklyState);
+    if (data.monthlyState) saveMonthlyState(data.monthlyState);
+    if (data.dashState) saveDashState(data.dashState);
+    if (data.groceriesState) saveGroceriesState(data.groceriesState);
+    if (data.memberColors) saveMemberColors(data.memberColors);
+    if (data.memberPhotos) saveMemberPhotos(data.memberPhotos);
+    if (data.themeState) saveThemeState(data.themeState);
+    if (data.maintState) saveMaintState(data.maintState);
+
+    // Keep a local note of the latest remote timestamp we've applied
+    if (typeof data.updatedAt === "number") {
+      lastRemoteUpdatedAt = data.updatedAt;
+      saveSyncMeta({ lastRemoteUpdatedAt });
+    }
+  } finally {
+    isApplyingRemote = false;
+  }
+
+  // Re-render after state changes
+  try{
+    if (typeof route === "function") route();
+  } catch (e) {
+    console.warn("Sync applied, but UI refresh failed", e);
+  }
+}
+
+async function pullLatestFromFirestore(){
+  await fbReady;
+  const snap = await getDoc(SYNC_DOC);
+  if (!snap.exists()) return null;
+  return snap.data();
+}
+
+async function pushStateToFirestore(){
+  await fbReady;
+  if (!syncReady) return;
+
+  const payload = packAppState();
+
+  // If we've already applied something newer from Firestore, don't overwrite it.
+  // (This is a simple safety net; Firestore snapshot listener is still the real glue.)
+  if (lastRemoteUpdatedAt && payload.updatedAt < lastRemoteUpdatedAt) return;
+
+  try{
+    await setDoc(SYNC_DOC, payload, { merge: true });
+  } catch (err) {
+    console.error("Firestore push FAILED", { code: err?.code, message: err?.message, err });
+  }
+}
+
+function schedulePush(){
+  if (!syncReady) return;
+  if (isApplyingRemote) return;
+  if (pushTimer) clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => {
+    pushStateToFirestore();
+  }, 500);
+}
+
+async function initFirestoreSync(){
+  // restore lastRemoteUpdatedAt from local
+  const meta = loadSyncMeta();
+  lastRemoteUpdatedAt = meta.lastRemoteUpdatedAt || 0;
+
+  // Step 1: pull latest once and overwrite local cache
+  // IMPORTANT: always learn the remote updatedAt (even if we don't apply) so a fresh device
+  // can't push defaults and overwrite the shared doc.
+  try{
+    const remote = await pullLatestFromFirestore();
+    if (remote && typeof remote.updatedAt === "number") {
+      // Always record the remote timestamp as soon as we see it.
+      lastRemoteUpdatedAt = remote.updatedAt;
+      saveSyncMeta({ lastRemoteUpdatedAt });
+
+      // If remote is newer than what we previously applied, apply it.
+      if (remote.updatedAt > (meta.lastRemoteUpdatedAt || 0)) applyRemoteState(remote);
+    }
+  } catch (err) {
+    console.error("Firestore initial pull FAILED", { code: err?.code, message: err?.message, err });
+  } finally {
+    // Enable pushes only after the initial pull attempt completes.
+    syncReady = true;
+  }
+
+  // Step 2 (reliable on Safari): polling pull for multi-device updates
+  // Firestore realtime Listen can get blocked by browser/network CORS checks.
+  // Polling is boring, but it works.
+  try{
+    setInterval(async () => {
+      try{
+        const remote = await pullLatestFromFirestore();
+        if (!remote || typeof remote.updatedAt !== "number") return;
+        if (remote.updatedAt <= lastRemoteUpdatedAt) return;
+        applyRemoteState(remote);
+      } catch (err) {
+        console.error("Firestore poll FAILED", { code: err?.code, message: err?.message, err });
+      }
+    }, 5000);
+  } catch (err) {
+    console.error("Firestore polling init FAILED", err);
+  }
+}
+
+// Kick off sync as early as possible
+initFirestoreSync();
 
 /* =========================
    THEME SYSTEM (Admin)
@@ -2080,7 +2281,7 @@ function applyTheme(themeId, mode){
   const vars = (mode === "light") ? t.light : t.dark;
 
   Object.keys(vars).forEach(k => {
-    document.documentElement.style.setProperty(k, vars);
+    document.documentElement.style.setProperty(k, vars[k]);
   });
 
   // match browser chrome on mobile
@@ -2099,7 +2300,7 @@ function applyTheme(themeId, mode){
   } else {
     // Ensure member colors exist when returning to Paper Clean
     const current = loadMemberColors();
-    PEOPLE.forEach(p => { if (!current) current = THEME_MEMBER_COLORS.paperClean || "#ffffff"; });
+    PEOPLE.forEach(p => { if (!current[p]) current[p] = THEME_MEMBER_COLORS.paperClean[p] || "#ffffff"; });
     saveMemberColors(current);
   }
 }
@@ -2255,7 +2456,7 @@ function seededShuffle(arr, seed){
   const rand = seededRandFactory(seed);
   for (let i = a.length - 1; i > 0; i--){
     const j = Math.floor(rand() * (i + 1));
-    [a, a] = [a, a];
+    [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
 }
@@ -2293,7 +2494,7 @@ function buildDailyBaseTasks(dayKey){
   ROTATING_PAIR_CHORES.forEach((c, i) => {
     const pair = pairs[(dayIdx + i) % pairs.length];
     // Primary is the 2nd person, so each pair gets credit spread over time.
-    tasks.push(makeTask(dayKey, c.slug, c.text, pair.slice(), pair));
+    tasks.push(makeTask(dayKey, c.slug, c.text, pair.slice(), pair[1]));
   });
 
   // --- Solo chores ---
@@ -2332,7 +2533,7 @@ function buildDailyBaseTasks(dayKey){
   const reminders = [];
   const others = [];
   tasks.forEach(t => {
-    const slug = String(t?.id || "").split("::") || "";
+    const slug = String(t?.id || "").split("::")[1] || "";
     if (REMINDER_SLUGS_BOTTOM.has(slug)) reminders.push(t);
     else others.push(t);
   });
@@ -2393,8 +2594,8 @@ function buildWalkTask(dayKey){
 function normalizeTwoPersonTask(task){
   if (!task || !Array.isArray(task.assignees) || task.assignees.length !== 2) return task;
 
-  const a = task.assignees;
-  const b = task.assignees;
+  const a = task.assignees[0];
+  const b = task.assignees[1];
 
   const isAllowed = (a === "Mom" && b === "Ethan") || (a === "Ethan" && b === "Mom") ||
                     (a === "Dad" && b === "Celo")  || (a === "Celo"  && b === "Dad");
@@ -2475,13 +2676,13 @@ const MONTHLY_CHORES = ["Clean baseboards",
 // Member avatars (Admin page) - stored as data URLs in localStorage
 function defaultMemberPhotos(){
   const o = {};
-  PEOPLE.forEach(p => o = "");
+  PEOPLE.forEach(p => o[p] = "");
   return o;
 }
 function loadMemberPhotos(){
   const d = defaultMemberPhotos();
   const s = jget("memberPhotos", d);
-  PEOPLE.forEach(p => { if (typeof s !== "string") s = ""; });
+  PEOPLE.forEach(p => { if (typeof s[p] !== "string") s[p] = ""; });
   return s;
 }
 function saveMemberPhotos(s){ jset("memberPhotos", s); }
@@ -2490,7 +2691,102 @@ function jget(k, fallback){
   try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(fallback)); }
   catch{ return fallback; }
 }
-function jset(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+function jset(k, v){
+  // During remote-apply we write directly to localStorage without re-triggering pushes.
+  try{
+    if (window.__FS_SYNC && window.__FS_SYNC.applyingRemote){
+      localStorage.setItem(k, JSON.stringify(v));
+      return;
+    }
+  } catch {}
+
+  localStorage.setItem(k, JSON.stringify(v));
+
+  // Firestore sync: push when any synced key changes (debounced).
+  try{
+    if (window.SYNC_KEYS && window.SYNC_KEYS.has(k) && typeof window.__firebaseSyncSchedulePush === "function"){
+      window.__firebaseSyncSchedulePush(k);
+    }
+  } catch {}
+}
+
+/* =========================
+   FIRESTORE SYNC (cross-device)
+   - localStorage remains the cache
+   - Firestore is the shared source of truth
+   - pull-first, then allow pushes
+========================= */
+
+// Keys we want synced across devices
+window.SYNC_KEYS = new Set([
+  "dailyState",
+  "weeklyState",
+  "biweeklyState",
+  "monthlyState",
+  "maintState",
+  "dashState",
+  "groceriesState",
+  "memberColors",
+  "memberPhotos",
+  "themeState"
+]);
+
+// Sync runtime state (kept global so both scripts can see it)
+window.__FS_SYNC = window.__FS_SYNC || {
+  ready: false,
+  applyingRemote: false,
+  lastRemoteUpdatedAt: 0,
+  lastLocalUpdatedAt: 0
+};
+
+function __getLocalItemParsed(key, fallback){
+  try{ return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
+  catch{ return fallback; }
+}
+
+function __buildLocalSyncBlob(){
+  return {
+    dailyState: __getLocalItemParsed("dailyState", {}),
+    weeklyState: __getLocalItemParsed("weeklyState", { checks:{}, assign:{} }),
+    biweeklyState: __getLocalItemParsed("biweeklyState", { checks:{}, assign:{} }),
+    monthlyState: __getLocalItemParsed("monthlyState", { checks:{}, assign:{} }),
+    maintState: __getLocalItemParsed("maintState", { entries:[] }),
+    dashState: __getLocalItemParsed("dashState", {
+      dashboardNotes: "",
+      viewerDay: "",
+      viewerReadOnly: false,
+      ringFilters: { daily:"All", weekly:"All", biweekly:"All", monthly:"All" }
+    }),
+    groceriesState: __getLocalItemParsed("groceriesState", { items:[] }),
+    memberColors: __getLocalItemParsed("memberColors", defaultMemberColors()),
+    memberPhotos: __getLocalItemParsed("memberPhotos", defaultMemberPhotos()),
+    themeState: __getLocalItemParsed("themeState", { themeId:"neonGlass", mode:"dark" }),
+    updatedAt: Date.now()
+  };
+}
+
+function __applyRemoteSyncBlob(remote){
+  if (!remote || typeof remote !== "object") return;
+
+  // Guard: never let a blank/empty remote wipe local by accident.
+  // If remote has no updatedAt and no known keys, ignore it.
+  const hasKnownKey = Array.from(window.SYNC_KEYS).some(k => Object.prototype.hasOwnProperty.call(remote, k));
+  if (!hasKnownKey) return;
+
+  window.__FS_SYNC.applyingRemote = true;
+  try{
+    Array.from(window.SYNC_KEYS).forEach(k => {
+      if (Object.prototype.hasOwnProperty.call(remote, k)){
+        localStorage.setItem(k, JSON.stringify(remote[k]));
+      }
+    });
+  } finally {
+    window.__FS_SYNC.applyingRemote = false;
+  }
+
+  // After applying remote state, refresh UI safely
+  try{ renderApp(); } catch {}
+}
 
 // Member colors (Admin page)
 function defaultMemberColors(){
@@ -2507,7 +2803,7 @@ function loadMemberColors(){
   const d = defaultMemberColors();
   const s = jget("memberColors", d);
   // ensure all keys exist
-  PEOPLE.forEach(p => { if (!s) s = d || "#ffffff"; });
+  PEOPLE.forEach(p => { if (!s[p]) s[p] = d[p] || "#ffffff"; });
   return s;
 }
 function saveMemberColors(s){ jset("memberColors", s); }
@@ -2551,7 +2847,7 @@ function loadDashState(){
     const lines = [];
     const order = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
     order.forEach(k => {
-      const v = (typeof s.notesByDay === "string") ? s.notesByDay.trim() : "";
+      const v = (typeof s.notesByDay[k] === "string") ? s.notesByDay[k].trim() : "";
       if (v) lines.push(`${k}: ${v}`);
     });
     if (!s.dashboardNotes && lines.length){
@@ -2572,9 +2868,9 @@ function loadDashState(){
     s.ringFilters = { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
   }
   ["daily","weekly","biweekly","monthly"].forEach(k => {
-    if (!s.ringFilters || typeof s.ringFilters !== "string") s.ringFilters = "All";
-    const v = s.ringFilters;
-    if (v !== "All" && !PEOPLE.includes(v)) s.ringFilters = "All";
+    if (!s.ringFilters[k] || typeof s.ringFilters[k] !== "string") s.ringFilters[k] = "All";
+    const v = s.ringFilters[k];
+    if (v !== "All" && !PEOPLE.includes(v)) s.ringFilters[k] = "All";
   });
 
   return s;
@@ -2924,7 +3220,7 @@ window.addEventListener("hashchange", renderApp);
 
 function emptyContribution(){
   const byPerson = {};
-  PEOPLE.forEach(p => byPerson = 0);
+  PEOPLE.forEach(p => byPerson[p] = 0);
   return byPerson;
 }
 
@@ -3131,7 +3427,7 @@ function renderDashboard(){
   };
 
   // After rendering the dashboard, reset viewer mode back to normal defaults
-  // so the dashboard behaves as "today notes editable" next time unless explicitly invoked.
+  // so the dashboard behaves as “today notes editable” next time unless explicitly invoked.
   dash2.viewerDay = todayKey();
   dash2.viewerReadOnly = false;
   saveDashState(dash2);
@@ -3867,7 +4163,7 @@ function renderAdmin(){
     clear.textContent = "Clear";
 
     file.onchange = () => {
-      const f = file.files && file.files;
+      const f = file.files && file.files[0];
       if (!f) return;
 
       const reader = new FileReader();
@@ -4384,22 +4680,9 @@ if ("serviceWorker" in navigator) {
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBdyYUuBWizQCGvd4pWdUy5i6lMKHV53Y8",
-    authDomain: "family-chore-board-666c7.firebaseapp.com",
-    projectId: "family-chore-board-666c7",
-    storageBucket: "family-chore-board-666c7.firebasestorage.app",
-    messagingSenderId: "803382955236",
-    appId: "1:803382955236:web:506b776453fd04da9670f1",
-    measurementId: "G-JJLD3HG7GY"
-  };
-
-  const app = initializeApp(firebaseConfig);
+  const app = initializeApp(window.firebaseConfig || firebaseConfig);
 
   const auth = getAuth(app);
-  signInAnonymously(auth).catch((err) => {
-    console.error("Firebase auth failed:", err);
-  });
 
   const db = getFirestore(app);
 
@@ -4413,6 +4696,81 @@ if ("serviceWorker" in navigator) {
   };
 
   console.log("Firebase initialized and ready.");
+
+  // -------- Firestore single-document sync --------
+  const stateRef = doc(db, "appState", "main");
+
+  // Debounced push scheduler exposed to the non-module script
+  let __pushTimer = null;
+  let __pendingKey = null;
+
+  window.__firebaseSyncSchedulePush = (changedKey) => {
+    // Do nothing until we have pulled at least once.
+    if (!window.__FS_SYNC || window.__FS_SYNC.ready !== true) return;
+    if (window.__FS_SYNC.applyingRemote) return;
+
+    __pendingKey = changedKey || __pendingKey;
+
+    clearTimeout(__pushTimer);
+    __pushTimer = setTimeout(async () => {
+      try{
+        const blob = __buildLocalSyncBlob();
+        window.__FS_SYNC.lastLocalUpdatedAt = blob.updatedAt;
+        await setDoc(stateRef, blob, { merge: false });
+        // optional debug
+        // console.log("Firestore push OK", __pendingKey);
+        __pendingKey = null;
+      } catch (e){
+        console.error("Firestore push failed:", e);
+      }
+    }, 450);
+  };
+
+  // Ensure we are signed in before enabling sync
+  try{
+    await signInAnonymously(auth);
+  } catch (e){
+    console.error("Firebase anonymous sign-in failed:", e);
+  }
+
+  // Pull-first + realtime listener
+  onSnapshot(stateRef, (snap) => {
+    const data = snap.exists() ? snap.data() : null;
+
+    // First snapshot: establish readiness and prevent "empty local" from overwriting remote.
+    if (!window.__FS_SYNC.ready){
+      window.__FS_SYNC.ready = true;
+
+      if (data && typeof data.updatedAt === "number"){
+        window.__FS_SYNC.lastRemoteUpdatedAt = data.updatedAt;
+      }
+
+      if (data && typeof data === "object"){
+        // Remote exists: apply it to local
+        __applyRemoteSyncBlob(data);
+      } else {
+        // No remote doc yet: create it from local (first device wins)
+        const blob = __buildLocalSyncBlob();
+        window.__FS_SYNC.lastLocalUpdatedAt = blob.updatedAt;
+        setDoc(stateRef, blob, { merge:false }).catch(e => console.error("Initial Firestore setDoc failed:", e));
+      }
+
+      return;
+    }
+
+    // Subsequent snapshots: last-write-wins by updatedAt
+    const remoteUpdatedAt = (data && typeof data.updatedAt === "number") ? data.updatedAt : 0;
+
+    // If remote is newer than what we last applied, apply it.
+    if (data && remoteUpdatedAt > (window.__FS_SYNC.lastRemoteUpdatedAt || 0)){
+      window.__FS_SYNC.lastRemoteUpdatedAt = remoteUpdatedAt;
+      __applyRemoteSyncBlob(data);
+    }
+  }, (err) => {
+    console.error("Firestore listener error:", err);
+  });
+
+  console.log("Firestore sync ready.");
 </script>
 </body>
 </html>
