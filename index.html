@@ -2580,9 +2580,10 @@ function pickBestPairAssignees(loads, weight, rand){
   return [bestA, bestB];
 }
 
-function generateBalancedWeeklyPlan(weekSeed){
+function generateBalancedWeeklyPlan(weekSeed, salt){
   const seedStr = weekSeed || weekSeedString();
-  const seed = hashSeed("weeklyPlan::" + seedStr);
+  const saltStr = (salt !== undefined && salt !== null) ? String(salt) : "";
+const seed = hashSeed("weeklyPlan::" + seedStr + "::" + saltStr);
   const rand = seededRandFactory(seed + 4242);
 
   const weights = defaultChoreWeights();
@@ -2673,10 +2674,11 @@ function generateBalancedWeeklyPlan(weekSeed){
 
   // Meta is optional, but helpful for debugging.
   const meta = {
-    loads,
-    targets: WEEKLY_TARGETS,
-    weights
-  };
+  rebalanceSalt: saltStr,
+  loads,
+  targets: WEEKLY_TARGETS,
+  weights
+};
 
   return { weekSeed: seedStr, days, meta };
 }
@@ -4616,8 +4618,11 @@ function renderAdmin(){
   if (rebBtn){
     rebBtn.onclick = () => {
       if (!confirm("Rebalance this week’s daily chores? This will reshuffle assignments for the current week.")) return;
-      try{ clearWeeklyPlanState(); } catch {}
-      try{ ensureWeeklyPlanForCurrentWeek(); } catch {}
+      try{
+  const curSeed = weekSeedString();
+  const plan = generateBalancedWeeklyPlan(curSeed, Date.now());
+  saveWeeklyPlanState(plan);
+} catch {}
       // Stay on Admin and re-render to reflect the new weekly plan indirectly.
       try{ renderApp(); } catch {}
     };
