@@ -2727,7 +2727,7 @@ function allowedPairsForWeek(seed){
   return seededShuffle(PEOPLE, seed + 101);
 }
 
-function buildDailyBaseTasks(dayKey){
+function buildDailyBaseTasks_legacy(dayKey){
   const dayIdx = DAYS.indexOf(dayKey);
   const seed = hashSeed("chores::" + weekSeedString());
 
@@ -2874,6 +2874,51 @@ function buildDailyBaseTasks(dayKey){
   tasks.push(makeTask(dayKey, "fynnTreat", "Give Fynn his teeth treat", [treatPerson], treatPerson));
 
   return tasks;
+}
+}
+
+// =========================
+// Weekly plan cache bridge (Chunk 3)
+// - buildDailyBaseTasks() now reads from cached weekly plan
+// - Safe fallback: legacy daily builder if cache is missing/corrupt
+// =========================
+
+function ensureWeeklyPlanForCurrentWeek(){
+  const curSeed = weekSeedString();
+  const s = loadWeeklyPlanState();
+
+  const valid = !!(s && typeof s === "object" && typeof s.weekSeed === "string" && s.weekSeed === curSeed && s.days && typeof s.days === "object");
+  if (valid) return s;
+
+  // Generate a fresh balanced plan for this week and persist it.
+  const plan = generateBalancedWeeklyPlan(curSeed);
+  saveWeeklyPlanState(plan);
+  return plan;
+}
+
+function cloneTasksArray(arr){
+  // Avoid accidental in-memory mutation leaking into cached plan.
+  if (!Array.isArray(arr)) return [];
+  return arr.map(t => {
+    const o = (t && typeof t === "object") ? { ...t } : t;
+    if (o && o.assignees && Array.isArray(o.assignees)) o.assignees = o.assignees.slice();
+    return o;
+  });
+}
+
+function buildDailyBaseTasks(dayKey){
+  try{
+    const plan = ensureWeeklyPlanForCurrentWeek();
+    const dayTasks = plan && plan.days ? plan.days[dayKey] : null;
+    if (Array.isArray(dayTasks) && dayTasks.length){
+      return cloneTasksArray(dayTasks);
+    }
+  } catch (e){
+    // Fall through to legacy builder
+  }
+
+  // Safe fallback (should rarely happen): use old deterministic daily builder.
+  return buildDailyBaseTasks_legacy(dayKey);
 }
 // -------------------------
 // Phase 8.3 + 8.4 helpers
