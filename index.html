@@ -2580,7 +2580,7 @@ function buildDailyBaseTasks(dayKey){
 
   if (dayKey === "martes"){
     // Move Cabinets (renamed) to Mom
-    forceSoloTo("cabinets", "Mom", "Wipe down kitchen cabinets");
+    forceSoloTo("cabinets", "Mom", "Wipe down cabinets");
     // Move Wipe kitchen counters to Mom
     forceSoloTo("counters", "Mom");
   }
@@ -2750,6 +2750,23 @@ function jset(k, v){
       window.__firebaseSyncSchedulePush(k);
     }
   } catch {}
+}
+
+// Weekly plan cache (Proper Weekly Balancer)
+// Stored locally so the weekly roster is stable across refreshes and only regenerates on a new week.
+function loadWeeklyPlanState(){
+  return jget("weeklyPlanState", { weekSeed:"", days:{}, meta:{} });
+}
+function saveWeeklyPlanState(s){
+  // Ensure minimal shape
+  if (!s || typeof s !== "object") s = { weekSeed:"", days:{}, meta:{} };
+  if (typeof s.weekSeed !== "string") s.weekSeed = "";
+  if (!s.days || typeof s.days !== "object") s.days = {};
+  if (!s.meta || typeof s.meta !== "object") s.meta = {};
+  jset("weeklyPlanState", s);
+}
+function clearWeeklyPlanState(){
+  localStorage.removeItem("weeklyPlanState");
 }
 
 /* =========================
