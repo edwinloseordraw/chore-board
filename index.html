@@ -2875,7 +2875,6 @@ function buildDailyBaseTasks_legacy(dayKey){
 
   return tasks;
 }
-}
 
 // =========================
 // Weekly plan cache bridge (Chunk 3)
@@ -2890,7 +2889,6 @@ function ensureWeeklyPlanForCurrentWeek(){
   const valid = !!(s && typeof s === "object" && typeof s.weekSeed === "string" && s.weekSeed === curSeed && s.days && typeof s.days === "object");
   if (valid) return s;
 
-  // Generate a fresh balanced plan for this week and persist it.
   const plan = generateBalancedWeeklyPlan(curSeed);
   saveWeeklyPlanState(plan);
   return plan;
@@ -2917,7 +2915,6 @@ function buildDailyBaseTasks(dayKey){
     // Fall through to legacy builder
   }
 
-  // Safe fallback (should rarely happen): use old deterministic daily builder.
   return buildDailyBaseTasks_legacy(dayKey);
 }
 // -------------------------
