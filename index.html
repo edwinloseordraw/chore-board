@@ -2914,10 +2914,24 @@ function buildDailyBaseTasks(dayKey){
       return cloneTasksArray(dayTasks);
     }
   } catch (e){
-    // Fall through to legacy builder
+    console.warn("Weekly plan read failed; attempting regenerate.", e);
   }
 
-  return buildDailyBaseTasks_legacy(dayKey);
+  // No legacy fallback: regenerate a fresh plan and use it (or fail loudly with empty list).
+  try{
+    const curSeed = weekSeedString();
+    const plan2 = generateBalancedWeeklyPlan(curSeed);
+    saveWeeklyPlanState(plan2);
+    const dayTasks2 = plan2 && plan2.days ? plan2.days[dayKey] : null;
+    if (Array.isArray(dayTasks2)){
+      return cloneTasksArray(dayTasks2);
+    }
+  } catch (e2){
+    console.error("Weekly plan generation failed.", e2);
+    alert("Weekly plan generation failed. Open the console for details.");
+  }
+
+  return [];
 }
 // -------------------------
 // Phase 8.3 + 8.4 helpers
@@ -4613,22 +4627,33 @@ function renderAdmin(){
     resetBtn.title = colorsLocked ? "Member colors are locked for this theme" : "Reset member colors";
   }
 
-  // Rebalance Week (clears weeklyPlanState so it regenerates on next render)
+  // Rebalance Week (regenerates weeklyPlanState for the current week)
   const rebBtn = document.getElementById("btnRebalanceWeek");
   if (rebBtn){
     rebBtn.onclick = () => {
       if (!confirm("Rebalance this week’s daily chores? This will reshuffle assignments for the current week.")) return;
+
       try{
-  const curSeed = weekSeedString();
-  const plan = generateBalancedWeeklyPlan(curSeed, Date.now());
-  saveWeeklyPlanState(plan);
-} catch {}
-      // Stay on Admin and re-render to reflect the new weekly plan indirectly.
-      try{ renderApp(); } catch {}
+        const curSeed = weekSeedString();
+
+        // Force regeneration even if the existing cached plan is "valid".
+        clearWeeklyPlanState();
+
+        // Salt ensures a different deterministic shuffle while keeping the same weekSeed.
+        const plan = generateBalancedWeeklyPlan(curSeed, Date.now());
+
+        saveWeeklyPlanState(plan);
+
+        // Refresh the UI so day pages immediately reflect the new weekly plan.
+        renderApp();
+      } catch (e){
+        console.error("Rebalance Week failed:", e);
+        alert("Rebalance failed. Check console for details.");
+      }
     };
   }
 
-  document.getElementById("btnResetColors").onclick = () => {
+document.getElementById("btnResetColors").onclick = () => {
     const tsNow = loadThemeState();
     if (tsNow.themeId !== "paperClean") return;
     if (!confirm("Reset member colors to defaults?")) return;
