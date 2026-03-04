@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1325,8 +1326,7 @@ const SYNC_KEYS = new Set([
   "memberColors",
   "memberPhotos",
   "themeState",
-  "maintState",
-  "weeklyPlanState",
+  "maintState"
 ]);
 
 let isApplyingRemote = false;
@@ -1360,7 +1360,6 @@ function packAppState(){
   const payload = {
     dailyState: loadDailyState(),
     weeklyState: loadWeeklyState(),
-    weeklyPlanState: loadWeeklyPlanState(),
     biweeklyState: loadBiweeklyState(),
     monthlyState: loadMonthlyState(),
     dashState: loadDashState(),
@@ -1384,7 +1383,6 @@ function applyRemoteState(data){
   try{
     if (data.dailyState) saveDailyState(data.dailyState);
     if (data.weeklyState) saveWeeklyState(data.weeklyState);
-    if (data.weeklyPlanState) saveWeeklyPlanState(data.weeklyPlanState);
     if (data.biweeklyState) saveBiweeklyState(data.biweeklyState);
     if (data.monthlyState) saveMonthlyState(data.monthlyState);
     if (data.dashState) saveDashState(data.dashState);
@@ -2277,27 +2275,13 @@ function loadThemeState(){
 
 function saveThemeState(s){ jset("themeState", s); }
 
-/* =========================
-   WEEKLY PLAN STATE (new)
-   - cached weekly roster + computed loads
-   - synced via Firestore
-========================= */
-
-function loadWeeklyPlanState(){
-  return jget("weeklyPlanState", null);
-}
-
-function saveWeeklyPlanState(s){
-  jset("weeklyPlanState", s);
-}
-
 function applyTheme(themeId, mode){
   const t = THEMES[themeId];
   if (!t) return;
   const vars = (mode === "light") ? t.light : t.dark;
 
   Object.keys(vars).forEach(k => {
-    document.documentElement.style.setProperty(k, vars);
+    document.documentElement.style.setProperty(k, vars[k]);
   });
 
   // match browser chrome on mobile
@@ -2316,7 +2300,7 @@ function applyTheme(themeId, mode){
   } else {
     // Ensure member colors exist when returning to Paper Clean
     const current = loadMemberColors();
-    PEOPLE.forEach(p => { if (!current) current = THEME_MEMBER_COLORS.paperClean || "#ffffff"; });
+    PEOPLE.forEach(p => { if (!current[p]) current[p] = THEME_MEMBER_COLORS.paperClean[p] || "#ffffff"; });
     saveMemberColors(current);
   }
 }
@@ -2470,9 +2454,7 @@ function seededShuffle(arr, seed){
   const rand = seededRandFactory(seed);
   for (let i = a.length - 1; i > 0; i--){
     const j = Math.floor(rand() * (i + 1));
-    const tmp = a[i];
-    a[i] = a[j];
-    a[j] = tmp;
+    [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
 }
@@ -2520,7 +2502,7 @@ function buildDailyBaseTasks(dayKey){
   ROTATING_PAIR_CHORES.forEach((c, i) => {
     const pair = pickTwoDistinct();
     // Primary is the 2nd person for a tiny bit of accountability variety.
-    tasks.push(makeTask(dayKey, c.slug, c.text, pair.slice(), pair));
+    tasks.push(makeTask(dayKey, c.slug, c.text, pair.slice(), pair[1]));
   });
 
   // --- Solo chores ---
@@ -2559,8 +2541,7 @@ function buildDailyBaseTasks(dayKey){
   const reminders = [];
   const others = [];
   tasks.forEach(t => {
-    const parts = String(t?.id || "").split("::");
-    const slug = parts[1] || parts[0] || "";
+    const slug = String(t?.id || "").split("::")[1] || "";
     if (REMINDER_SLUGS_BOTTOM.has(slug)) reminders.push(t);
     else others.push(t);
   });
@@ -2670,15 +2651,15 @@ function normalizeTwoPersonTask(task){
   if (!task || !Array.isArray(task.assignees)) return task;
   if (task.assignees.length !== 2) return task;
 
-  const a = task.assignees;
-  const b = task.assignees;
+  const a = task.assignees[0];
+  const b = task.assignees[1];
   if (a && b && a !== b) return task;
 
   // Repair duplicates/nulls deterministically.
   const seed = hashSeed("pairfix::" + (task.id || ""));
   const pool = seededShuffle(PEOPLE, seed);
-  const fixedA = pool;
-  const fixedB = pool || pool;
+  const fixedA = pool[0];
+  const fixedB = pool[1] || pool[0];
   return { ...task, assignees: [fixedA, fixedB], primary: fixedB };
 }
 
@@ -2737,13 +2718,13 @@ const MONTHLY_CHORES = ["Clean baseboards",
 // Member avatars (Admin page) - stored as data URLs in localStorage
 function defaultMemberPhotos(){
   const o = {};
-  PEOPLE.forEach(p => o = "");
+  PEOPLE.forEach(p => o[p] = "");
   return o;
 }
 function loadMemberPhotos(){
   const d = defaultMemberPhotos();
   const s = jget("memberPhotos", d);
-  PEOPLE.forEach(p => { if (typeof s !== "string") s = ""; });
+  PEOPLE.forEach(p => { if (typeof s[p] !== "string") s[p] = ""; });
   return s;
 }
 function saveMemberPhotos(s){ jset("memberPhotos", s); }
@@ -2789,8 +2770,7 @@ window.SYNC_KEYS = new Set([
   "groceriesState",
   "memberColors",
   "memberPhotos",
-  "themeState",
-  "weeklyPlanState"
+  "themeState"
 ]);
 
 // Sync runtime state (kept global so both scripts can see it)
@@ -2823,7 +2803,6 @@ function __buildLocalSyncBlob(){
     memberColors: __getLocalItemParsed("memberColors", defaultMemberColors()),
     memberPhotos: __getLocalItemParsed("memberPhotos", defaultMemberPhotos()),
     themeState: __getLocalItemParsed("themeState", { themeId:"neonGlass", mode:"dark" }),
-    weeklyPlanState: __getLocalItemParsed("weeklyPlanState", { weekKey:"", plan:{} }),
     updatedAt: Date.now()
   };
 }
@@ -2840,7 +2819,7 @@ function __applyRemoteSyncBlob(remote){
   try{
     Array.from(window.SYNC_KEYS).forEach(k => {
       if (Object.prototype.hasOwnProperty.call(remote, k)){
-        localStorage.setItem(k, JSON.stringify(remote));
+        localStorage.setItem(k, JSON.stringify(remote[k]));
       }
     });
   } finally {
@@ -2866,7 +2845,7 @@ function loadMemberColors(){
   const d = defaultMemberColors();
   const s = jget("memberColors", d);
   // ensure all keys exist
-  PEOPLE.forEach(p => { if (!s) s = d || "#ffffff"; });
+  PEOPLE.forEach(p => { if (!s[p]) s[p] = d[p] || "#ffffff"; });
   return s;
 }
 function saveMemberColors(s){ jset("memberColors", s); }
@@ -2878,14 +2857,6 @@ function saveDailyState(s){ jset("dailyState", s); }
 // Weekly shared state
 function loadWeeklyState(){ return jget("weeklyState", { checks:{}, assign:{} }); }
 function saveWeeklyState(s){ jset("weeklyState", s); }
-
-// Weekly cached plan (generated schedule)
-function loadWeeklyPlanState(){
-  return jget("weeklyPlanState", { weekKey:"", plan:{} });
-}
-function saveWeeklyPlanState(s){
-  jset("weeklyPlanState", s);
-}
 
 // Biweekly shared state (Phase 5)
 function loadBiweeklyState(){ return jget("biweeklyState", { checks:{}, assign:{} }); }
@@ -2918,7 +2889,7 @@ function loadDashState(){
     const lines = [];
     const order = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
     order.forEach(k => {
-      const v = (typeof s.notesByDay === "string") ? s.notesByDay.trim() : "";
+      const v = (typeof s.notesByDay[k] === "string") ? s.notesByDay[k].trim() : "";
       if (v) lines.push(`${k}: ${v}`);
     });
     if (!s.dashboardNotes && lines.length){
@@ -2939,9 +2910,9 @@ function loadDashState(){
     s.ringFilters = { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
   }
   ["daily","weekly","biweekly","monthly"].forEach(k => {
-    if (!s.ringFilters || typeof s.ringFilters !== "string") s.ringFilters = "All";
-    const v = s.ringFilters;
-    if (v !== "All" && !PEOPLE.includes(v)) s.ringFilters = "All";
+    if (!s.ringFilters[k] || typeof s.ringFilters[k] !== "string") s.ringFilters[k] = "All";
+    const v = s.ringFilters[k];
+    if (v !== "All" && !PEOPLE.includes(v)) s.ringFilters[k] = "All";
   });
 
   return s;
@@ -3291,7 +3262,7 @@ window.addEventListener("hashchange", renderApp);
 
 function emptyContribution(){
   const byPerson = {};
-  PEOPLE.forEach(p => byPerson = 0);
+  PEOPLE.forEach(p => byPerson[p] = 0);
   return byPerson;
 }
 
@@ -3498,7 +3469,7 @@ function renderDashboard(){
   };
 
   // After rendering the dashboard, reset viewer mode back to normal defaults
-  // so the dashboard behaves as "today notes editable" next time unless explicitly invoked.
+  // so the dashboard behaves as “today notes editable” next time unless explicitly invoked.
   dash2.viewerDay = todayKey();
   dash2.viewerReadOnly = false;
   saveDashState(dash2);
@@ -4234,7 +4205,7 @@ function renderAdmin(){
     clear.textContent = "Clear";
 
     file.onchange = () => {
-      const f = file.files && file.files;
+      const f = file.files && file.files[0];
       if (!f) return;
 
       const reader = new FileReader();
