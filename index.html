@@ -4333,6 +4333,7 @@ function renderAdmin(){
           <div class="hint" style="margin:0;">Pick a theme + mode for the whole app, then (optionally) set member colors.</div>
         </div>
         <div class="right">
+          <button class="danger" id="btnRebalanceWeek">Rebalance Week</button>
           <button class="danger" id="btnResetColors">Reset Colors</button>
         </div>
       </div>
@@ -4608,6 +4609,18 @@ function renderAdmin(){
     resetBtn.style.opacity = colorsLocked ? "0.55" : "1";
     resetBtn.style.pointerEvents = colorsLocked ? "none" : "auto";
     resetBtn.title = colorsLocked ? "Member colors are locked for this theme" : "Reset member colors";
+  }
+
+  // Rebalance Week (clears weeklyPlanState so it regenerates on next render)
+  const rebBtn = document.getElementById("btnRebalanceWeek");
+  if (rebBtn){
+    rebBtn.onclick = () => {
+      if (!confirm("Rebalance this week’s daily chores? This will reshuffle assignments for the current week.")) return;
+      try{ clearWeeklyPlanState(); } catch {}
+      try{ ensureWeeklyPlanForCurrentWeek(); } catch {}
+      // Stay on Admin and re-render to reflect the new weekly plan indirectly.
+      try{ renderApp(); } catch {}
+    };
   }
 
   document.getElementById("btnResetColors").onclick = () => {
