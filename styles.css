@@ -1,0 +1,1209 @@
+:root{
+      /* Theme variables (default theme: Neon Glass / Dark) */
+      --bg: radial-gradient(1200px 800px at 20% 10%, rgba(0,255,240,0.10), transparent 55%),
+            radial-gradient(900px 700px at 80% 25%, rgba(255,0,200,0.10), transparent 55%),
+            linear-gradient(180deg, #0b0f12 0%, #07090b 100%);
+      --headerBg: rgba(12,14,18,0.88);
+
+      --panel: rgba(255,255,255,0.06);
+      --panel2: rgba(255,255,255,0.08);
+      --panel3: rgba(0,0,0,0.28);
+
+      --border: rgba(255,255,255,0.10);
+      --border2: rgba(255,255,255,0.12);
+
+      --text: #f5f5f5;
+      --muted: rgba(245,245,245,0.75);
+      --muted2: rgba(245,245,245,0.6);
+
+      --btn: rgba(255,255,255,0.10);
+      --btnHover: rgba(255,255,255,0.14);
+      --btnActive: #22f0b6;
+      --danger: #c62828;
+
+      --inputBg: rgba(0,0,0,0.30);
+      --inputBorder: rgba(255,255,255,0.14);
+
+      --ringTrack: rgba(255,255,255,0.22);
+
+      --shadow: 0 14px 28px rgba(0,0,0,0.45);
+      --glassBlur: 14px;
+
+      /* Neumorphism shadows (color-agnostic; themes still own colors) */
+      --neuOutShadow: 8px 8px 18px rgba(0,0,0,0.38), -6px -6px 14px rgba(255,255,255,0.06);
+      --neuOutShadowSoft: 6px 6px 14px rgba(0,0,0,0.34), -5px -5px 12px rgba(255,255,255,0.05);
+      --neuInShadow: inset 8px 8px 18px rgba(0,0,0,0.42), inset -6px -6px 14px rgba(255,255,255,0.06);
+      --neuInShadowSoft: inset 6px 6px 14px rgba(0,0,0,0.36), inset -5px -5px 12px rgba(255,255,255,0.05);
+          
+      --radius: 12px;
+    }
+
+      /* Neumorphism helpers */
+      .neuOut{ box-shadow: var(--neuOutShadow); }
+      .neuOutSoft{ box-shadow: var(--neuOutShadowSoft); }
+      .pressed{ box-shadow: var(--neuInShadow) !important; }
+      .pressedSoft{ box-shadow: var(--neuInShadowSoft) !important; }
+    
+    .assignSelect{
+      width: 130px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--inputBorder);
+      background: var(--inputBg);
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+    }
+
+    header{
+      display:flex;
+      gap:8px;
+      padding:10px;
+      background:var(--headerBg);
+      flex-wrap:wrap;
+      align-items:center;
+      position:sticky;
+      top:0;
+      z-index:5;
+      justify-content:flex-start;
+      backdrop-filter: blur(var(--glassBlur));
+      -webkit-backdrop-filter: blur(var(--glassBlur));
+      box-shadow: var(--neuOutShadowSoft);
+    }
+
+            header button.active{
+      background:var(--btnActive);
+      color:#000;
+      font-weight:800;
+      border-color: rgba(0,0,0,0.25);
+    }
+
+    header button.active{
+      background:var(--btnActive);
+      color:#000;
+      font-weight:700;
+    }
+
+        header select{
+      background:var(--btn);
+      color:var(--text);
+      border:1px solid var(--border2);
+      padding:8px 12px;
+      border-radius:10px;
+      font-size:14px;
+      cursor:pointer;
+      white-space:nowrap;
+      appearance:none;
+      -webkit-appearance:none;
+      line-height:1.2;
+    }
+    header select:hover{ background:var(--btnHover); }
+
+    /* Left side navigation (hamburger opens a panel on the left) */
+    .menuWrap{
+      position:relative;
+      display:flex;
+      align-items:center;
+    }
+
+    .hamburgerBtn{
+      background:var(--btn);
+      color:var(--text);
+      border:1px solid var(--border2);
+      padding:8px 12px;
+      border-radius:12px;
+      font-size:18px;
+      cursor:pointer;
+      line-height:1;
+      white-space:nowrap;
+      height:40px;
+      box-shadow: var(--neuOutShadowSoft);
+    }
+    .hamburgerBtn:hover{ background:var(--btnHover); }
+    .hamburgerBtn:active{ box-shadow: var(--neuInShadowSoft); }
+
+    .sideOverlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.45);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      display:none;
+      z-index:60;
+    }
+    .sideOverlay.open{ display:block; }
+
+    .sidePanel{
+      position:fixed;
+      top:0;
+      left:0;
+      height:100vh;
+      width:300px;
+      max-width:85vw;
+      background:var(--headerBg);
+      border-right:1px solid var(--border2);
+      box-shadow: 18px 0 36px rgba(0,0,0,0.45);
+      transform: translateX(-105%);
+      transition: transform 180ms ease;
+      z-index:70;
+      display:flex;
+      flex-direction:column;
+      padding:10px;
+      gap:10px;
+    }
+    .sidePanel.open{ transform: translateX(0); }
+
+    .sideHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:8px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      box-shadow: var(--neuOutShadowSoft);
+    }
+    .sideTitle{
+      font-weight:900;
+      letter-spacing:0.2px;
+      opacity:0.95;
+      font-size:14px;
+    }
+    .sideClose{
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.14);
+      color:var(--text);
+      border-radius:10px;
+      padding:8px 10px;
+      cursor:pointer;
+      box-shadow: var(--neuOutShadowSoft);
+    }
+    .sideClose:hover{ background: rgba(255,255,255,0.06); }
+    .sideClose:active{ box-shadow: var(--neuInShadowSoft); }
+
+    .sideNav{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      overflow:auto;
+      padding-right:2px;
+    }
+
+    .sideBtn{
+      width:100%;
+      text-align:left;
+      background:var(--btn);
+      border:1px solid var(--border2);
+      color:var(--text);
+      padding:12px 12px;
+      border-radius:12px;
+      font-size:14px;
+      cursor:pointer;
+      box-shadow: var(--neuOutShadowSoft);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .sideBtn:hover{ background:var(--btnHover); }
+    .sideBtn:active{ box-shadow: var(--neuInShadowSoft); }
+    .sideBtn.active{ box-shadow: var(--neuInShadowSoft); }
+
+    .sideChevron{
+      opacity:0.75;
+      font-weight:900;
+      transform: rotate(0deg);
+      transition: transform 160ms ease;
+    }
+    .sideBtn[aria-expanded="true"] .sideChevron{ transform: rotate(90deg); }
+
+    .sideSub{
+      display:none;
+      padding-left:10px;
+      margin-top:4px;
+      margin-bottom:6px;
+      gap:6px;
+      flex-direction:column;
+    }
+    .sideSub.open{ display:flex; }
+
+    .sideSub .sideBtn{
+      padding:10px 12px;
+      border-radius:12px;
+      font-size:13px;
+    }
+
+    /* Notes overlay (for quick viewing today's notes without leaving the day page) */
+    .notesOverlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.45);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      display:none;
+      z-index:80;
+    }
+    .notesOverlay.open{ display:block; }
+
+    .notesPanel{
+      position:fixed;
+      top:14px;
+      left:50%;
+      transform: translateX(-50%) translateY(-110%);
+      width:min(720px, 92vw);
+      max-height:86vh;
+      background:var(--headerBg);
+      border:1px solid var(--border2);
+      border-radius:14px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+      z-index:90;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      padding:12px;
+      transition: transform 180ms ease;
+    }
+    .notesPanel.open{ transform: translateX(-50%) translateY(0); }
+
+    .notesHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:8px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      box-shadow: var(--neuOutShadowSoft);
+    }
+    .notesTitle{
+      font-weight:900;
+      letter-spacing:0.2px;
+      opacity:0.95;
+      font-size:14px;
+    }
+    .notesClose{
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.14);
+      color:var(--text);
+      border-radius:10px;
+      padding:8px 10px;
+      cursor:pointer;
+      box-shadow: var(--neuOutShadowSoft);
+    }
+    .notesClose:hover{ background: rgba(255,255,255,0.06); }
+    .notesClose:active{ box-shadow: var(--neuInShadowSoft); }
+
+    .notesBody{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      min-height:0;
+    }
+
+    .notesBody textarea{
+      min-height:220px;
+      resize:vertical;
+    }
+
+    /* Uniform top-nav controls (Weekly Reset, misc header buttons) */
+    .navBtn{
+      background:var(--btn);
+      color:var(--text);
+      border:1px solid var(--border2);
+      padding:10px 14px;
+      border-radius:12px;
+      font-size:14px;
+      cursor:pointer;
+      white-space:nowrap;
+      height:40px;
+      box-shadow: var(--neuOutShadowSoft);
+    }
+    
+    .navBtn:hover{ background:var(--btnHover); }
+    .navBtn:active{ box-shadow: var(--neuInShadowSoft); }
+
+    .navBtn.danger{
+      background:var(--danger);
+      border-color: rgba(0,0,0,0.25);
+      box-shadow: var(--neuOutShadowSoft);
+    }
+
+    /* Active nav should look pressed in */
+    header button.active{
+      box-shadow: var(--neuInShadowSoft);
+    }
+    
+    header .spacer{ flex:1; }
+
+    header .danger{ background:var(--danger); }
+
+    main{
+      flex:1;
+      padding:10px;
+      overflow: visible;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      min-height:0;
+    }
+.maintForm{
+  display:grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap:12px;
+  align-items:end;
+}
+.maintForm .field label{
+  display:block;
+  font-size:12px;
+  opacity:.8;
+  margin-bottom:6px;
+}
+.maintForm input, .maintForm select{
+  width:100%;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid var(--inputBorder);
+  background:var(--inputBg);
+  color:var(--text);
+  height:40px;
+  box-shadow: var(--neuOutShadowSoft);
+}
+/* iPad/iOS Safari: date inputs render taller unless you tame them */
+.maintForm input[type="date"]{
+  -webkit-appearance: none;
+  appearance: none;
+  height:40px;
+  min-height:40px;
+  line-height:40px;
+  padding:0 12px;          /* override iOS odd padding */
+  font-size:14px;          /* keeps it from scaling */
+}
+.maintForm .actions button{
+  width:100%;
+}
+
+.maintList{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.maintRow{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(0,0,0,.18);
+}
+.maintTask{
+  font-weight:700;
+}
+.maintSub{
+  margin-top:4px;
+  font-size:12px;
+  opacity:.8;
+}
+
+@media (max-width: 980px){
+  .maintForm{ grid-template-columns: 1fr; }
+}
+
+    /* ---------- Common panels ---------- */
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:10px;
+      box-shadow: var(--neuOutShadow);
+    }
+
+    .panel h2, .panel h3{
+      margin:0 0 8px 0;
+      font-size:14px;
+      letter-spacing:0.2px;
+      opacity:0.95;
+    }
+
+    .hint{
+      font-size:12px;
+      color:var(--muted2);
+      margin-top:-4px;
+      margin-bottom:8px;
+      line-height:1.25;
+    }
+
+    /* ---------- Dashboard ---------- */
+    .dashGrid{
+      display:grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap:10px;
+      min-height:0;
+    }
+    .dashHeaderRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:6px;
+    }
+    .dashHeaderRow h2{
+      margin:0;
+    }
+
+    .rings{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:10px;
+      align-items:stretch;
+    }
+
+    .ringCard{
+      background:var(--panel2);
+      border:1px solid var(--border2);
+      border-radius:var(--radius);
+      padding:12px;
+      width:100%;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      align-items:center;
+      justify-content:flex-start;
+      text-align:center;
+      box-shadow: var(--neuOutShadow);
+    }
+
+    .ringMeta{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      align-items:center;
+      justify-content:center;
+    }
+    .ringFilter{
+      width:100%;
+      max-width: 180px;
+      background:var(--inputBg);
+      color:var(--text);
+      border:1px solid var(--inputBorder);
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:13px;
+    }
+
+    .ringSvgWrap{
+      width:128px;
+      height:128px;
+      position:relative;
+      flex:0 0 auto;
+    }
+
+    .ringSvgWrap .pct{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:22px;
+      font-weight:900;
+      letter-spacing:0.2px;
+    }
+
+    svg{ display:block; }
+
+    /* a slightly "chalky" look without getting fancy */
+    .chalkTrack{ opacity:0.25; }
+    .chalkStroke{
+      filter: drop-shadow(0 0 0.6px rgba(255,255,255,0.2));
+    }
+
+    .dashNav{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+
+    .dashNav button{
+      padding:10px 12px;
+      border-radius:10px;
+    }
+
+    .notesBox{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      min-height:0;
+    }
+
+    .notesControls{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+        .notesControls input{
+      background:var(--inputBg);
+      border:1px solid var(--inputBorder);
+      color:var(--text);
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:14px;
+      width:180px;
+    }
+
+    .notesControls .small{
+      font-size:12px;
+      color:var(--muted2);
+    }
+
+        textarea{
+      width:100%;
+      min-height:180px;
+      background:var(--inputBg);
+      color:var(--text);
+      border:1px solid var(--inputBorder);
+      border-radius:12px;
+      padding:10px;
+      resize:vertical;
+      font-size:14px;
+      line-height:1.25;
+    }
+
+    .lockedOverlay{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:space-between;
+      background:rgba(0,0,0,0.35);
+      border:1px dashed rgba(255,255,255,0.25);
+      border-radius:10px;
+      padding:10px;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    /* ---------- Day view ---------- */
+    .columns{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(260px, 1fr));
+      gap:10px;
+      align-items:stretch;
+
+      /* No independent scrolling — page scrolls as one */
+      flex:0;
+      overflow:visible;
+    }
+
+    .column{
+      background:var(--panel2);
+      border:1px solid var(--border2);
+      border-radius:var(--radius);
+      padding:10px;
+      display:flex;
+      flex-direction:column;
+      box-shadow: var(--neuOutShadow);
+
+      /* Let content define height. Grid can still stretch columns evenly without forcing extra blank space. */
+      min-height: 0;
+    }
+
+    /* Day header (day name + date) */
+    .dayHeaderBar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+    }
+    .dayHeaderBar .dayTitle{
+      margin:0;
+      font-size:18px;
+      font-weight:900;
+      text-transform:capitalize;
+    }
+    .dayHeaderBar .dayDate{
+      font-size:13px;
+      font-weight:800;
+      color:var(--muted2);
+      white-space:nowrap;
+    }
+
+    .column h2{
+      margin:0 0 8px 0;
+      text-align:center;
+      font-size:16px;
+      font-weight:800;
+    }
+
+    .chore{
+      margin-bottom:3px;
+      font-size:14px;
+    }
+
+    /* Phase 8.5: make the entire chore row (including text) a tap target */
+    .choreLabel{
+      display:flex;
+      align-items:center;
+      gap:7px;
+      padding:7px 10px;
+      border-radius:10px;
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: rgba(255,255,255,0.08);
+      box-shadow: var(--neuOutShadowSoft);
+    }
+    .choreLabel:active{
+      background: rgba(255,255,255,0.06);
+    }
+    .choreLabel span{
+      flex:1;
+      line-height:1.1;
+    }
+    .choreLabel input[type="checkbox"]{
+      width:18px;
+      height:18px;
+      flex:0 0 auto;
+    }
+
+    /* Weekly chores panel (Phase 3), moved BELOW columns per your request */
+    .weeklyGrid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:8px 10px;
+    }
+
+    .weeklyItem{
+      display:grid;
+      grid-template-columns:18px 1fr 120px;
+      align-items:center;
+      gap:8px;
+      background:var(--panel3);
+      border:1px solid var(--border2);
+      border-radius:10px;
+      padding:8px;
+      min-height:44px;
+      box-shadow: var(--neuOutShadowSoft);
+    }
+
+    .weeklyItem .label{
+      font-size:13px;
+      opacity:0.95;
+      line-height:1.15;
+      word-break:break-word;
+    }
+
+        .weeklyItem select{
+      background:var(--inputBg);
+      color:var(--text);
+      border:1px solid var(--inputBorder);
+      border-radius:10px;
+      padding:6px 8px;
+      font-size:13px;
+      width:120px;
+    }
+
+    /* Yesterday summary */
+    .yesterdayGrid{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:10px;
+    }
+
+    .yCard{
+      background:var(--panel3);
+      border:1px solid var(--border2);
+      border-radius:10px;
+      padding:8px;
+      min-height:48px;
+    }
+
+    .yTitle{
+      font-weight:800;
+      font-size:13px;
+      text-align:center;
+      margin-bottom:6px;
+      opacity:0.95;
+    }
+
+    .yLine{
+      font-size:12.5px;
+      opacity:0.9;
+      margin:4px 0;
+      line-height:1.2;
+      word-break:break-word;
+    }
+
+    .notesDay textarea{
+      min-height:110px;
+    }
+
+        /* ---------- Theme controls (Admin) ---------- */
+    .themeGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+    .themeRow{
+      background:var(--panel2);
+      border:1px solid var(--border2);
+      border-radius:12px;
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .themeRow label{
+      font-size:12px;
+      color:var(--muted2);
+    }
+    .themeRow select, .themeRow button{
+      background:var(--btn);
+      color:var(--text);
+      border:1px solid var(--border2);
+      padding:10px 12px;
+      border-radius:12px;
+      font-size:14px;
+      cursor:pointer;
+    }
+    .themeRow select:hover, .themeRow button:hover{ background:var(--btnHover); }
+    .modeBtns{ display:flex; gap:8px; flex-wrap:wrap; }
+    .modeBtns button.active{
+      background:var(--btnActive);
+      color:#000;
+      font-weight:900;
+      border-color: rgba(0,0,0,0.25);
+    }
+    
+    /* ---------- Admin (member colors) ---------- */
+    .adminGrid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:10px;
+    }
+    .adminRow{
+      background:var(--panel2);
+      border:1px solid var(--border2);
+      border-radius:12px;
+      padding:12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      min-height:56px;
+    }
+    .adminName{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight:800;
+      font-size:14px;
+    }
+    .colorInput{
+      width:54px;
+      height:36px;
+      border:none;
+      background:transparent;
+      padding:0;
+      cursor:pointer;
+    }
+
+    /* ---------- Admin (pre-write day notes) ---------- */
+    .adminNotesGrid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:10px;
+      margin-top:10px;
+    }
+    .adminNoteCard{
+      background:var(--panel2);
+      border:1px solid var(--border2);
+      border-radius:12px;
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      min-height:120px;
+    }
+    .adminNoteCard .adminNoteTitle{
+      font-weight:900;
+      font-size:13px;
+      opacity:0.95;
+    }
+    .adminNoteCard textarea{
+      min-height:110px;
+    }
+
+    /* ---------- Simple list pages (biweekly/monthly/maintenance scaffolding) ---------- */
+    .listGrid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:10px;
+    }
+    .listItem{
+      background:var(--panel2);
+      border:1px solid var(--border2);
+      border-radius:10px;
+      padding:10px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-height:48px;
+      box-shadow: var(--neuOutShadowSoft);
+    }
+    .listItem .name{
+      flex:1;
+      font-size:14px;
+      opacity:0.95;
+    }
+    .toolbar{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:8px;
+    }
+    .toolbar .left{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+    }
+    .toolbar .right{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+    }
+    .toolbar button{
+      background:var(--btn);
+      color:#fff;
+      border:none;
+      border-radius:10px;
+      padding:10px 12px;
+      cursor:pointer;
+    }
+    .toolbar button.danger{ background:var(--danger); }
+
+    /* ghost buttons (used in Maintenance rows) */
+    button.ghost{
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.14);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+    button.ghost:hover{
+      background: rgba(255,255,255,0.06);
+    }
+
+    /* ---------- Groceries (persistent panel) ---------- */
+    .groceryBtn{
+      background:var(--btn);
+      color:var(--text);
+      border:1px solid var(--border2);
+      border-radius:12px;
+      padding:10px 12px;
+      cursor:pointer;
+      font-weight:900;
+      box-shadow: var(--neuOutShadowSoft);
+      line-height:1;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:44px;
+      min-height:44px;
+    }
+    .groceryBtn:hover{ background:var(--btnHover); }
+
+    .groceryOverlay{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,0.55);
+      opacity:0;
+      pointer-events:none;
+      transition:opacity 180ms ease;
+      z-index: 9998;
+    }
+    .groceryOverlay.open{
+      opacity:1;
+      pointer-events:auto;
+    }
+
+    .groceryPanel{
+      position:fixed;
+      top:0;
+      right:0;
+      height:100vh;
+      width:min(520px, 92vw);
+      background:var(--headerBg);
+      border-left:1px solid var(--border2);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(var(--glassBlur));
+      transform: translateX(100%);
+      transition: transform 220ms ease;
+      z-index: 9999;
+      display:flex;
+      flex-direction:column;
+    }
+    .groceryPanel.open{ transform: translateX(0); }
+
+    .groceryHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:12px;
+      border-bottom:1px solid var(--border2);
+    }
+    .groceryTitle{
+      font-weight:900;
+      font-size:15px;
+    }
+    .groceryClose{
+      background:var(--btn);
+      color:var(--text);
+      border:1px solid var(--border2);
+      border-radius:12px;
+      padding:10px 12px;
+      cursor:pointer;
+      box-shadow: var(--neuOutShadowSoft);
+      min-width:44px;
+      min-height:44px;
+    }
+    .groceryClose:hover{ background:var(--btnHover); }
+
+    .groceryBody{
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      overflow:auto;
+    }
+
+    .groceryForm{
+      display:grid;
+      grid-template-columns: 1fr 120px 96px;
+      gap:8px;
+      align-items:center;
+    }
+    .groceryForm input,
+    .groceryForm select{
+      background:var(--inputBg);
+      color:var(--text);
+      border:1px solid var(--inputBorder);
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:14px;
+      min-height:44px;
+    }
+    .groceryForm button{
+      background:var(--btnActive);
+      color:#000;
+      border:none;
+      border-radius:12px;
+      padding:10px 12px;
+      cursor:pointer;
+      font-weight:900;
+      min-height:44px;
+    }
+
+    .groceryList{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .groceryRow{
+      background:var(--panel2);
+      border:1px solid var(--border2);
+      border-radius:12px;
+      padding:10px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      box-shadow: var(--neuOutShadowSoft);
+    }
+    .groceryMeta{ flex:1; min-width:0; }
+    .groceryItem{
+      font-size:14px;
+      font-weight:800;
+      line-height:1.2;
+      word-break:break-word;
+    }
+    .grocerySub{
+      margin-top:4px;
+      font-size:12px;
+      color:var(--muted2);
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .groceryTag{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,0.06);
+      font-weight:900;
+      font-size:11px;
+      color:var(--text);
+    }
+    .groceryQty{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:3px 8px;
+      border-radius:999px;
+      border:1px solid var(--border2);
+      background: rgba(0,0,0,0.18);
+      font-weight:900;
+      font-size:11px;
+      color:var(--text);
+    }
+
+    .groceryRow .remove{
+      background: transparent;
+      border: 1px solid var(--border2);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      min-width:44px;
+      min-height:44px;
+    }
+    .groceryRow .remove:hover{ background: rgba(255,255,255,0.06); }
+
+    .groceryActions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+    .groceryReset{
+      background: var(--danger);
+      color:#fff;
+      border:none;
+      border-radius:12px;
+      padding:10px 12px;
+      cursor:pointer;
+      font-weight:900;
+      min-height:44px;
+    }
+
+    /* =========================
+       MEMBER AVATARS
+       - uploaded in Admin
+       - displayed in each member column header on day pages
+    ========================= */
+
+    .memberHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:8px;
+    }
+    .memberHeader h2{ margin:0; }
+
+    .avatarCircle{
+      width:40px;
+      height:40px;
+      border-radius:999px;
+      overflow:hidden;
+      border:1px solid var(--border2);
+      background: rgba(0,0,0,0.20);
+      box-shadow: var(--shadow);
+      flex:0 0 auto;
+    }
+    .avatarCircle img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+    .avatarFallback{
+      width:40px;
+      height:40px;
+      border-radius:999px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      font-size:12px;
+      letter-spacing:0.5px;
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      box-shadow: var(--shadow);
+      flex:0 0 auto;
+    }
+
+    .adminAvatarRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--panel2);
+      box-shadow: var(--shadow);
+      margin-top:10px;
+    }
+    .adminAvatarLeft{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width: 180px;
+    }
+    .adminAvatarName{
+      font-weight:900;
+    }
+    .adminAvatarRight{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .fileInput{
+      max-width: 260px;
+    }
+    .ghostBtn{
+      background: transparent;
+      border: 1px solid var(--border2);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      min-height:44px;
+    }
+    .ghostBtn:hover{ background: rgba(255,255,255,0.06); }
+
+    @media (max-width: 520px){
+      .groceryForm{ grid-template-columns: 1fr; }
+    }
+
+    /* responsive */
+    @media (max-width: 980px){
+      .dashGrid{ grid-template-columns:1fr; }
+      .columns{ grid-template-columns:1fr 1fr; }
+      .yesterdayGrid{ grid-template-columns:1fr 1fr; }
+      .weeklyGrid{ grid-template-columns:1fr; }
+      .listGrid{ grid-template-columns:1fr; }
+    }
