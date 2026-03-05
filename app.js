@@ -1710,9 +1710,6 @@ function showRebuildPreviewModal(summary, newPlan){
   document.body.appendChild(overlay);
 }
 
-function escapeHtml(s){
-  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
-}
 
 /* =========================
    FIRESTORE SYNC (cross-device)
