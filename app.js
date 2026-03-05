@@ -13,10 +13,30 @@ window.__firebaseSyncSchedulePush = function(){ /* local-only */ };
    - applies across the entire app via CSS variables
 ========================= */
 
-function loadThemeState(){ return { themeId: "neonGlass", mode: "dark" }; }
+// Theme state is persisted locally.
+// NOTE: This file must only declare loadThemeState/saveThemeState ONCE.
+function loadThemeState(){
+  try{
+    const raw = localStorage.getItem("themeState");
+    const parsed = raw ? JSON.parse(raw) : null;
+    const themeId = (parsed && typeof parsed.themeId === "string") ? parsed.themeId : "neonGlass";
+    const mode = (parsed && (parsed.mode === "dark" || parsed.mode === "light")) ? parsed.mode : "dark";
+    return { themeId, mode };
+  } catch (e){
+    return { themeId: "neonGlass", mode: "dark" };
+  }
+}
 
-
-function saveThemeState(){ /* dark-only */ }
+function saveThemeState(state){
+  try{
+    const s = (state && typeof state === "object") ? state : { themeId:"neonGlass", mode:"dark" };
+    if (typeof s.themeId !== "string") s.themeId = "neonGlass";
+    if (s.mode !== "dark" && s.mode !== "light") s.mode = "dark";
+    localStorage.setItem("themeState", JSON.stringify({ themeId: s.themeId, mode: s.mode }));
+  } catch (e){
+    console.error("themeState save failed", e);
+  }
+}
   
 /* =========================
    ROUTES + CONSTANTS
@@ -307,10 +327,13 @@ const seed = hashSeed("weeklyPlan::" + seedStr + "::" + saltStr);
     const tasks = [];
 
     // --- Core daily chores (balanced; single assignee) ---
+    // NOTE: Even if a chore is conceptually "paired", in this build it is assigned to ONE person
+    // and displayed as text-only (per project requirements).
     ROTATING_PAIR_CHORES.forEach(c => {
-      const assignee = pickBestSoloAssignee(loads, weights[c.slug] || 0, dayRand);
-      addLoad(loads, assignee, weights[c.slug] || 0);
-      tasks.push({ slug: c.slug, text: c.text, person: assignee });
+      const w = weights[c.slug] || 0;
+      const assignee = pickBestSoloAssignee(loads, w, dayRand);
+      tasks.push(makeTask(dayKey, c.slug, c.text, [assignee], assignee));
+      addLoad(loads, assignee, w);
     });
 
     // --- Solo chores (balanced) ---
@@ -775,12 +798,17 @@ function computePlanMemberTotals(plan){
 
   Object.keys(plan.days).forEach(dayKey => {
     const items = plan.days[dayKey] || [];
-    items.forEach(it => {
-      if (!it || !it.person) return;
-      const w = weights[it.slug] || 0;
-      totals[it.person] = (totals[it.person] || 0) + w;
+    items.forEach(t => {
+      if (!t || typeof t !== "object") return;
+      const id = String(t.id || "");
+      const slug = id.includes("::") ? id.split("::")[1] : "";
+      const person = String(t.primary || "");
+      if (!PEOPLE.includes(person)) return;
+      const w = (weights[slug] ?? 0);
+      totals[person] = (totals[person] || 0) + (Number(w) || 0);
     });
   });
+
   return totals;
 }
 
@@ -790,8 +818,19 @@ function countPlanChanges(oldPlan, newPlan){
   days.forEach(dayKey => {
     const a = (oldPlan && oldPlan.days && oldPlan.days[dayKey]) ? oldPlan.days[dayKey] : [];
     const b = (newPlan && newPlan.days && newPlan.days[dayKey]) ? newPlan.days[dayKey] : [];
-    const mapA = new Map(a.map(x => [x.slug, x.person]));
-    const mapB = new Map(b.map(x => [x.slug, x.person]));
+
+    // Map by slug -> primary assignee
+    const mapA = new Map(a.map(t => {
+      const id = String((t && t.id) || "");
+      const slug = id.includes("::") ? id.split("::")[1] : id;
+      return [slug, String((t && t.primary) || "")];
+    }));
+    const mapB = new Map(b.map(t => {
+      const id = String((t && t.id) || "");
+      const slug = id.includes("::") ? id.split("::")[1] : id;
+      return [slug, String((t && t.primary) || "")];
+    }));
+
     const slugs = new Set([...mapA.keys(), ...mapB.keys()]);
     slugs.forEach(slug => {
       if ((mapA.get(slug) || "") !== (mapB.get(slug) || "")) changed++;
@@ -883,10 +922,16 @@ function showRebuildPreviewModal(summary, newPlan){
     card.style.border = "1px solid rgba(255,255,255,0.10)";
     card.style.borderRadius = "12px";
     const list = (newPlan.days && newPlan.days[dayKey]) ? newPlan.days[dayKey] : [];
-    const items = list.map(it => `<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0;">
-        <div style="opacity:.9;">${escapeHtml(it.text || it.slug)}</div>
-        <div style="font-weight:600;">${escapeHtml(it.person || "")}</div>
-      </div>`).join("");
+    const items = list.map(t => {
+      const id = String((t && t.id) || "");
+      const slug = id.includes("::") ? id.split("::")[1] : "";
+      const who = String((t && t.primary) || "");
+      const label = (t && t.text) ? t.text : (slug || "");
+      return `<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0;">
+        <div style="opacity:.9;">${escapeHtml(label)}</div>
+        <div style="font-weight:600;">${escapeHtml(who)}</div>
+      </div>`;
+    }).join("");
     card.innerHTML = `<div style="font-weight:700;margin-bottom:6px;">${escapeHtml(dayKey.toUpperCase())}</div>${items || "<div style='opacity:.7;'>No chores</div>"}`;
     daysWrap.appendChild(card);
   });
