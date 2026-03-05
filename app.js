@@ -1,3 +1,5 @@
+console.log("[ChoreBoard] app.js loaded");
+window.__CHOREBOARD_LOADED__ = true;
 window.__firebaseSyncSchedulePush = function(){ /* local-only */ };
 /* LOCAL-ONLY BUILD
    - Firebase/Firestore removed
