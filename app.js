@@ -14,30 +14,7 @@ window.__firebaseSyncSchedulePush = function(){ /* local-only */ };
 ========================= */
 
 // Theme state is persisted locally.
-// NOTE: This file must only declare loadThemeState/saveThemeState ONCE.
-function loadThemeState(){
-  try{
-    const raw = localStorage.getItem("themeState");
-    const parsed = raw ? JSON.parse(raw) : null;
-    const themeId = (parsed && typeof parsed.themeId === "string") ? parsed.themeId : "neonGlass";
-    const mode = (parsed && (parsed.mode === "dark" || parsed.mode === "light")) ? parsed.mode : "dark";
-    return { themeId, mode };
-  } catch (e){
-    return { themeId: "neonGlass", mode: "dark" };
-  }
-}
-
-function saveThemeState(state){
-  try{
-    const s = (state && typeof state === "object") ? state : { themeId:"neonGlass", mode:"dark" };
-    if (typeof s.themeId !== "string") s.themeId = "neonGlass";
-    if (s.mode !== "dark" && s.mode !== "light") s.mode = "dark";
-    localStorage.setItem("themeState", JSON.stringify({ themeId: s.themeId, mode: s.mode }));
-  } catch (e){
-    console.error("themeState save failed", e);
-  }
-}
-  
+// NOTE: This file must only declare loadThemeState/saveThemeState ONCE.  
 /* =========================
    ROUTES + CONSTANTS
 ========================= */
