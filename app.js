@@ -2844,17 +2844,70 @@ function makeId(){
 
 
 /* =========================
+   THEME STATE
+========================= */
+
+function loadThemeState(){
+  const s = jget("themeState", { themeId: "neonGlass", mode: "dark" });
+  if (!s || typeof s !== "object") return { themeId: "neonGlass", mode: "dark" };
+  if (typeof s.themeId !== "string" || !s.themeId) s.themeId = "neonGlass";
+  if (s.mode !== "dark" && s.mode !== "light") s.mode = "dark";
+  if (!THEMES || !THEMES[s.themeId]) s.themeId = "neonGlass";
+  return s;
+}
+
+function saveThemeState(s){
+  if (!s || typeof s !== "object") s = { themeId: "neonGlass", mode: "dark" };
+  if (typeof s.themeId !== "string" || !s.themeId) s.themeId = "neonGlass";
+  if (s.mode !== "dark" && s.mode !== "light") s.mode = "dark";
+  jset("themeState", s);
+}
+
+function applyTheme(themeId, mode){
+  // Safe defaults
+  const ts = loadThemeState();
+  const tId = (typeof themeId === "string" && themeId) ? themeId : ts.themeId;
+  const m = (mode === "light" || mode === "dark") ? mode : ts.mode;
+
+  const theme = (THEMES && THEMES[tId]) ? THEMES[tId] : (THEMES && THEMES.neonGlass ? THEMES.neonGlass : null);
+  const vars = theme ? (theme[m] || theme.dark || {}) : {};
+
+  try{
+    const root = document.documentElement;
+    root.dataset.mode = m;
+    root.dataset.theme = tId;
+
+    // Apply CSS variables
+    Object.keys(vars).forEach(k => {
+      try{ root.style.setProperty(k, String(vars[k])); } catch {}
+    });
+
+    // Persist state
+    saveThemeState({ themeId: tId, mode: m });
+
+    // If this theme locks member colors, snap to presets.
+    // Only paperClean allows editing.
+    try{
+      if (tId !== "paperClean" && typeof THEME_MEMBER_COLORS === "object" && THEME_MEMBER_COLORS[tId]){
+        saveMemberColors({ ...THEME_MEMBER_COLORS[tId] });
+      }
+    } catch {}
+
+  } catch (e){
+    console.warn("applyTheme failed:", e);
+  }
+}
+
+/* =========================
    INIT
 ========================= */
 
-// Default to dashboard if no hash
-function applyTheme(){
-  // Themes removed. Force dark mode and do nothing else.
-  try{
-    document.documentElement.dataset.mode = "dark";
-  } catch {}
-}
 // Apply saved theme first (so the first render uses the right look)
+try{
+  const ts0 = loadThemeState();
+  applyTheme(ts0.themeId, ts0.mode);
+} catch {}
+
 // Default to dashboard if no hash
 if (!location.hash){
   goto("dashboard");
