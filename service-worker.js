@@ -1,8 +1,13 @@
-const CACHE_NAME = "chore-board-v2";
+const CACHE_NAME = "chore-board-v4";
+
 const ASSETS = [
   "./",
   "./index.html",
-  "./manifest.webmanifest"
+  "./styles.css",
+  "./app.js",
+  "./manifest.webmanifest",
+  "./icon.png",
+  "./apple-touch-icon.png"
 ];
 
 self.addEventListener("install", (event) => {
@@ -15,14 +20,15 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.map((key) => (key !== CACHE_NAME ? caches.delete(key) : null)))
+      Promise.all(
+        keys.map((key) => (key !== CACHE_NAME ? caches.delete(key) : null))
+      )
     )
   );
   self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
-  // Network-first for HTML so updates deploy cleanly, cache fallback for hiccups.
   const request = event.request;
 
   // Always fetch latest school calendar image (do NOT cache month.png)
@@ -31,16 +37,18 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Network-first strategy
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // Save a copy of successful GETs in cache
         if (request.method === "GET" && !request.url.includes("month.png")) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
         }
         return response;
       })
-      .catch(() => caches.match(request).then((cached) => cached || caches.match("./")))
+      .catch(() =>
+        caches.match(request).then((cached) => cached || caches.match("./"))
+      )
   );
 });
