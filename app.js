@@ -154,30 +154,29 @@ function targetMid(person){
   return (t.min + t.max) / 2;
 }
 
-// Default weights (sane-ish). You can tweak later.
-// Notes:
-// - paired labels are TEXT ONLY; chores count as ONE assignment to ONE member
-// - reminder-only chores are 0 weight (they should not affect fairness)
+// Rebased weights so the FULL WEEK lands near the target system.
+// Approximate weekly total with fixed chores included: ~67 points.
+// This matches the combined target range far better than the old 180+ scale.
 function defaultChoreWeights(){
   return {
-    vacuum: 3,
-    dishes: 3,
-    trash: 2,
-    feedDogs: 2,
+    vacuum: 1.25,
+    dishes: 1.25,
+    trash: 0.75,
+    feedDogs: 0.75,
 
-    counters: 2,
-    dining: 1,
-    mop: 3,
-    dust: 2,
-    cabinets: 2,
-    dogPoop: 2,
+    counters: 0.5,
+    dining: 0.5,
+    mop: 1.0,
+    dust: 0.75,
+    cabinets: 0.5,
+    dogPoop: 0.75,
 
-    walk: 2,
-    fynnTreat: 1,
+    walk: 0.75,
+    fynnTreat: 0.25,
 
     // member-exclusive fixed chores
-    read20: 2,
-    brushHarvey: 1,
+    read20: 0.5,
+    brushHarvey: 0.5,
 
     // reminders (do not count)
     prepBackpack: 0,
@@ -213,35 +212,57 @@ function initLoads(){
   return loads;
 }
 
+function initDayLoads(){
+  const loads = {};
+  PEOPLE.forEach(p => loads[p] = 0);
+  return loads;
+}
+
 function addLoad(loads, person, amount){
   if (!loads || loads[person] === undefined) return;
   loads[person] += Number(amount) || 0;
 }
 
-function scoreAfterAssign(loads, person, add){
+function scoreAfterAssign(loads, dayLoads, person, add){
   const t = WEEKLY_TARGETS[person];
   if (!t) return 1e9;
-  const next = (loads[person] || 0) + (Number(add) || 0);
 
-  // Heavy penalty for going over max. Mild penalty for being below min.
-  const over = Math.max(0, next - t.max);
-  const under = Math.max(0, t.min - next);
+  const weight = Number(add) || 0;
+  const nextWeek = (loads[person] || 0) + weight;
+  const nextDay = (dayLoads[person] || 0) + weight;
 
-  // Prefer being close to mid, but respect bounds.
-  const mid = targetMid(person);
-  const dist = Math.abs(next - mid);
+  const weeklyMid = targetMid(person);
+  const dailyMid = weeklyMid / 7;
 
-  return (over * 50) + (under * 5) + dist;
+  const overMax = Math.max(0, nextWeek - t.max);
+  const weekDist = Math.abs(nextWeek - weeklyMid);
+
+  // Soft daily cap helps prevent one person from getting stacked on the same day.
+  const dailySoftCap = dailyMid + 0.75;
+  const dailyOver = Math.max(0, nextDay - dailySoftCap);
+  const dailyDist = Math.abs(nextDay - dailyMid);
+
+  // Reward people who are still below their target midpoint.
+  const remainingCapacity = Math.max(0, weeklyMid - nextWeek);
+
+  return (
+    (overMax * 100) +
+    (dailyOver * 30) +
+    (weekDist * 5) +
+    (dailyDist * 4) +
+    (nextDay * 2) -
+    (remainingCapacity * 2)
+  );
 }
 
-function pickBestSoloAssignee(loads, weight, rand){
-  // Choose the person that best improves balance (tie-break with seeded randomness)
+function pickBestSoloAssignee(loads, dayLoads, weight, rand, allowedPeople){
+  const pool = Array.isArray(allowedPeople) && allowedPeople.length ? allowedPeople.slice() : PEOPLE.slice();
+
   let best = null;
   let bestScore = Infinity;
 
-  // deterministic iteration order, but rand used for tie breaks
-  PEOPLE.forEach(p => {
-    const sc = scoreAfterAssign(loads, p, weight);
+  pool.forEach(p => {
+    const sc = scoreAfterAssign(loads, dayLoads, p, weight);
     if (sc < bestScore){
       bestScore = sc;
       best = p;
@@ -250,115 +271,73 @@ function pickBestSoloAssignee(loads, weight, rand){
     }
   });
 
-  return best || PEOPLE[0];
-}
-
-function pickBestPairAssignees(loads, weight, rand){
-  // Pair chores split weight across two people.
-  const w = (Number(weight) || 0) / 2;
-  let bestA = null;
-  let bestB = null;
-  let bestScore = Infinity;
-
-  for (let i = 0; i < PEOPLE.length; i++){
-    for (let j = 0; j < PEOPLE.length; j++){
-      if (i === j) continue;
-      const a = PEOPLE[i];
-      const b = PEOPLE[j];
-
-      const sc = scoreAfterAssign(loads, a, w) + scoreAfterAssign(loads, b, w);
-
-      if (sc < bestScore){
-        bestScore = sc;
-        bestA = a;
-        bestB = b;
-      } else if (sc === bestScore && rand && rand() < 0.5){
-        bestA = a;
-        bestB = b;
-      }
-    }
-  }
-
-  // Ensure distinct
-  if (!bestA) bestA = PEOPLE[0];
-  if (!bestB || bestB === bestA) bestB = PEOPLE.find(x => x !== bestA) || PEOPLE[0];
-
-  return [bestA, bestB];
+  return best || pool[0] || PEOPLE[0];
 }
 
 function generateBalancedWeeklyPlan(weekSeed, salt){
   const seedStr = weekSeed || weekSeedString();
   const saltStr = (salt !== undefined && salt !== null) ? String(salt) : "";
-const seed = hashSeed("weeklyPlan::" + seedStr + "::" + saltStr);
-  const rand = seededRandFactory(seed + 4242);
+  const seed = hashSeed("weeklyPlan::" + seedStr + "::" + saltStr);
 
   const weights = defaultChoreWeights();
   const loads = initLoads();
-
   const days = {};
 
-  // Build each day in a stable order.
   DAYS.forEach((dayKey, dayIdx) => {
     const dayRand = seededRandFactory(seed + 10000 + (dayIdx * 97));
-
+    const dayLoads = initDayLoads();
     const tasks = [];
-
-    // --- Core daily chores (balanced; single assignee) ---
-    // NOTE: Even if a chore is conceptually "paired", in this build it is assigned to ONE person
-    // and displayed as text-only (per project requirements).
-    ROTATING_PAIR_CHORES.forEach(c => {
-      const w = weights[c.slug] || 0;
-      const assignee = pickBestSoloAssignee(loads, w, dayRand);
-      tasks.push(makeTask(dayKey, c.slug, c.text, [assignee], assignee));
-      addLoad(loads, assignee, w);
-    });
-
-    // --- Solo chores (balanced) ---
-    ROTATING_SOLO_CHORES.forEach(c => {
-      const slug = c.slug;
-      const w = weights[slug] ?? 1;
-      const person = pickBestSoloAssignee(loads, w, dayRand);
-      tasks.push(makeTask(dayKey, slug, c.text, [person], person));
-      addLoad(loads, person, w);
-    });
-
-    // --- Walk (fixed alternating Dad/Mom) ---
-    // Keep this deterministic and stable with existing rule.
-    try{
-      const wt = buildWalkTask(dayKey);
-      tasks.push(wt);
-      const w = weights.walk ?? 2;
-      addLoad(loads, wt.primary, w);
-    } catch {}
-
-    // --- Fynn treat (balanced) ---
-    {
-      const w = weights.fynnTreat ?? 1;
-      const person = pickBestSoloAssignee(loads, w, dayRand);
-      tasks.push(makeTask(dayKey, "fynnTreat", "Give Fynn his teeth treat", [person], person));
-      addLoad(loads, person, w);
-    }
-
-    // --- Fixed member-exclusive chores (UNT0UCHABLE) ---
-    // These MUST keep their person + schedule.
     const fixedTasks = [];
+
+    // Fixed member-exclusive chores first so their load is respected before rotating chores are assigned.
     FIXED_SOLO_CHORES.forEach(c => {
       if (!PEOPLE.includes(c.person)) return;
       if (!shouldIncludeFixedChoreOnDay(c, dayKey)) return;
 
-      // Keep exact assignee
       fixedTasks.push(makeTask(dayKey, c.slug, c.text, [c.person], c.person));
 
-      // Only count load if weight > 0 (reminders are 0)
       const w = weights[c.slug] ?? 0;
       addLoad(loads, c.person, w);
+      addLoad(dayLoads, c.person, w);
     });
 
-    // Ensure reminder chores are at the bottom (only the two reminder slugs)
+    // Core daily chores (solo-assigned in this build)
+    ROTATING_PAIR_CHORES.forEach(c => {
+      const w = weights[c.slug] ?? 0;
+      const assignee = pickBestSoloAssignee(loads, dayLoads, w, dayRand);
+      tasks.push(makeTask(dayKey, c.slug, c.text, [assignee], assignee));
+      addLoad(loads, assignee, w);
+      addLoad(dayLoads, assignee, w);
+    });
+
+    ROTATING_SOLO_CHORES.forEach(c => {
+      const w = weights[c.slug] ?? 0;
+      const assignee = pickBestSoloAssignee(loads, dayLoads, w, dayRand);
+      tasks.push(makeTask(dayKey, c.slug, c.text, [assignee], assignee));
+      addLoad(loads, assignee, w);
+      addLoad(dayLoads, assignee, w);
+    });
+
+    // Walk stays on the existing deterministic Mom/Dad alternating rule.
+    try{
+      const wt = buildWalkTask(dayKey);
+      tasks.push(wt);
+      const w = weights.walk ?? 0;
+      addLoad(loads, wt.primary, w);
+      addLoad(dayLoads, wt.primary, w);
+    } catch {}
+
+    // Fynn treat rotates by balance too.
+    {
+      const w = weights.fynnTreat ?? 0;
+      const assignee = pickBestSoloAssignee(loads, dayLoads, w, dayRand);
+      tasks.push(makeTask(dayKey, "fynnTreat", "Give Fynn his teeth treat", [assignee], assignee));
+      addLoad(loads, assignee, w);
+      addLoad(dayLoads, assignee, w);
+    }
+
     const reminders = [];
     const nonReminders = [];
-
-    // Combine tasks + fixed, then push reminder slugs to end
     tasks.concat(fixedTasks).forEach(t => {
       const slug = String(t?.id || "").split("::")[1] || "";
       if (isReminderSlug(slug)) reminders.push(t);
@@ -368,13 +347,12 @@ const seed = hashSeed("weeklyPlan::" + seedStr + "::" + saltStr);
     days[dayKey] = nonReminders.concat(reminders);
   });
 
-  // Meta is optional, but helpful for debugging.
   const meta = {
-  rebalanceSalt: saltStr,
-  loads,
-  targets: WEEKLY_TARGETS,
-  weights
-};
+    rebalanceSalt: saltStr,
+    loads,
+    targets: WEEKLY_TARGETS,
+    weights
+  };
 
   return { weekSeed: seedStr, days, meta };
 }
