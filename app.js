@@ -136,9 +136,9 @@ const FIXED_WEEKLY_CADENCE = {
       counters: "Dad",
       dining:   "Mom",
       mop:      "Mom",
-      dust:     "Dad",
+      dust:     "Ethan",
       cabinets: "Ethan",
-      dogPoop:  "Mom"
+      dogPoop:  "Ethan"
     },
     walk: "Mom",
     fynnTreat: "Dad"
@@ -156,7 +156,7 @@ const FIXED_WEEKLY_CADENCE = {
       mop:      "Mom",
       dust:     "Dad",
       cabinets: "Mom",
-      dogPoop:  "Dad"
+      dogPoop:  "Celo"
     },
     walk: "Dad",
     fynnTreat: "Ethan"
@@ -170,7 +170,7 @@ const FIXED_WEEKLY_CADENCE = {
     },
     solo: {
       counters: "Mom",
-      dining:   "Dad",
+      dining:   "Ethan",
       mop:      "Mom",
       dust:     "Ethan",
       cabinets: "Dad",
@@ -190,7 +190,7 @@ const FIXED_WEEKLY_CADENCE = {
       counters: "Ethan",
       dining:   "Dad",
       mop:      "Mom",
-      dust:     "Dad",
+      dust:     "Mom",
       cabinets: "Ethan",
       dogPoop:  "Dad"
     },
@@ -206,11 +206,11 @@ const FIXED_WEEKLY_CADENCE = {
     },
     solo: {
       counters: "Mom",
-      dining:   "Ethan",
+      dining:   "Celo",
       mop:      "Dad",
-      dust:     "Mom",
+      dust:     "Celo",
       cabinets: "Dad",
-      dogPoop:  "Mom"
+      dogPoop:  "Dad"
     },
     walk: "Mom",
     fynnTreat: "Ethan"
@@ -225,9 +225,9 @@ const FIXED_WEEKLY_CADENCE = {
     solo: {
       counters: "Ethan",
       dining:   "Mom",
-      mop:      "Dad",
+      mop:      "Celo",
       dust:     "Mom",
-      cabinets: "Dad",
+      cabinets: "Celo",
       dogPoop:  "Dad"
     },
     walk: "Dad",
