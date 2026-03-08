@@ -119,6 +119,140 @@ const FIXED_SOLO_CHORES = [
   { slug: "brushHarvey", text: "Brush Harvey", person: "Ethan", when: "fri" }
 ];
 
+// Fixed weekly cadence for DAILY chores.
+// This is intentionally stable week-to-week:
+// - balanced against the current weight system
+// - true two-person assignments for pair chores
+// - avoids 3+ day repetition patterns
+const FIXED_WEEKLY_CADENCE = {
+  lunes: {
+    pair: {
+      vacuum:   ["Ethan", "Celo"],
+      dishes:   ["Dad", "Mom"],
+      trash:    ["Dad", "Ethan"],
+      feedDogs: ["Mom", "Celo"]
+    },
+    solo: {
+      counters: "Dad",
+      dining:   "Mom",
+      mop:      "Mom",
+      dust:     "Dad",
+      cabinets: "Ethan",
+      dogPoop:  "Mom"
+    },
+    walk: "Mom",
+    fynnTreat: "Dad"
+  },
+  martes: {
+    pair: {
+      vacuum:   ["Dad", "Mom"],
+      dishes:   ["Ethan", "Celo"],
+      trash:    ["Dad", "Celo"],
+      feedDogs: ["Mom", "Ethan"]
+    },
+    solo: {
+      counters: "Dad",
+      dining:   "Ethan",
+      mop:      "Mom",
+      dust:     "Dad",
+      cabinets: "Mom",
+      dogPoop:  "Dad"
+    },
+    walk: "Dad",
+    fynnTreat: "Ethan"
+  },
+  miercoles: {
+    pair: {
+      vacuum:   ["Dad", "Ethan"],
+      dishes:   ["Mom", "Celo"],
+      trash:    ["Dad", "Mom"],
+      feedDogs: ["Ethan", "Celo"]
+    },
+    solo: {
+      counters: "Mom",
+      dining:   "Dad",
+      mop:      "Mom",
+      dust:     "Ethan",
+      cabinets: "Dad",
+      dogPoop:  "Ethan"
+    },
+    walk: "Mom",
+    fynnTreat: "Dad"
+  },
+  jueves: {
+    pair: {
+      vacuum:   ["Mom", "Celo"],
+      dishes:   ["Dad", "Ethan"],
+      trash:    ["Mom", "Ethan"],
+      feedDogs: ["Dad", "Celo"]
+    },
+    solo: {
+      counters: "Ethan",
+      dining:   "Dad",
+      mop:      "Mom",
+      dust:     "Dad",
+      cabinets: "Ethan",
+      dogPoop:  "Dad"
+    },
+    walk: "Dad",
+    fynnTreat: "Celo"
+  },
+  viernes: {
+    pair: {
+      vacuum:   ["Dad", "Mom"],
+      dishes:   ["Dad", "Ethan"],
+      trash:    ["Mom", "Celo"],
+      feedDogs: ["Mom", "Ethan"]
+    },
+    solo: {
+      counters: "Mom",
+      dining:   "Ethan",
+      mop:      "Dad",
+      dust:     "Mom",
+      cabinets: "Dad",
+      dogPoop:  "Mom"
+    },
+    walk: "Mom",
+    fynnTreat: "Ethan"
+  },
+  sabado: {
+    pair: {
+      vacuum:   ["Mom", "Ethan"],
+      dishes:   ["Dad", "Celo"],
+      trash:    ["Dad", "Mom"],
+      feedDogs: ["Ethan", "Celo"]
+    },
+    solo: {
+      counters: "Ethan",
+      dining:   "Mom",
+      mop:      "Dad",
+      dust:     "Mom",
+      cabinets: "Dad",
+      dogPoop:  "Dad"
+    },
+    walk: "Dad",
+    fynnTreat: "Ethan"
+  },
+  domingo: {
+    pair: {
+      vacuum:   ["Dad", "Mom"],
+      dishes:   ["Ethan", "Celo"],
+      trash:    ["Dad", "Ethan"],
+      feedDogs: ["Mom", "Celo"]
+    },
+    solo: {
+      counters: "Dad",
+      dining:   "Mom",
+      mop:      "Ethan",
+      dust:     "Celo",
+      cabinets: "Ethan",
+      dogPoop:  "Dad"
+    },
+    walk: "Mom",
+    fynnTreat: "Ethan"
+  }
+};
+
 function isWeekday(dayKey){
   return dayKey !== "sabado" && dayKey !== "domingo";
 }
@@ -306,79 +440,52 @@ function pickBestPairAssignees(loads, dayLoads, weight, rand, allowedPeople){
 function generateBalancedWeeklyPlan(weekSeed, salt){
   const seedStr = weekSeed || weekSeedString();
   const saltStr = (salt !== undefined && salt !== null) ? String(salt) : "";
-  const seed = hashSeed("weeklyPlan::" + seedStr + "::" + saltStr);
-
   const weights = defaultChoreWeights();
-  const loads = initLoads();
   const days = {};
 
-  DAYS.forEach((dayKey, dayIdx) => {
-    const dayRand = seededRandFactory(seed + 10000 + (dayIdx * 97));
-    const dayLoads = initDayLoads();
+  DAYS.forEach(dayKey => {
+    const cadence = FIXED_WEEKLY_CADENCE[dayKey] || { pair:{}, solo:{}, walk:"", fynnTreat:"" };
     const tasks = [];
-    const fixedTasks = [];
 
-    // Fixed member-exclusive chores first so their load is respected before rotating chores are assigned.
+    // Pair chores: true two-person assignments from the fixed cadence
+    ROTATING_PAIR_CHORES.forEach(c => {
+      const pair = cadence.pair && Array.isArray(cadence.pair[c.slug]) ? cadence.pair[c.slug].slice(0, 2) : [];
+      const a = pair[0];
+      const b = pair[1];
+      if (!PEOPLE.includes(a) || !PEOPLE.includes(b) || a === b) return;
+
+      // Primary = second assignee for a stable accountability marker
+      tasks.push(makeTask(dayKey, c.slug, c.text, [a, b], b));
+    });
+
+    // Solo chores from the fixed cadence
+    ROTATING_SOLO_CHORES.forEach(c => {
+      const assignee = cadence.solo ? cadence.solo[c.slug] : "";
+      if (!PEOPLE.includes(assignee)) return;
+      tasks.push(makeTask(dayKey, c.slug, c.text, [assignee], assignee));
+    });
+
+    // Walk from cadence (kept explicit so the whole week is fixed)
+    if (PEOPLE.includes(cadence.walk)) {
+      tasks.push(makeTask(dayKey, "walk", "Walk with Celo", [cadence.walk], cadence.walk));
+    }
+
+    // Fynn treat from cadence
+    if (PEOPLE.includes(cadence.fynnTreat)) {
+      tasks.push(makeTask(dayKey, "fynnTreat", "Give Fynn his teeth treat", [cadence.fynnTreat], cadence.fynnTreat));
+    }
+
+    // Fixed member-exclusive chores
     FIXED_SOLO_CHORES.forEach(c => {
       if (!PEOPLE.includes(c.person)) return;
       if (!shouldIncludeFixedChoreOnDay(c, dayKey)) return;
-
-      fixedTasks.push(makeTask(dayKey, c.slug, c.text, [c.person], c.person));
-
-      const w = weights[c.slug] ?? 0;
-      addLoad(loads, c.person, w);
-      addLoad(dayLoads, c.person, w);
+      tasks.push(makeTask(dayKey, c.slug, c.text, [c.person], c.person));
     });
 
-    // True two-person chores: assign TWO distinct people and split the load.
-    ROTATING_PAIR_CHORES.forEach(c => {
-      const w = weights[c.slug] ?? 0;
-      const pair = pickBestPairAssignees(loads, dayLoads, w, dayRand);
-      const a = pair[0];
-      const b = pair[1];
-      const split = (Number(w) || 0) / 2;
-
-      // Primary = the person currently further below their weekly midpoint.
-      const aGap = targetMid(a) - (loads[a] || 0);
-      const bGap = targetMid(b) - (loads[b] || 0);
-      const primary = (bGap > aGap) ? b : a;
-
-      tasks.push(makeTask(dayKey, c.slug, c.text, [a, b], primary));
-      addLoad(loads, a, split);
-      addLoad(loads, b, split);
-      addLoad(dayLoads, a, split);
-      addLoad(dayLoads, b, split);
-    });
-
-    ROTATING_SOLO_CHORES.forEach(c => {
-      const w = weights[c.slug] ?? 0;
-      const assignee = pickBestSoloAssignee(loads, dayLoads, w, dayRand);
-      tasks.push(makeTask(dayKey, c.slug, c.text, [assignee], assignee));
-      addLoad(loads, assignee, w);
-      addLoad(dayLoads, assignee, w);
-    });
-
-    // Walk stays on the existing deterministic Mom/Dad alternating rule.
-    try{
-      const wt = buildWalkTask(dayKey);
-      tasks.push(wt);
-      const w = weights.walk ?? 0;
-      addLoad(loads, wt.primary, w);
-      addLoad(dayLoads, wt.primary, w);
-    } catch {}
-
-    // Fynn treat rotates by balance too.
-    {
-      const w = weights.fynnTreat ?? 0;
-      const assignee = pickBestSoloAssignee(loads, dayLoads, w, dayRand);
-      tasks.push(makeTask(dayKey, "fynnTreat", "Give Fynn his teeth treat", [assignee], assignee));
-      addLoad(loads, assignee, w);
-      addLoad(dayLoads, assignee, w);
-    }
-
+    // Keep only the two reminder chores at the bottom
     const reminders = [];
     const nonReminders = [];
-    tasks.concat(fixedTasks).forEach(t => {
+    tasks.forEach(t => {
       const slug = String(t?.id || "").split("::")[1] || "";
       if (isReminderSlug(slug)) reminders.push(t);
       else nonReminders.push(t);
@@ -387,14 +494,17 @@ function generateBalancedWeeklyPlan(weekSeed, salt){
     days[dayKey] = nonReminders.concat(reminders);
   });
 
-  const meta = {
+  const plan = { weekSeed: seedStr, days };
+  const totals = computePlanMemberTotals(plan);
+
+  plan.meta = {
     rebalanceSalt: saltStr,
-    loads,
+    loads: totals,
     targets: WEEKLY_TARGETS,
     weights
   };
 
-  return { weekSeed: seedStr, days, meta };
+  return plan;
 }
 
 function hashSeed(str){
