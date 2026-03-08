@@ -2396,20 +2396,28 @@ function renderAdmin(){
   `;
 
   const grid = document.getElementById("adminGrid");
+  if (!grid) {
+    console.error("Admin render failed: #adminGrid not found");
+    return;
+  }
   grid.innerHTML = "";
 
-  // --- NEW: Theme lock state and sync ---
-  const tsAtRender = loadThemeState();
-  const colorsLocked = tsAtRender.themeId !== "paperClean";
+  // Theme system may not always be initialized. Guard against missing helpers/constants.
+  const safeThemeState = (typeof loadThemeState === "function")
+    ? (loadThemeState() || { themeId: "paperClean", mode: "dark" })
+    : { themeId: "paperClean", mode: "dark" };
 
-  // If locked, force the preset colors to be the source of truth
-  if (colorsLocked && THEME_MEMBER_COLORS[tsAtRender.themeId]) {
-    const preset = THEME_MEMBER_COLORS[tsAtRender.themeId];
+  const themePresets = (typeof THEME_MEMBER_COLORS !== "undefined" && THEME_MEMBER_COLORS)
+    ? THEME_MEMBER_COLORS
+    : null;
+
+  const colorsLocked = !!(safeThemeState && safeThemeState.themeId && safeThemeState.themeId !== "paperClean");
+
+  // If a preset theme is active and presets exist, keep member colors synced.
+  if (colorsLocked && themePresets && themePresets[safeThemeState.themeId]) {
+    const preset = themePresets[safeThemeState.themeId];
     saveMemberColors({ ...preset });
   }
-
-  // Theme picker wiring
-  const ts = loadThemeState();
 
   PEOPLE.forEach(person => {
     const row = document.createElement("div");
@@ -2434,7 +2442,7 @@ function renderAdmin(){
     const picker = document.createElement("input");
     picker.type = "color";
     picker.className = "colorInput";
-    picker.value = colors[person] || "#ffffff";
+    picker.value = (colors && colors[person]) ? colors[person] : "#ffffff";
     picker.disabled = colorsLocked;
     picker.title = colorsLocked ? "Locked by theme" : "Edit member color";
     picker.style.opacity = colorsLocked ? "0.55" : "1";
