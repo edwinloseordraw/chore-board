@@ -274,6 +274,35 @@ function pickBestSoloAssignee(loads, dayLoads, weight, rand, allowedPeople){
   return best || pool[0] || PEOPLE[0];
 }
 
+function pickBestPairAssignees(loads, dayLoads, weight, rand, allowedPeople){
+  const pool = Array.isArray(allowedPeople) && allowedPeople.length ? allowedPeople.slice() : PEOPLE.slice();
+  const pairWeight = (Number(weight) || 0) / 2;
+
+  let bestPair = null;
+  let bestScore = Infinity;
+
+  for (let i = 0; i < pool.length; i++){
+    for (let j = i + 1; j < pool.length; j++){
+      const a = pool[i];
+      const b = pool[j];
+      const sc = scoreAfterAssign(loads, dayLoads, a, pairWeight) + scoreAfterAssign(loads, dayLoads, b, pairWeight);
+
+      if (sc < bestScore){
+        bestScore = sc;
+        bestPair = [a, b];
+      } else if (sc === bestScore && rand && rand() < 0.5){
+        bestPair = [a, b];
+      }
+    }
+  }
+
+  if (bestPair) return bestPair;
+
+  const a = pool[0] || PEOPLE[0];
+  const b = pool.find(p => p !== a) || PEOPLE.find(p => p !== a) || a;
+  return [a, b];
+}
+
 function generateBalancedWeeklyPlan(weekSeed, salt){
   const seedStr = weekSeed || weekSeedString();
   const saltStr = (salt !== undefined && salt !== null) ? String(salt) : "";
@@ -301,13 +330,24 @@ function generateBalancedWeeklyPlan(weekSeed, salt){
       addLoad(dayLoads, c.person, w);
     });
 
-    // Core daily chores (solo-assigned in this build)
+    // True two-person chores: assign TWO distinct people and split the load.
     ROTATING_PAIR_CHORES.forEach(c => {
       const w = weights[c.slug] ?? 0;
-      const assignee = pickBestSoloAssignee(loads, dayLoads, w, dayRand);
-      tasks.push(makeTask(dayKey, c.slug, c.text, [assignee], assignee));
-      addLoad(loads, assignee, w);
-      addLoad(dayLoads, assignee, w);
+      const pair = pickBestPairAssignees(loads, dayLoads, w, dayRand);
+      const a = pair[0];
+      const b = pair[1];
+      const split = (Number(w) || 0) / 2;
+
+      // Primary = the person currently further below their weekly midpoint.
+      const aGap = targetMid(a) - (loads[a] || 0);
+      const bGap = targetMid(b) - (loads[b] || 0);
+      const primary = (bGap > aGap) ? b : a;
+
+      tasks.push(makeTask(dayKey, c.slug, c.text, [a, b], primary));
+      addLoad(loads, a, split);
+      addLoad(loads, b, split);
+      addLoad(dayLoads, a, split);
+      addLoad(dayLoads, b, split);
     });
 
     ROTATING_SOLO_CHORES.forEach(c => {
@@ -757,10 +797,20 @@ function computePlanMemberTotals(plan){
       if (!t || typeof t !== "object") return;
       const id = String(t.id || "");
       const slug = id.includes("::") ? id.split("::")[1] : "";
-      const person = String(t.primary || "");
+      const w = Number(weights[slug] ?? 0) || 0;
+      const assignees = Array.isArray(t.assignees) ? t.assignees.filter(p => PEOPLE.includes(p)) : [];
+
+      if (assignees.length === 2){
+        const split = w / 2;
+        assignees.forEach(person => {
+          totals[person] = (totals[person] || 0) + split;
+        });
+        return;
+      }
+
+      const person = String(t.primary || assignees[0] || "");
       if (!PEOPLE.includes(person)) return;
-      const w = (weights[slug] ?? 0);
-      totals[person] = (totals[person] || 0) + (Number(w) || 0);
+      totals[person] = (totals[person] || 0) + w;
     });
   });
 
@@ -774,16 +824,20 @@ function countPlanChanges(oldPlan, newPlan){
     const a = (oldPlan && oldPlan.days && oldPlan.days[dayKey]) ? oldPlan.days[dayKey] : [];
     const b = (newPlan && newPlan.days && newPlan.days[dayKey]) ? newPlan.days[dayKey] : [];
 
-    // Map by slug -> primary assignee
+    // Map by slug -> normalized assignee signature
     const mapA = new Map(a.map(t => {
       const id = String((t && t.id) || "");
       const slug = id.includes("::") ? id.split("::")[1] : id;
-      return [slug, String((t && t.primary) || "")];
+      const assignees = Array.isArray(t && t.assignees) ? t.assignees.slice().sort().join("|") : "";
+      const primary = String((t && t.primary) || "");
+      return [slug, `${assignees}::${primary}`];
     }));
     const mapB = new Map(b.map(t => {
       const id = String((t && t.id) || "");
       const slug = id.includes("::") ? id.split("::")[1] : id;
-      return [slug, String((t && t.primary) || "")];
+      const assignees = Array.isArray(t && t.assignees) ? t.assignees.slice().sort().join("|") : "";
+      const primary = String((t && t.primary) || "");
+      return [slug, `${assignees}::${primary}`];
     }));
 
     const slugs = new Set([...mapA.keys(), ...mapB.keys()]);
