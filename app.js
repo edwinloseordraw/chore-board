@@ -1972,6 +1972,9 @@ function renderDay(dayKey){
   dayState[dayKey] = dayState[dayKey] || { checks:{}, notes:"" };
 
   const dayDate = formatMMDDYYYY(dateForDayKey(dayKey));
+  const currentNote = (dayState[dayKey] && typeof dayState[dayKey].notes === "string")
+    ? dayState[dayKey].notes.trim()
+    : "";
 
   app.innerHTML = `
     <section class="panel" aria-label="Day header">
@@ -1983,6 +1986,14 @@ function renderDay(dayKey){
         </div>
       </div>
     </section>
+
+    ${currentNote ? `
+      <section class="panel" aria-label="Day note">
+        <div style="font-weight:700; margin-bottom:6px;">${dayKey} note</div>
+        <div class="hint" style="margin-top:0;">Added from Dashboard/Admin</div>
+        <div style="margin-top:8px; font-size:18px; line-height:1.45;">${escapeHtml(currentNote)}</div>
+      </section>
+    ` : ""}
 
     <div class="columns" id="columns"></div>
 
