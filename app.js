@@ -2479,13 +2479,8 @@ function renderAdmin(){
     ? THEME_MEMBER_COLORS
     : null;
 
-  const colorsLocked = !!(safeThemeState && safeThemeState.themeId && safeThemeState.themeId !== "paperClean");
-
-  // If a preset theme is active and presets exist, keep member colors synced.
-  if (colorsLocked && themePresets && themePresets[safeThemeState.themeId]) {
-    const preset = themePresets[safeThemeState.themeId];
-    saveMemberColors({ ...preset });
-  }
+  // Member colors are always editable in this build.
+  const colorsLocked = false;
 
   PEOPLE.forEach(person => {
     const row = document.createElement("div");
@@ -2687,10 +2682,8 @@ function renderAdmin(){
   }
 
 document.getElementById("btnResetColors").onclick = () => {
-    const tsNow = loadThemeState();
-    if (tsNow.themeId !== "paperClean") return;
     if (!confirm("Reset member colors to defaults?")) return;
-    saveMemberColors(THEME_MEMBER_COLORS.paperClean);
+    saveMemberColors(defaultMemberColors());
     renderAdmin();
   };
 }
