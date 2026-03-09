@@ -15,6 +15,45 @@ window.__firebaseSyncSchedulePush = function(){ /* local-only */ };
 
 // Theme state is persisted locally.
 // NOTE: This file must only declare loadThemeState/saveThemeState ONCE.  
+
+/* ---- Theme Safety Fallback ----
+   Prevents crashes if the theme system fails to load before Admin renders.
+   If real theme definitions load later, they will override this stub.
+--------------------------------- */
+if (typeof THEMES === "undefined") {
+  var THEMES = {
+    paperClean: {
+      id: "paperClean",
+      name: "Paper Clean",
+      dark: {},
+      light: {}
+    }
+  };
+}
+
+if (typeof loadThemeState !== "function") {
+  function loadThemeState(){
+    try {
+      const s = JSON.parse(localStorage.getItem("themeState") || "{}");
+      return {
+        themeId: s.themeId || "paperClean",
+        mode: s.mode || "dark"
+      };
+    } catch(e){
+      return { themeId: "paperClean", mode: "dark" };
+    }
+  }
+}
+
+if (typeof saveThemeState !== "function") {
+  function saveThemeState(s){
+    try {
+      localStorage.setItem("themeState", JSON.stringify(s || { themeId:"paperClean", mode:"dark" }));
+    } catch(e){
+      console.warn("Theme state save failed", e);
+    }
+  }
+}
 /* =========================
    ROUTES + CONSTANTS
 ========================= */
