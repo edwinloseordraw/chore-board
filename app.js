@@ -3015,6 +3015,32 @@ function makeId(){
 }
 
 
+// Safety fallback: ensure THEMES exists so theme loader never crashes
+// (Prevents "ReferenceError: Can't find variable: THEMES" if theme presets are missing)
+if (typeof THEMES === "undefined") {
+  const THEMES = {
+    neonGlass: {
+      dark: {
+        "--panel": "#111",
+        "--ringTrack": "rgba(255,255,255,0.12)"
+      },
+      light: {
+        "--panel": "#ffffff",
+        "--ringTrack": "rgba(0,0,0,0.12)"
+      }
+    },
+    paperClean: {
+      dark: {
+        "--panel": "#111",
+        "--ringTrack": "rgba(255,255,255,0.12)"
+      },
+      light: {
+        "--panel": "#ffffff",
+        "--ringTrack": "rgba(0,0,0,0.12)"
+      }
+    }
+  };
+}
 /* =========================
    THEME STATE
 ========================= */
