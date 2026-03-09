@@ -929,8 +929,23 @@ function saveWeeklyPlanState(s){
   if (!s.meta || typeof s.meta !== "object") s.meta = {};
   jset("weeklyPlanState", s);
 }
+
 function clearWeeklyPlanState(){
   localStorage.removeItem("weeklyPlanState");
+}
+
+function resetDailyAndWeeklyChoreState(){
+  const daily = loadDailyState() || {};
+  Object.keys(daily).forEach(dayKey => {
+    daily[dayKey] = daily[dayKey] || {};
+    daily[dayKey].checks = {};
+  });
+  saveDailyState(daily);
+
+  const weekly = loadWeeklyState() || { checks:{}, assign:{} };
+  weekly.checks = {};
+  weekly.assign = {};
+  saveWeeklyState(weekly);
 }
 
 
@@ -1962,7 +1977,10 @@ function renderDay(dayKey){
     <section class="panel" aria-label="Day header">
       <div class="dayHeaderBar">
         <h2 class="dayTitle">${dayKey}</h2>
-        <div class="dayDate">${dayDate}</div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="dayDate">${dayDate}</div>
+          ${dayKey === "domingo" ? '<button class="danger" id="btnWeeklyDayReset" type="button">Reset</button>' : ''}
+        </div>
       </div>
     </section>
 
@@ -1984,6 +2002,17 @@ function renderDay(dayKey){
   renderDailyColumns(dayKey);
   renderWeekly();
   renderYesterday(dayKey);
+
+  if (dayKey === "domingo") {
+    const resetBtn = document.getElementById("btnWeeklyDayReset");
+    if (resetBtn) {
+      resetBtn.onclick = () => {
+        if (!confirm("Reset daily checkboxes, weekly checkboxes, and weekly assignments?")) return;
+        resetDailyAndWeeklyChoreState();
+        renderDay(dayKey);
+      };
+    }
+  }
 }
 
 function renderDailyColumns(dayKey){
