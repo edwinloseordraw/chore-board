@@ -2002,10 +2002,24 @@ function renderDay(dayKey){
       <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
       <div class="weeklyGrid" id="weeklyGrid"></div>
     </section>
+
+    <section class="panel" aria-label="Bi-weekly chores">
+      <h3>Bi-weekly</h3>
+      <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
+      <div class="listGrid" id="biweeklyGrid"></div>
+    </section>
+
+    <section class="panel" aria-label="Monthly chores">
+      <h3>Monthly</h3>
+      <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
+      <div class="listGrid" id="monthlyGrid"></div>
+    </section>
   `;
 
   renderDailyColumns(dayKey);
   renderWeekly();
+  renderBiweeklyInline();
+  renderMonthlyInline();
 
   if (dayKey === "domingo") {
     const resetBtn = document.getElementById("btnWeeklyDayReset");
@@ -2017,6 +2031,134 @@ function renderDay(dayKey){
       };
     }
   }
+}
+
+function renderBiweeklyInline(){
+  const grid = document.getElementById("biweeklyGrid");
+  if (!grid) return;
+  grid.innerHTML = "";
+
+  const s = loadBiweeklyState();
+  s.checks = s.checks || {};
+  s.assign = s.assign || {};
+
+  BIWEEKLY_CHORES.forEach(item => {
+    const row = document.createElement("div");
+    row.className = "listItem";
+    if (!!s.checks[item]) row.classList.add("pressed");
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.id = `biweekly__${item}`;
+    cb.checked = !!s.checks[item];
+    cb.onchange = () => {
+      const cur = loadBiweeklyState();
+      cur.checks = cur.checks || {};
+      cur.checks[item] = cb.checked;
+      saveBiweeklyState(cur);
+      renderBiweeklyInline();
+    };
+
+    const lab = document.createElement("label");
+    lab.className = "name";
+    lab.htmlFor = cb.id;
+    lab.style.cursor = "pointer";
+    lab.textContent = item;
+
+    const sel = document.createElement("select");
+    sel.className = "assignSelect";
+
+    const blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = "Asignar…";
+    sel.appendChild(blank);
+
+    PEOPLE.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p;
+      opt.textContent = p;
+      sel.appendChild(opt);
+    });
+
+    sel.value = s.assign[item] || "";
+    sel.onchange = () => {
+      const cur = loadBiweeklyState();
+      cur.assign = cur.assign || {};
+      cur.assign[item] = sel.value;
+      saveBiweeklyState(cur);
+    };
+
+    row.appendChild(cb);
+    row.appendChild(lab);
+    row.appendChild(sel);
+    grid.appendChild(row);
+  });
+
+  saveBiweeklyState(s);
+}
+
+function renderMonthlyInline(){
+  const grid = document.getElementById("monthlyGrid");
+  if (!grid) return;
+  grid.innerHTML = "";
+
+  const s = loadMonthlyState();
+  s.checks = s.checks || {};
+  s.assign = s.assign || {};
+
+  MONTHLY_CHORES.forEach(item => {
+    const row = document.createElement("div");
+    row.className = "listItem";
+    if (!!s.checks[item]) row.classList.add("pressed");
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.id = `monthly__${item}`;
+    cb.checked = !!s.checks[item];
+    cb.onchange = () => {
+      const cur = loadMonthlyState();
+      cur.checks = cur.checks || {};
+      cur.checks[item] = cb.checked;
+      saveMonthlyState(cur);
+      renderMonthlyInline();
+    };
+
+    const lab = document.createElement("label");
+    lab.className = "name";
+    lab.htmlFor = cb.id;
+    lab.style.cursor = "pointer";
+    lab.textContent = item;
+
+    const sel = document.createElement("select");
+    sel.className = "assignSelect";
+
+    const blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = "Asignar…";
+    sel.appendChild(blank);
+
+    PEOPLE.forEach(p => {
+      const opt = document.createElement("option");
+      opt.value = p;
+      opt.textContent = p;
+      sel.appendChild(opt);
+    });
+
+    sel.value = s.assign[item] || "";
+    sel.onchange = () => {
+      const cur = loadMonthlyState();
+      cur.assign = cur.assign || {};
+      cur.assign[item] = sel.value;
+      saveMonthlyState(cur);
+    };
+
+    row.appendChild(cb);
+    row.appendChild(lab);
+    row.appendChild(sel);
+    grid.appendChild(row);
+  });
+
+  saveMonthlyState(s);
 }
 
 function renderDailyColumns(dayKey){
