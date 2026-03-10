@@ -2002,17 +2002,10 @@ function renderDay(dayKey){
       <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
       <div class="weeklyGrid" id="weeklyGrid"></div>
     </section>
-
-    <section class="panel" aria-label="Validation chores">
-      <h3 id="validationTitle">Validation chores</h3>
-      <div class="hint">Shows who had what assigned yesterday. Completion does not matter here.</div>
-      <div class="yesterdayGrid" id="validationGrid"></div>
-    </section>
   `;
 
   renderDailyColumns(dayKey);
   renderWeekly();
-  renderYesterday(dayKey);
 
   if (dayKey === "domingo") {
     const resetBtn = document.getElementById("btnWeeklyDayReset");
