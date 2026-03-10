@@ -3083,7 +3083,7 @@ function makeId(){
 // Safety fallback: ensure THEMES exists so theme loader never crashes
 // (Prevents "ReferenceError: Can't find variable: THEMES" if theme presets are missing)
 if (typeof THEMES === "undefined") {
-  const THEMES = {
+  var THEMES = {
     neonGlass: {
       dark: {
         "--panel": "#111",
