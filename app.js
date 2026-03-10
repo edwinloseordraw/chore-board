@@ -2012,18 +2012,6 @@ function renderDay(dayKey){
       <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
       <div class="listGrid" id="monthlyGrid"></div>
     </section>
-
-    <section class="panel" aria-label="Bi-weekly chores">
-      <h3 style="font-size:22px; letter-spacing:0.5px;">Bi-weekly</h3>
-      <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
-      <div class="listGrid" id="biweeklyGrid"></div>
-    </section>
-
-    <section class="panel" aria-label="Monthly chores">
-      <h3 style="font-size:22px; letter-spacing:0.5px;">Monthly</h3>
-      <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
-      <div class="listGrid" id="monthlyGrid"></div>
-    </section>
   `;
 
   renderDailyColumns(dayKey);
