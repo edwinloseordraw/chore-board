@@ -1987,15 +1987,13 @@ function renderDay(dayKey){
   app.innerHTML = `
     <section class="panel" aria-label="Day header">
       <div class="dayHeaderBar">
-        <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
-          <h2 class="dayTitle" style="margin:0;">${dayKey}</h2>
-          ${pickupReminder ? `<div class="hint" style="margin:0; font-size:14px;">${pickupReminder}</div>` : ""}
-        </div>
+        <h2 class="dayTitle" style="margin:0;">${dayKey}</h2>
         <div style="display:flex; align-items:center; gap:10px;">
           <div class="dayDate">${dayDate}</div>
           ${dayKey === "domingo" ? '<button class="danger" id="btnWeeklyDayReset" type="button">Reset</button>' : ''}
         </div>
       </div>
+      ${pickupReminder ? `<div style="margin-top:8px; font-size:15px; font-weight:600; opacity:0.92;">${pickupReminder}</div>` : ""}
     </section>
 
     ${currentNote ? `
