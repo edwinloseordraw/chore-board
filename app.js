@@ -1,6 +1,5 @@
 console.log("[ChoreBoard] app.js loaded");
 window.__CHOREBOARD_LOADED__ = true;
-window.__firebaseSyncSchedulePush = function(){ /* local-only */ };
 /* LOCAL-ONLY BUILD
    - Firebase/Firestore removed
    - State stored locally (localStorage / existing photo storage)
@@ -295,9 +294,6 @@ const FIXED_WEEKLY_CADENCE = {
   }
 };
 
-function isWeekday(dayKey){
-  return dayKey !== "sabado" && dayKey !== "domingo";
-}
 
 // Deterministic per-week seed (Monday of the current week) so it stays stable.
 
@@ -324,11 +320,6 @@ const WEEKLY_TARGETS = {
   Celo:  { min: 8, max:12 }
 };
 
-function targetMid(person){
-  const t = WEEKLY_TARGETS[person];
-  if (!t) return 0;
-  return (t.min + t.max) / 2;
-}
 
 // Rebased weights so the FULL WEEK lands near the target system.
 // Approximate weekly total with fixed chores included: ~67 points.
@@ -360,9 +351,6 @@ function defaultChoreWeights(){
   };
 }
 
-function isExclusiveFixedChoreSlug(slug){
-  return slug === "prepBackpack" || slug === "appleWatch" || slug === "read20" || slug === "brushHarvey";
-}
 
 function isReminderSlug(slug){
   return slug === "prepBackpack" || slug === "appleWatch";
@@ -382,102 +370,11 @@ function shouldIncludeFixedChoreOnDay(fixed, dayKey){
   return false;
 }
 
-function initLoads(){
-  const loads = {};
-  PEOPLE.forEach(p => loads[p] = 0);
-  return loads;
-}
 
-function initDayLoads(){
-  const loads = {};
-  PEOPLE.forEach(p => loads[p] = 0);
-  return loads;
-}
 
-function addLoad(loads, person, amount){
-  if (!loads || loads[person] === undefined) return;
-  loads[person] += Number(amount) || 0;
-}
 
-function scoreAfterAssign(loads, dayLoads, person, add){
-  const t = WEEKLY_TARGETS[person];
-  if (!t) return 1e9;
 
-  const weight = Number(add) || 0;
-  const nextWeek = (loads[person] || 0) + weight;
-  const nextDay = (dayLoads[person] || 0) + weight;
 
-  const weeklyMid = targetMid(person);
-  const dailyMid = weeklyMid / 7;
-
-  const overMax = Math.max(0, nextWeek - t.max);
-  const weekDist = Math.abs(nextWeek - weeklyMid);
-
-  // Soft daily cap helps prevent one person from getting stacked on the same day.
-  const dailySoftCap = dailyMid + 0.75;
-  const dailyOver = Math.max(0, nextDay - dailySoftCap);
-  const dailyDist = Math.abs(nextDay - dailyMid);
-
-  // Reward people who are still below their target midpoint.
-  const remainingCapacity = Math.max(0, weeklyMid - nextWeek);
-
-  return (
-    (overMax * 100) +
-    (dailyOver * 30) +
-    (weekDist * 5) +
-    (dailyDist * 4) +
-    (nextDay * 2) -
-    (remainingCapacity * 2)
-  );
-}
-
-function pickBestSoloAssignee(loads, dayLoads, weight, rand, allowedPeople){
-  const pool = Array.isArray(allowedPeople) && allowedPeople.length ? allowedPeople.slice() : PEOPLE.slice();
-
-  let best = null;
-  let bestScore = Infinity;
-
-  pool.forEach(p => {
-    const sc = scoreAfterAssign(loads, dayLoads, p, weight);
-    if (sc < bestScore){
-      bestScore = sc;
-      best = p;
-    } else if (sc === bestScore && rand && rand() < 0.5){
-      best = p;
-    }
-  });
-
-  return best || pool[0] || PEOPLE[0];
-}
-
-function pickBestPairAssignees(loads, dayLoads, weight, rand, allowedPeople){
-  const pool = Array.isArray(allowedPeople) && allowedPeople.length ? allowedPeople.slice() : PEOPLE.slice();
-  const pairWeight = (Number(weight) || 0) / 2;
-
-  let bestPair = null;
-  let bestScore = Infinity;
-
-  for (let i = 0; i < pool.length; i++){
-    for (let j = i + 1; j < pool.length; j++){
-      const a = pool[i];
-      const b = pool[j];
-      const sc = scoreAfterAssign(loads, dayLoads, a, pairWeight) + scoreAfterAssign(loads, dayLoads, b, pairWeight);
-
-      if (sc < bestScore){
-        bestScore = sc;
-        bestPair = [a, b];
-      } else if (sc === bestScore && rand && rand() < 0.5){
-        bestPair = [a, b];
-      }
-    }
-  }
-
-  if (bestPair) return bestPair;
-
-  const a = pool[0] || PEOPLE[0];
-  const b = pool.find(p => p !== a) || PEOPLE.find(p => p !== a) || a;
-  return [a, b];
-}
 
 function generateBalancedWeeklyPlan(weekSeed, salt){
   const seedStr = weekSeed || weekSeedString();
