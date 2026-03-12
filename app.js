@@ -1978,11 +1978,19 @@ function renderDay(dayKey){
   const currentNote = (dayState[dayKey] && typeof dayState[dayKey].notes === "string")
     ? dayState[dayKey].notes.trim()
     : "";
+  const pickupReminder = dayKey === "lunes"
+    ? "Trash and recycling pick up tomorrow."
+    : dayKey === "jueves"
+      ? "Trash pick up tomorrow."
+      : "";
 
   app.innerHTML = `
     <section class="panel" aria-label="Day header">
       <div class="dayHeaderBar">
-        <h2 class="dayTitle">${dayKey}</h2>
+        <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+          <h2 class="dayTitle" style="margin:0;">${dayKey}</h2>
+          ${pickupReminder ? `<div class="hint" style="margin:0; font-size:14px;">${pickupReminder}</div>` : ""}
+        </div>
         <div style="display:flex; align-items:center; gap:10px;">
           <div class="dayDate">${dayDate}</div>
           ${dayKey === "domingo" ? '<button class="danger" id="btnWeeklyDayReset" type="button">Reset</button>' : ''}
