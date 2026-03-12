@@ -154,8 +154,11 @@ const FIXED_SOLO_CHORES = [
   { slug: "prepBackpack", text: "Reminder: Prep backpack for tomorrow", person: "Celo", when: "weekdays" },
   { slug: "appleWatch",   text: "Reminder: Where's your Apple Watch?",  person: "Celo", when: "weekdays" },
   { slug: "read20", text: "Read for 20 min", person: "Celo", when: "monfri" },
+
   { slug: "brushHarvey", text: "Brush Harvey", person: "Dad", when: "monwed" },
-  { slug: "brushHarvey", text: "Brush Harvey", person: "Ethan", when: "fri" }
+  { slug: "brushHarvey", text: "Brush Harvey", person: "Ethan", when: "fri" },
+
+  { slug: "checkAgenda", text: "Reminder: Check and sign Celo's agenda and folders", person: "Dad", when: "weekdays" }
 ];
 
 // Fixed weekly cadence for DAILY chores.
