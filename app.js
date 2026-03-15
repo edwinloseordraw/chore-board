@@ -888,6 +888,7 @@ function buildPlanSummary(oldPlan, newPlan){
   return { totals, inRange, changed };
 }
 
+
 function buildCurrentWeekAudit(){
   const plan = ensureWeeklyPlanForCurrentWeek();
   const totals = computePlanMemberTotals(plan);
@@ -903,6 +904,71 @@ function buildCurrentWeekAudit(){
 
   const allInRange = rows.every(r => r.inRange);
   return { plan, rows, allInRange };
+}
+
+function buildSuggestedAdjustments(){
+  const audit = buildCurrentWeekAudit();
+  const plan = audit.plan;
+  const deltas = {};
+
+  audit.rows.forEach(r => {
+    deltas[r.person] = r.delta;
+  });
+
+  const overloaded = audit.rows
+    .filter(r => r.delta > 0)
+    .sort((a, b) => b.delta - a.delta);
+
+  const underloaded = audit.rows
+    .filter(r => r.delta < 0)
+    .sort((a, b) => a.delta - b.delta);
+
+  const suggestions = [];
+  const used = new Set();
+
+  if (!plan || !plan.days) {
+    return { audit, suggestions };
+  }
+
+  for (const over of overloaded){
+    for (const under of underloaded){
+      if (over.person === under.person) continue;
+
+      for (const dayKey of DAYS){
+        const items = Array.isArray(plan.days[dayKey]) ? plan.days[dayKey] : [];
+
+        for (const task of items){
+          const slug = String((task.id || "")).split("::")[1] || "";
+          const assignees = Array.isArray(task.assignees) ? task.assignees : [];
+
+          if (used.has(task.id)) continue;
+          if (FIXED_SOLO_CHORES.some(x => x.slug === slug)) continue;
+          if (ROTATING_PAIR_CHORES.some(x => x.slug === slug)) continue;
+          if (assignees.length !== 1) continue;
+          if (task.primary !== over.person) continue;
+          if (!PEOPLE.includes(under.person)) continue;
+
+          suggestions.push({
+            dayKey,
+            slug,
+            text: task.text,
+            from: over.person,
+            to: under.person,
+            fromDelta: over.delta,
+            toDelta: under.delta
+          });
+
+          used.add(task.id);
+          if (suggestions.length >= 8) {
+            return { audit, suggestions };
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  return { audit, suggestions };
 }
 
 function buildCurrentWeekRepetitionAudit(){
@@ -2432,6 +2498,12 @@ function renderAdmin(){
 
       <div style="height:14px;"></div>
 
+      <h3 style="margin:0;">Suggested Adjustments</h3>
+      <div class="hint" style="margin-top:4px;">Suggested solo-chore moves based on current load deltas. These do not apply automatically.</div>
+      <div class="panel" style="margin-top:10px; padding:12px;" id="suggestedAdjustmentsBox"></div>
+
+      <div style="height:14px;"></div>
+
       <h3 style="margin:0;">Daily Notes (pre-write for the week)</h3>
       <div class="hint" style="margin-top:4px;">Enter notes ahead of time. These are the same day notes you can still edit on the Dashboard when that day arrives.</div>
       <div class="adminNotesGrid" id="adminNotesGrid"></div>
@@ -2525,6 +2597,30 @@ function renderAdmin(){
     } catch (e) {
       console.error("Weekly audit render failed:", e);
       auditBox.innerHTML = `<div style="opacity:.85;">Unable to compute weekly audit.</div>`;
+    }
+  }
+
+  const suggestionsBox = document.getElementById("suggestedAdjustmentsBox");
+  if (suggestionsBox) {
+    try {
+      const result = buildSuggestedAdjustments();
+      if (!result.suggestions.length) {
+        suggestionsBox.innerHTML = `<div style="padding:6px 0;">✅ No obvious solo-chore adjustment suggestions right now.</div>`;
+      } else {
+        suggestionsBox.innerHTML = result.suggestions.map(item => `
+          <div style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.08);">
+            Move <strong>${escapeHtml(item.text)}</strong> on <strong>${escapeHtml(item.dayKey)}</strong>
+            from <strong>${escapeHtml(item.from)}</strong> to <strong>${escapeHtml(item.to)}</strong>
+            <div style="font-size:12px; opacity:.8; margin-top:4px;">
+              ${escapeHtml(item.from)} delta ${item.fromDelta > 0 ? "+" : ""}${item.fromDelta} ·
+              ${escapeHtml(item.to)} delta ${item.toDelta > 0 ? "+" : ""}${item.toDelta}
+            </div>
+          </div>
+        `).join("");
+      }
+    } catch (e) {
+      console.error("Suggested adjustments render failed:", e);
+      suggestionsBox.innerHTML = `<div style="opacity:.85;">Unable to compute suggested adjustments.</div>`;
     }
   }
 
