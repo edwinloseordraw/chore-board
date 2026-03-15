@@ -295,9 +295,6 @@ const FIXED_WEEKLY_CADENCE = {
   }
 };
 
-function isWeekday(dayKey){
-  return dayKey !== "sabado" && dayKey !== "domingo";
-}
 
 // Deterministic per-week seed (Monday of the current week) so it stays stable.
 
@@ -324,11 +321,6 @@ const WEEKLY_TARGETS = {
   Celo:  { min: 8, max:12 }
 };
 
-function targetMid(person){
-  const t = WEEKLY_TARGETS[person];
-  if (!t) return 0;
-  return (t.min + t.max) / 2;
-}
 
 // Rebased weights so the FULL WEEK lands near the target system.
 // Approximate weekly total with fixed chores included: ~67 points.
@@ -360,9 +352,6 @@ function defaultChoreWeights(){
   };
 }
 
-function isExclusiveFixedChoreSlug(slug){
-  return slug === "prepBackpack" || slug === "appleWatch" || slug === "read20" || slug === "brushHarvey";
-}
 
 function isReminderSlug(slug){
   return slug === "prepBackpack" || slug === "appleWatch";
@@ -382,102 +371,11 @@ function shouldIncludeFixedChoreOnDay(fixed, dayKey){
   return false;
 }
 
-function initLoads(){
-  const loads = {};
-  PEOPLE.forEach(p => loads[p] = 0);
-  return loads;
-}
 
-function initDayLoads(){
-  const loads = {};
-  PEOPLE.forEach(p => loads[p] = 0);
-  return loads;
-}
 
-function addLoad(loads, person, amount){
-  if (!loads || loads[person] === undefined) return;
-  loads[person] += Number(amount) || 0;
-}
 
-function scoreAfterAssign(loads, dayLoads, person, add){
-  const t = WEEKLY_TARGETS[person];
-  if (!t) return 1e9;
 
-  const weight = Number(add) || 0;
-  const nextWeek = (loads[person] || 0) + weight;
-  const nextDay = (dayLoads[person] || 0) + weight;
 
-  const weeklyMid = targetMid(person);
-  const dailyMid = weeklyMid / 7;
-
-  const overMax = Math.max(0, nextWeek - t.max);
-  const weekDist = Math.abs(nextWeek - weeklyMid);
-
-  // Soft daily cap helps prevent one person from getting stacked on the same day.
-  const dailySoftCap = dailyMid + 0.75;
-  const dailyOver = Math.max(0, nextDay - dailySoftCap);
-  const dailyDist = Math.abs(nextDay - dailyMid);
-
-  // Reward people who are still below their target midpoint.
-  const remainingCapacity = Math.max(0, weeklyMid - nextWeek);
-
-  return (
-    (overMax * 100) +
-    (dailyOver * 30) +
-    (weekDist * 5) +
-    (dailyDist * 4) +
-    (nextDay * 2) -
-    (remainingCapacity * 2)
-  );
-}
-
-function pickBestSoloAssignee(loads, dayLoads, weight, rand, allowedPeople){
-  const pool = Array.isArray(allowedPeople) && allowedPeople.length ? allowedPeople.slice() : PEOPLE.slice();
-
-  let best = null;
-  let bestScore = Infinity;
-
-  pool.forEach(p => {
-    const sc = scoreAfterAssign(loads, dayLoads, p, weight);
-    if (sc < bestScore){
-      bestScore = sc;
-      best = p;
-    } else if (sc === bestScore && rand && rand() < 0.5){
-      best = p;
-    }
-  });
-
-  return best || pool[0] || PEOPLE[0];
-}
-
-function pickBestPairAssignees(loads, dayLoads, weight, rand, allowedPeople){
-  const pool = Array.isArray(allowedPeople) && allowedPeople.length ? allowedPeople.slice() : PEOPLE.slice();
-  const pairWeight = (Number(weight) || 0) / 2;
-
-  let bestPair = null;
-  let bestScore = Infinity;
-
-  for (let i = 0; i < pool.length; i++){
-    for (let j = i + 1; j < pool.length; j++){
-      const a = pool[i];
-      const b = pool[j];
-      const sc = scoreAfterAssign(loads, dayLoads, a, pairWeight) + scoreAfterAssign(loads, dayLoads, b, pairWeight);
-
-      if (sc < bestScore){
-        bestScore = sc;
-        bestPair = [a, b];
-      } else if (sc === bestScore && rand && rand() < 0.5){
-        bestPair = [a, b];
-      }
-    }
-  }
-
-  if (bestPair) return bestPair;
-
-  const a = pool[0] || PEOPLE[0];
-  const b = pool.find(p => p !== a) || PEOPLE.find(p => p !== a) || a;
-  return [a, b];
-}
 
 function generateBalancedWeeklyPlan(weekSeed, salt){
   const seedStr = weekSeed || weekSeedString();
@@ -985,83 +883,6 @@ function showRebuildPreviewModal(summary, newPlan){
 }
 
 
-/* =========================
-   FIRESTORE SYNC (cross-device)
-   - localStorage remains the cache
-   - Firestore is the shared source of truth
-   - pull-first, then allow pushes
-========================= */
-
-// Keys we want synced across devices
-window.SYNC_KEYS = new Set([
-  "dailyState",
-  "weeklyState",
-  "biweeklyState",
-  "monthlyState",
-  "maintState",
-  "dashState",
-  "groceriesState",
-  "memberColors",
-  "memberPhotos",
-  "themeState"
-]);
-
-// Sync runtime state (kept global so both scripts can see it)
-window.__FS_SYNC = window.__FS_SYNC || {
-  ready: false,
-  applyingRemote: false,
-  lastRemoteUpdatedAt: 0,
-  lastLocalUpdatedAt: 0
-};
-
-function __getLocalItemParsed(key, fallback){
-  try{ return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
-  catch{ return fallback; }
-}
-
-function __buildLocalSyncBlob(){
-  return {
-    dailyState: __getLocalItemParsed("dailyState", {}),
-    weeklyState: __getLocalItemParsed("weeklyState", { checks:{}, assign:{} }),
-    biweeklyState: __getLocalItemParsed("biweeklyState", { checks:{}, assign:{} }),
-    monthlyState: __getLocalItemParsed("monthlyState", { checks:{}, assign:{} }),
-    maintState: __getLocalItemParsed("maintState", { entries:[] }),
-    dashState: __getLocalItemParsed("dashState", {
-      dashboardNotes: "",
-      viewerDay: "",
-      viewerReadOnly: false,
-      ringFilters: { daily:"All", weekly:"All", biweekly:"All", monthly:"All" }
-    }),
-    groceriesState: __getLocalItemParsed("groceriesState", { items:[] }),
-    memberColors: __getLocalItemParsed("memberColors", defaultMemberColors()),
-    memberPhotos: __getLocalItemParsed("memberPhotos", defaultMemberPhotos()),
-    themeState: __getLocalItemParsed("themeState", { themeId:"neonGlass", mode:"dark" }),
-    updatedAt: Date.now()
-  };
-}
-
-function __applyRemoteSyncBlob(remote){
-  if (!remote || typeof remote !== "object") return;
-
-  // Guard: never let a blank/empty remote wipe local by accident.
-  // If remote has no updatedAt and no known keys, ignore it.
-  const hasKnownKey = Array.from(window.SYNC_KEYS).some(k => Object.prototype.hasOwnProperty.call(remote, k));
-  if (!hasKnownKey) return;
-
-  window.__FS_SYNC.applyingRemote = true;
-  try{
-    Array.from(window.SYNC_KEYS).forEach(k => {
-      if (Object.prototype.hasOwnProperty.call(remote, k)){
-        localStorage.setItem(k, JSON.stringify(remote[k]));
-      }
-    });
-  } finally {
-    window.__FS_SYNC.applyingRemote = false;
-  }
-
-  // After applying remote state, refresh UI safely
-  try{ renderApp(); } catch {}
-}
 
 // Member colors (Admin page)
 function defaultMemberColors(){
