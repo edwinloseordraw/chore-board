@@ -490,10 +490,13 @@ function ensureWeeklyPlanForCurrentWeek(){
   const curSeed = weekSeedString();
   const s = loadWeeklyPlanState();
 
-  const valid = !!(s && typeof s === "object" && typeof s.weekSeed === "string" && s.weekSeed === curSeed && s.days && typeof s.days === "object");
+  const valid = !!(s && typeof s === "object" && typeof s.weekSeed === "string" && s.weekSeed === curSeed && validateWeeklyPlan(s));
   if (valid) return s;
 
   const plan = generateBalancedWeeklyPlan(curSeed);
+  if (!validateWeeklyPlan(plan)) {
+    throw new Error("Generated weekly plan failed validation.");
+  }
   saveWeeklyPlanState(plan);
   return plan;
 }
@@ -506,6 +509,51 @@ function cloneTasksArray(arr){
     if (o && o.assignees && Array.isArray(o.assignees)) o.assignees = o.assignees.slice();
     return o;
   });
+}
+
+function isValidTaskObject(task){
+  if (!task || typeof task !== "object") return false;
+  if (typeof task.id !== "string" || !task.id.includes("::")) return false;
+  if (typeof task.text !== "string" || !task.text.trim()) return false;
+  if (!Array.isArray(task.assignees) || !task.assignees.length) return false;
+
+  const assignees = task.assignees.filter(p => PEOPLE.includes(p));
+  if (assignees.length !== task.assignees.length) return false;
+
+  const slug = task.id.split("::")[1] || "";
+  const isPair = ROTATING_PAIR_CHORES.some(c => c.slug === slug);
+
+  if (isPair) {
+    if (assignees.length !== 2) return false;
+    if (assignees[0] === assignees[1]) return false;
+  } else {
+    if (assignees.length !== 1) return false;
+  }
+
+  if (!PEOPLE.includes(task.primary)) return false;
+  if (!assignees.includes(task.primary)) return false;
+
+  return true;
+}
+
+function validateWeeklyPlan(plan){
+  if (!plan || typeof plan !== "object") return false;
+  if (typeof plan.weekSeed !== "string" || !plan.weekSeed) return false;
+  if (!plan.days || typeof plan.days !== "object") return false;
+
+  for (const dayKey of DAYS){
+    const items = plan.days[dayKey];
+    if (!Array.isArray(items)) return false;
+
+    const seen = new Set();
+    for (const task of items){
+      if (!isValidTaskObject(task)) return false;
+      if (seen.has(task.id)) return false;
+      seen.add(task.id);
+    }
+  }
+
+  return true;
 }
 
 function buildDailyBaseTasks(dayKey){
@@ -523,6 +571,9 @@ function buildDailyBaseTasks(dayKey){
   try{
     const curSeed = weekSeedString();
     const plan2 = generateBalancedWeeklyPlan(curSeed);
+    if (!validateWeeklyPlan(plan2)) {
+      throw new Error("Fallback weekly plan failed validation.");
+    }
     saveWeeklyPlanState(plan2);
     const dayTasks2 = plan2 && plan2.days ? plan2.days[dayKey] : null;
     if (Array.isArray(dayTasks2)){
