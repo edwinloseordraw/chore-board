@@ -905,6 +905,81 @@ function buildCurrentWeekAudit(){
   return { plan, rows, allInRange };
 }
 
+function buildCurrentWeekRepetitionAudit(){
+  const plan = ensureWeeklyPlanForCurrentWeek();
+  const dayTasks = (plan && plan.days) ? plan.days : {};
+
+  const personDailySlugs = {};
+  PEOPLE.forEach(person => {
+    personDailySlugs[person] = DAYS.map(dayKey => {
+      const items = Array.isArray(dayTasks[dayKey]) ? dayTasks[dayKey] : [];
+      return items
+        .filter(t => Array.isArray(t.assignees) && t.assignees.includes(person))
+        .map(t => String((t.id || "")).split("::")[1] || "")
+        .filter(Boolean);
+    });
+  });
+
+  const streakFindings = [];
+
+  PEOPLE.forEach(person => {
+    const rows = personDailySlugs[person];
+    const counts = {};
+    rows.forEach(slugs => {
+      slugs.forEach(slug => {
+        counts[slug] = (counts[slug] || 0) + 1;
+      });
+    });
+
+    Object.keys(counts).forEach(slug => {
+      let run = 0;
+      let maxRun = 0;
+      rows.forEach(slugs => {
+        if (slugs.includes(slug)) {
+          run++;
+          if (run > maxRun) maxRun = run;
+        } else {
+          run = 0;
+        }
+      });
+
+      if (maxRun >= 3) {
+        streakFindings.push({ person, slug, maxRun, total: counts[slug] });
+      }
+    });
+  });
+
+  const pairCounts = {};
+  DAYS.forEach(dayKey => {
+    const items = Array.isArray(dayTasks[dayKey]) ? dayTasks[dayKey] : [];
+    items.forEach(t => {
+      const slug = String((t.id || "")).split("::")[1] || "";
+      if (!ROTATING_PAIR_CHORES.some(c => c.slug === slug)) return;
+      const assignees = Array.isArray(t.assignees) ? t.assignees.slice().sort() : [];
+      if (assignees.length !== 2) return;
+      const key = `${slug}::${assignees.join("+")}`;
+      pairCounts[key] = (pairCounts[key] || 0) + 1;
+    });
+  });
+
+  const repeatedPairs = Object.keys(pairCounts)
+    .filter(key => pairCounts[key] >= 3)
+    .map(key => ({ key, count: pairCounts[key] }));
+
+  return {
+    plan,
+    streakFindings,
+    repeatedPairs,
+    hasIssues: streakFindings.length > 0 || repeatedPairs.length > 0
+  };
+}
+
+function slugLabel(slug){
+  const all = [].concat(ROTATING_PAIR_CHORES, ROTATING_SOLO_CHORES);
+  const found = all.find(x => x.slug === slug);
+  return found ? found.text : slug;
+}
+
 function showRebuildPreviewModal(summary, newPlan){
   // Remove existing
   const old = document.getElementById("rebuildPreviewOverlay");
@@ -2351,6 +2426,10 @@ function renderAdmin(){
       <div class="hint" style="margin-top:4px;">Shows the current fixed weekly cadence load compared with each target range.</div>
       <div class="panel" style="margin-top:10px; padding:12px;" id="weeklyAuditBox"></div>
 
+      <h3 style="margin:0;">Weekly Repetition Audit</h3>
+      <div class="hint" style="margin-top:4px;">Flags chores or pairings that repeat too heavily across the week.</div>
+      <div class="panel" style="margin-top:10px; padding:12px;" id="weeklyRepetitionBox"></div>
+
       <div style="height:14px;"></div>
 
       <h3 style="margin:0;">Daily Notes (pre-write for the week)</h3>
@@ -2446,6 +2525,50 @@ function renderAdmin(){
     } catch (e) {
       console.error("Weekly audit render failed:", e);
       auditBox.innerHTML = `<div style="opacity:.85;">Unable to compute weekly audit.</div>`;
+    }
+  }
+
+  const repetitionBox = document.getElementById("weeklyRepetitionBox");
+  if (repetitionBox) {
+    try {
+      const rep = buildCurrentWeekRepetitionAudit();
+
+      const streakHtml = rep.streakFindings.length
+        ? rep.streakFindings.map(item => `
+            <div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);">
+              <strong>${escapeHtml(item.person)}</strong> has <strong>${escapeHtml(slugLabel(item.slug))}</strong>
+              ${item.total} times this week, including a longest streak of ${item.maxRun} days.
+            </div>
+          `).join("")
+        : `<div style="padding:6px 0;">✅ No 3+ day chore streaks detected.</div>`;
+
+      const pairHtml = rep.repeatedPairs.length
+        ? rep.repeatedPairs.map(item => {
+            const parts = item.key.split("::");
+            const slug = parts[0] || "";
+            const pair = parts[1] || "";
+            return `
+              <div style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);">
+                Pair chore <strong>${escapeHtml(slugLabel(slug))}</strong> repeats with <strong>${escapeHtml(pair.replace(/\+/g, " + "))}</strong>
+                ${item.count} times this week.
+              </div>
+            `;
+          }).join("")
+        : `<div style="padding:6px 0;">✅ No pair chores repeat 3+ times with the same pair.</div>`;
+
+      repetitionBox.innerHTML = `
+        <div style="font-weight:700; margin-bottom:8px;">Current week repetition check</div>
+        <div style="font-size:12px; opacity:.82; margin-bottom:10px;">Week seed: ${escapeHtml(rep.plan.weekSeed || "")}</div>
+        <div style="font-weight:700; margin-bottom:6px;">Chore streaks</div>
+        ${streakHtml}
+        <div style="height:10px;"></div>
+        <div style="font-weight:700; margin-bottom:6px;">Pair repetition</div>
+        ${pairHtml}
+        <div style="margin-top:10px; font-weight:700;">${rep.hasIssues ? "⚠️ Repetition tuning recommended" : "✅ Repetition looks healthy"}</div>
+      `;
+    } catch (e) {
+      console.error("Weekly repetition audit render failed:", e);
+      repetitionBox.innerHTML = `<div style="opacity:.85;">Unable to compute repetition audit.</div>`;
     }
   }
 
