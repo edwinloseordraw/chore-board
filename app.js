@@ -353,7 +353,7 @@ function defaultChoreWeights(){
 
 
 function isReminderSlug(slug){
-  return slug === "prepBackpack" || slug === "appleWatch" || slug === "checkAgenda";
+  return slug === "prepBackpack" || slug === "appleWatch";
 }
 
 function shouldIncludeFixedChoreOnDay(fixed, dayKey){
@@ -446,6 +446,37 @@ function generateBalancedWeeklyPlan(weekSeed, salt){
   return plan;
 }
 
+function hashSeed(str){
+  // small, deterministic hash (good enough for shuffling chores)
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function seededRandFactory(seed){
+  // mulberry32
+  let t = seed >>> 0;
+  return function(){
+    t += 0x6D2B79F5;
+    let x = t;
+    x = Math.imul(x ^ (x >>> 15), x | 1);
+    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seededShuffle(arr, seed){
+  const a = arr.slice();
+  const rand = seededRandFactory(seed);
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(rand() * (i + 1));
+    [a, a] = [a, a];
+  }
+  return a;
+}
 
 
 // =========================
@@ -527,6 +558,23 @@ function buildWalkTask(dayKey){
   return makeTask(dayKey, "walk", "Walk with Celo", [who], who);
 }
 
+// Two-person chores safeguard: keep exactly two distinct assignees.
+// No fixed pairing groups anymore.
+function normalizeTwoPersonTask(task){
+  if (!task || !Array.isArray(task.assignees)) return task;
+  if (task.assignees.length !== 2) return task;
+
+  const a = task.assignees;
+  const b = task.assignees;
+  if (a && b && a !== b) return task;
+
+  // Repair duplicates/nulls deterministically.
+  const seed = hashSeed("pairfix::" + (task.id || ""));
+  const pool = seededShuffle(PEOPLE, seed);
+  const fixedA = pool;
+  const fixedB = pool || pool;
+  return { ...task, assignees: [fixedA, fixedB], primary: fixedB };
+}
 
 function getTasksForDay(dayKey){
   // Build a rotating roster (stable per-week, varied per-day).
@@ -540,7 +588,8 @@ function getTasksForDay(dayKey){
 
   withoutWalk.push(buildWalkTask(dayKey));
 
-  return withoutWalk;
+  // Safeguard 2-person chores (must remain 2 distinct people).
+  return withoutWalk.map(t => normalizeTwoPersonTask(t));
 }
 const WEEKLY_CHORES = [
   "Sweep backyard",
