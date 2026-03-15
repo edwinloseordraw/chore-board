@@ -353,7 +353,7 @@ function defaultChoreWeights(){
 
 
 function isReminderSlug(slug){
-  return slug === "prepBackpack" || slug === "appleWatch";
+  return slug === "prepBackpack" || slug === "appleWatch" || slug === "checkAgenda";
 }
 
 function shouldIncludeFixedChoreOnDay(fixed, dayKey){
@@ -389,8 +389,8 @@ function generateBalancedWeeklyPlan(weekSeed, salt){
     // Pair chores: true two-person assignments from the fixed cadence
     ROTATING_PAIR_CHORES.forEach(c => {
       const pair = cadence.pair && Array.isArray(cadence.pair[c.slug]) ? cadence.pair[c.slug].slice(0, 2) : [];
-      const a = pair[0];
-      const b = pair[1];
+      const a = pair;
+      const b = pair;
       if (!PEOPLE.includes(a) || !PEOPLE.includes(b) || a === b) return;
 
       // Primary = second assignee for a stable accountability marker
@@ -425,7 +425,7 @@ function generateBalancedWeeklyPlan(weekSeed, salt){
     const reminders = [];
     const nonReminders = [];
     tasks.forEach(t => {
-      const slug = String(t?.id || "").split("::")[1] || "";
+      const slug = String(t?.id || "").split("::") || "";
       if (isReminderSlug(slug)) reminders.push(t);
       else nonReminders.push(t);
     });
@@ -582,13 +582,13 @@ const MONTHLY_CHORES = ["Clean baseboards",
 // Member avatars (Admin page) - stored as data URLs in localStorage
 function defaultMemberPhotos(){
   const o = {};
-  PEOPLE.forEach(p => o[p] = "");
+  PEOPLE.forEach(p => o = "");
   return o;
 }
 function loadMemberPhotos(){
   const d = defaultMemberPhotos();
   const s = jget("memberPhotos", d);
-  PEOPLE.forEach(p => { if (typeof s[p] !== "string") s[p] = ""; });
+  PEOPLE.forEach(p => { if (typeof s !== "string") s = ""; });
   return s;
 }
 function saveMemberPhotos(s){ jset("memberPhotos", s); }
@@ -649,7 +649,7 @@ function computePlanMemberTotals(plan){
     items.forEach(t => {
       if (!t || typeof t !== "object") return;
       const id = String(t.id || "");
-      const slug = id.includes("::") ? id.split("::")[1] : "";
+      const slug = id.includes("::") ? id.split("::") : "";
       const w = Number(weights[slug] ?? 0) || 0;
       const assignees = Array.isArray(t.assignees) ? t.assignees.filter(p => PEOPLE.includes(p)) : [];
 
@@ -661,7 +661,7 @@ function computePlanMemberTotals(plan){
         return;
       }
 
-      const person = String(t.primary || assignees[0] || "");
+      const person = String(t.primary || assignees || "");
       if (!PEOPLE.includes(person)) return;
       totals[person] = (totals[person] || 0) + w;
     });
@@ -680,14 +680,14 @@ function countPlanChanges(oldPlan, newPlan){
     // Map by slug -> normalized assignee signature
     const mapA = new Map(a.map(t => {
       const id = String((t && t.id) || "");
-      const slug = id.includes("::") ? id.split("::")[1] : id;
+      const slug = id.includes("::") ? id.split("::") : id;
       const assignees = Array.isArray(t && t.assignees) ? t.assignees.slice().sort().join("|") : "";
       const primary = String((t && t.primary) || "");
       return [slug, `${assignees}::${primary}`];
     }));
     const mapB = new Map(b.map(t => {
       const id = String((t && t.id) || "");
-      const slug = id.includes("::") ? id.split("::")[1] : id;
+      const slug = id.includes("::") ? id.split("::") : id;
       const assignees = Array.isArray(t && t.assignees) ? t.assignees.slice().sort().join("|") : "";
       const primary = String((t && t.primary) || "");
       return [slug, `${assignees}::${primary}`];
@@ -705,9 +705,9 @@ function buildPlanSummary(oldPlan, newPlan){
   const totals = computePlanMemberTotals(newPlan);
   const inRange = {};
   Object.keys(WEEKLY_TARGETS).forEach(p => {
-    const t = WEEKLY_TARGETS[p];
-    const v = totals[p] || 0;
-    inRange[p] = (v >= t.min && v <= t.max);
+    const t = WEEKLY_TARGETS;
+    const v = totals || 0;
+    inRange = (v >= t.min && v <= t.max);
   });
   const changed = countPlanChanges(oldPlan || {days:{}}, newPlan || {days:{}});
   return { totals, inRange, changed };
@@ -755,9 +755,9 @@ function showRebuildPreviewModal(summary, newPlan){
   sum.style.borderRadius = "12px";
 
   const rows = Object.keys(WEEKLY_TARGETS).map(p => {
-    const t = WEEKLY_TARGETS[p];
-    const v = summary.totals[p] || 0;
-    const ok = summary.inRange[p];
+    const t = WEEKLY_TARGETS;
+    const v = summary.totals || 0;
+    const ok = summary.inRange;
     return `<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;">
       <div style="font-weight:600;">${p}</div>
       <div>${v} pts <span style="opacity:.75;">(target ${t.min}-${t.max})</span> ${ok ? "✅" : "⚠️"}</div>
@@ -786,7 +786,7 @@ function showRebuildPreviewModal(summary, newPlan){
     const list = (newPlan.days && newPlan.days[dayKey]) ? newPlan.days[dayKey] : [];
     const items = list.map(t => {
       const id = String((t && t.id) || "");
-      const slug = id.includes("::") ? id.split("::")[1] : "";
+      const slug = id.includes("::") ? id.split("::") : "";
       const who = String((t && t.primary) || "");
       const label = (t && t.text) ? t.text : (slug || "");
       return `<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0;">
@@ -818,7 +818,7 @@ function showRebuildPreviewModal(summary, newPlan){
   btnApply.type = "button";
   btnApply.textContent = "Apply";
   btnApply.onclick = () => {
-    if (!confirm("Apply this rebuilt week plan? This will replace the current week’s DAILY chore assignments.")) return;
+    if (!confirm("Apply this rebuilt week plan? This will replace the current week's DAILY chore assignments.")) return;
     saveWeeklyPlanState(newPlan);
     overlay.remove();
     renderApp();
@@ -849,7 +849,7 @@ function loadMemberColors(){
   const d = defaultMemberColors();
   const s = jget("memberColors", d);
   // ensure all keys exist
-  PEOPLE.forEach(p => { if (!s[p]) s[p] = d[p] || "#ffffff"; });
+  PEOPLE.forEach(p => { if (!s) s = d || "#ffffff"; });
   return s;
 }
 function saveMemberColors(s){ jset("memberColors", s); }
@@ -893,7 +893,7 @@ function loadDashState(){
     const lines = [];
     const order = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
     order.forEach(k => {
-      const v = (typeof s.notesByDay[k] === "string") ? s.notesByDay[k].trim() : "";
+      const v = (typeof s.notesByDay === "string") ? s.notesByDay.trim() : "";
       if (v) lines.push(`${k}: ${v}`);
     });
     if (!s.dashboardNotes && lines.length){
@@ -914,9 +914,9 @@ function loadDashState(){
     s.ringFilters = { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
   }
   ["daily","weekly","biweekly","monthly"].forEach(k => {
-    if (!s.ringFilters[k] || typeof s.ringFilters[k] !== "string") s.ringFilters[k] = "All";
-    const v = s.ringFilters[k];
-    if (v !== "All" && !PEOPLE.includes(v)) s.ringFilters[k] = "All";
+    if (!s.ringFilters || typeof s.ringFilters !== "string") s.ringFilters = "All";
+    const v = s.ringFilters;
+    if (v !== "All" && !PEOPLE.includes(v)) s.ringFilters = "All";
   });
 
   return s;
@@ -1266,7 +1266,7 @@ window.addEventListener("hashchange", renderApp);
 
 function emptyContribution(){
   const byPerson = {};
-  PEOPLE.forEach(p => byPerson[p] = 0);
+  PEOPLE.forEach(p => byPerson = 0);
   return byPerson;
 }
 
@@ -1473,7 +1473,7 @@ function renderDashboard(){
   };
 
   // After rendering the dashboard, reset viewer mode back to normal defaults
-  // so the dashboard behaves as “today notes editable” next time unless explicitly invoked.
+  // so the dashboard behaves as "today notes editable" next time unless explicitly invoked.
   dash2.viewerDay = todayKey();
   dash2.viewerReadOnly = false;
   saveDashState(dash2);
@@ -2274,7 +2274,7 @@ function renderAdmin(){
     clear.textContent = "Clear";
 
     file.onchange = () => {
-      const f = file.files && file.files[0];
+      const f = file.files && file.files;
       if (!f) return;
 
       const reader = new FileReader();
@@ -2824,7 +2824,7 @@ function applyTheme(themeId, mode){
   const m = (mode === "light" || mode === "dark") ? mode : ts.mode;
 
   const theme = (THEMES && THEMES[tId]) ? THEMES[tId] : (THEMES && THEMES.neonGlass ? THEMES.neonGlass : null);
-  const vars = theme ? (theme[m] || theme.dark || {}) : {};
+  const vars = theme ? (theme || theme.dark || {}) : {};
 
   try{
     const root = document.documentElement;
@@ -2833,7 +2833,7 @@ function applyTheme(themeId, mode){
 
     // Apply CSS variables
     Object.keys(vars).forEach(k => {
-      try{ root.style.setProperty(k, String(vars[k])); } catch {}
+      try{ root.style.setProperty(k, String(vars)); } catch {}
     });
 
     // Persist state
