@@ -1,3 +1,4 @@
+
 console.log("[ChoreBoard] app.js loaded");
 window.__CHOREBOARD_LOADED__ = true;
 window.__firebaseSyncSchedulePush = function(){ /* local-only */ };
@@ -497,7 +498,7 @@ function generateBalancedWeeklyPlan(weekSeed, salt){
       if (!PEOPLE.includes(a) || !PEOPLE.includes(b) || a === b) return;
 
       // Primary = second assignee for a stable accountability marker
-      tasks.push(makeTask(dayKey, c.slug, c.text, [a, b], b));
+      tasks.push(tasks.push(makeTask(dayKey, c.slug, c.text, [a, b], b));
     });
 
     // Solo chores from the fixed cadence
@@ -2917,8 +2918,8 @@ function isoToday(){
   return `${y}-${m}-${day}`;
 }
 function makeId(){
-  // Prefer native UUID; fall back for older Safari just in casex
-  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  // Prefer native UUID; fall back for older Safari just in case
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
   return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
