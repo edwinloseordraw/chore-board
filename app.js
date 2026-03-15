@@ -724,6 +724,7 @@ function clearWeeklyPlanState(){
   localStorage.removeItem("weeklyPlanState");
 }
 
+
 function resetDailyAndWeeklyChoreState(){
   const daily = loadDailyState() || {};
   Object.keys(daily).forEach(dayKey => {
@@ -736,6 +737,49 @@ function resetDailyAndWeeklyChoreState(){
   weekly.checks = {};
   weekly.assign = {};
   saveWeeklyState(weekly);
+}
+
+function buildBackupPayload(){
+  return {
+    exportedAt: new Date().toISOString(),
+    version: 1,
+    data: {
+      dailyState: loadDailyState(),
+      weeklyState: loadWeeklyState(),
+      biweeklyState: loadBiweeklyState(),
+      monthlyState: loadMonthlyState(),
+      maintState: loadMaintState(),
+      dashState: loadDashState(),
+      groceriesState: loadGroceriesState(),
+      memberColors: loadMemberColors(),
+      memberPhotos: loadMemberPhotos(),
+      themeState: loadThemeState(),
+      weeklyPlanState: loadWeeklyPlanState()
+    }
+  };
+}
+
+function downloadBackupFile(payload){
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  const filename = `chore-board-backup-${yyyy}${mm}${dd}-${hh}${mi}.json`;
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 
@@ -2241,6 +2285,7 @@ function renderAdmin(){
           <div class="hint" style="margin:0;">Pick a theme + mode for the whole app, then (optionally) set member colors.</div>
         </div>
         <div class="right">
+          <button class="ghostBtn" id="btnExportBackup" type="button">Export Backup</button>
           <button class="danger" id="btnRebalanceWeek">Rebalance Week</button>
           <button class="danger" id="btnResetColors">Reset Colors</button>
         </div>
@@ -2458,7 +2503,19 @@ function renderAdmin(){
     saveDailyState(ds);
   }
 
-  // Disable reset button if locked
+  const exportBtn = document.getElementById("btnExportBackup");
+  if (exportBtn){
+    exportBtn.onclick = () => {
+      try{
+        const payload = buildBackupPayload();
+        downloadBackupFile(payload);
+      } catch (e){
+        console.error("Export backup failed:", e);
+        alert("Export backup failed. Check console for details.");
+      }
+    };
+  }
+
   // Rebalance Week (regenerates weeklyPlanState for the current week)
   const rebBtn = document.getElementById("btnRebalanceWeek");
   if (rebBtn){
