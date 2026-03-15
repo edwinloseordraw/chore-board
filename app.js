@@ -1,4 +1,3 @@
-
 console.log("[ChoreBoard] app.js loaded");
 window.__CHOREBOARD_LOADED__ = true;
 window.__firebaseSyncSchedulePush = function(){ /* local-only */ };
@@ -498,7 +497,7 @@ function generateBalancedWeeklyPlan(weekSeed, salt){
       if (!PEOPLE.includes(a) || !PEOPLE.includes(b) || a === b) return;
 
       // Primary = second assignee for a stable accountability marker
-      tasks.push(tasks.push(makeTask(dayKey, c.slug, c.text, [a, b], b));
+      tasks.push(makeTask(dayKey, c.slug, c.text, [a, b], b));
     });
 
     // Solo chores from the fixed cadence
@@ -986,6 +985,83 @@ function showRebuildPreviewModal(summary, newPlan){
 }
 
 
+/* =========================
+   FIRESTORE SYNC (cross-device)
+   - localStorage remains the cache
+   - Firestore is the shared source of truth
+   - pull-first, then allow pushes
+========================= */
+
+// Keys we want synced across devices
+window.SYNC_KEYS = new Set([
+  "dailyState",
+  "weeklyState",
+  "biweeklyState",
+  "monthlyState",
+  "maintState",
+  "dashState",
+  "groceriesState",
+  "memberColors",
+  "memberPhotos",
+  "themeState"
+]);
+
+// Sync runtime state (kept global so both scripts can see it)
+window.__FS_SYNC = window.__FS_SYNC || {
+  ready: false,
+  applyingRemote: false,
+  lastRemoteUpdatedAt: 0,
+  lastLocalUpdatedAt: 0
+};
+
+function __getLocalItemParsed(key, fallback){
+  try{ return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
+  catch{ return fallback; }
+}
+
+function __buildLocalSyncBlob(){
+  return {
+    dailyState: __getLocalItemParsed("dailyState", {}),
+    weeklyState: __getLocalItemParsed("weeklyState", { checks:{}, assign:{} }),
+    biweeklyState: __getLocalItemParsed("biweeklyState", { checks:{}, assign:{} }),
+    monthlyState: __getLocalItemParsed("monthlyState", { checks:{}, assign:{} }),
+    maintState: __getLocalItemParsed("maintState", { entries:[] }),
+    dashState: __getLocalItemParsed("dashState", {
+      dashboardNotes: "",
+      viewerDay: "",
+      viewerReadOnly: false,
+      ringFilters: { daily:"All", weekly:"All", biweekly:"All", monthly:"All" }
+    }),
+    groceriesState: __getLocalItemParsed("groceriesState", { items:[] }),
+    memberColors: __getLocalItemParsed("memberColors", defaultMemberColors()),
+    memberPhotos: __getLocalItemParsed("memberPhotos", defaultMemberPhotos()),
+    themeState: __getLocalItemParsed("themeState", { themeId:"neonGlass", mode:"dark" }),
+    updatedAt: Date.now()
+  };
+}
+
+function __applyRemoteSyncBlob(remote){
+  if (!remote || typeof remote !== "object") return;
+
+  // Guard: never let a blank/empty remote wipe local by accident.
+  // If remote has no updatedAt and no known keys, ignore it.
+  const hasKnownKey = Array.from(window.SYNC_KEYS).some(k => Object.prototype.hasOwnProperty.call(remote, k));
+  if (!hasKnownKey) return;
+
+  window.__FS_SYNC.applyingRemote = true;
+  try{
+    Array.from(window.SYNC_KEYS).forEach(k => {
+      if (Object.prototype.hasOwnProperty.call(remote, k)){
+        localStorage.setItem(k, JSON.stringify(remote[k]));
+      }
+    });
+  } finally {
+    window.__FS_SYNC.applyingRemote = false;
+  }
+
+  // After applying remote state, refresh UI safely
+  try{ renderApp(); } catch {}
+}
 
 // Member colors (Admin page)
 function defaultMemberColors(){
@@ -2918,8 +2994,8 @@ function isoToday(){
   return `${y}-${m}-${day}`;
 }
 function makeId(){
-  // Prefer native UUID; fall back for older Safari just in case
-  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  // Prefer native UUID; fall back for older Safari just in casex
+  if (crypto && crypto.randomUUID) return crypto.randomUUID();
   return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
