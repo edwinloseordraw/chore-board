@@ -383,17 +383,13 @@ function generateBalancedWeeklyPlan(weekSeed, salt){
   const weights = defaultChoreWeights();
   const days = {};
 
-  if (!validateFixedWeeklyCadence(FIXED_WEEKLY_CADENCE)) {
-    throw new Error("Fixed weekly cadence failed validation.");
-  }
-
   DAYS.forEach(dayKey => {
     const cadence = FIXED_WEEKLY_CADENCE[dayKey] || { pair:{}, solo:{}, walk:"", fynnTreat:"" };
     const tasks = [];
 
     // Pair chores: true two-person assignments from the fixed cadence
     ROTATING_PAIR_CHORES.forEach(c => {
-      const pair = cadence.pair[c.slug].slice(0, 2);
+      const pair = cadence.pair && Array.isArray(cadence.pair[c.slug]) ? cadence.pair[c.slug].slice(0, 2) : [];
       const a = pair[0];
       const b = pair[1];
       if (!PEOPLE.includes(a) || !PEOPLE.includes(b) || a === b) return;
@@ -404,7 +400,7 @@ function generateBalancedWeeklyPlan(weekSeed, salt){
 
     // Solo chores from the fixed cadence
     ROTATING_SOLO_CHORES.forEach(c => {
-      const assignee = cadence.solo[c.slug];
+      const assignee = cadence.solo ? cadence.solo[c.slug] : "";
       if (!PEOPLE.includes(assignee)) return;
       tasks.push(makeTask(dayKey, c.slug, c.text, [assignee], assignee));
     });
@@ -449,48 +445,6 @@ function generateBalancedWeeklyPlan(weekSeed, salt){
   };
 
   return plan;
-}
-
-function validateWeeklyPlan(plan){
-  if (!plan || typeof plan !== "object") return false;
-  if (!plan.days || typeof plan.days !== "object") return false;
-  for (const dayKey of DAYS){
-    if (!Array.isArray(plan.days[dayKey])) return false;
-  }
-  return true;
-}
-
-function validateFixedWeeklyCadence(cadence){
-  if (!cadence || typeof cadence !== "object") return false;
-
-  for (const dayKey of DAYS){
-    const day = cadence[dayKey];
-    if (!day || typeof day !== "object") return false;
-    if (!day.pair || typeof day.pair !== "object") return false;
-    if (!day.solo || typeof day.solo !== "object") return false;
-
-    // Validate pair chores
-    for (const c of ROTATING_PAIR_CHORES){
-      const pair = day.pair[c.slug];
-      if (!Array.isArray(pair) || pair.length !== 2) return false;
-      const a = pair[0];
-      const b = pair[1];
-      if (!PEOPLE.includes(a) || !PEOPLE.includes(b)) return false;
-      if (a === b) return false;
-    }
-
-    // Validate solo chores
-    for (const c of ROTATING_SOLO_CHORES){
-      const assignee = day.solo[c.slug];
-      if (!PEOPLE.includes(assignee)) return false;
-    }
-
-    // Validate explicit walk + treat
-    if (!PEOPLE.includes(day.walk)) return false;
-    if (!PEOPLE.includes(day.fynnTreat)) return false;
-  }
-
-  return true;
 }
 
 function hashSeed(str){
