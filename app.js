@@ -888,6 +888,23 @@ function buildPlanSummary(oldPlan, newPlan){
   return { totals, inRange, changed };
 }
 
+function buildCurrentWeekAudit(){
+  const plan = ensureWeeklyPlanForCurrentWeek();
+  const totals = computePlanMemberTotals(plan);
+
+  const rows = PEOPLE.map(person => {
+    const target = WEEKLY_TARGETS[person] || { min:0, max:0 };
+    const load = Number(totals[person] || 0);
+    const midpoint = (target.min + target.max) / 2;
+    const delta = Math.round((load - midpoint) * 100) / 100;
+    const inRange = load >= target.min && load <= target.max;
+    return { person, load, target, midpoint, delta, inRange };
+  });
+
+  const allInRange = rows.every(r => r.inRange);
+  return { plan, rows, allInRange };
+}
+
 function showRebuildPreviewModal(summary, newPlan){
   // Remove existing
   const old = document.getElementById("rebuildPreviewOverlay");
@@ -2330,6 +2347,12 @@ function renderAdmin(){
 
       <div style="height:10px;"></div>
 
+      <h3 style="margin:0;">Weekly Balance Audit</h3>
+      <div class="hint" style="margin-top:4px;">Shows the current fixed weekly cadence load compared with each target range.</div>
+      <div class="panel" style="margin-top:10px; padding:12px;" id="weeklyAuditBox"></div>
+
+      <div style="height:14px;"></div>
+
       <h3 style="margin:0;">Daily Notes (pre-write for the week)</h3>
       <div class="hint" style="margin-top:4px;">Enter notes ahead of time. These are the same day notes you can still edit on the Dashboard when that day arrives.</div>
       <div class="adminNotesGrid" id="adminNotesGrid"></div>
@@ -2395,6 +2418,36 @@ function renderAdmin(){
     row.appendChild(picker);
     grid.appendChild(row);
   });
+
+  const auditBox = document.getElementById("weeklyAuditBox");
+  if (auditBox) {
+    try {
+      const audit = buildCurrentWeekAudit();
+      const rowsHtml = audit.rows.map(r => {
+        const status = r.inRange ? "✅ In range" : "⚠️ Out of range";
+        const deltaPrefix = r.delta > 0 ? "+" : "";
+        return `
+          <div style="display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.08);">
+            <div style="font-weight:700;">${escapeHtml(r.person)}</div>
+            <div style="text-align:right;">
+              <div>${r.load} pts <span style="opacity:.75;">(target ${r.target.min}-${r.target.max})</span></div>
+              <div style="font-size:12px; opacity:.82;">${status} · delta vs midpoint ${deltaPrefix}${r.delta}</div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      auditBox.innerHTML = `
+        <div style="font-weight:700; margin-bottom:8px;">Current week</div>
+        <div style="font-size:12px; opacity:.82; margin-bottom:8px;">Week seed: ${escapeHtml(audit.plan.weekSeed || "")}</div>
+        ${rowsHtml}
+        <div style="margin-top:10px; font-weight:700;">${audit.allInRange ? "✅ Weekly cadence is inside all target ranges" : "⚠️ Weekly cadence needs tuning"}</div>
+      `;
+    } catch (e) {
+      console.error("Weekly audit render failed:", e);
+      auditBox.innerHTML = `<div style="opacity:.85;">Unable to compute weekly audit.</div>`;
+    }
+  }
 
   // --- Admin: member avatar uploads (stored locally) ---
   const photos = loadMemberPhotos();
