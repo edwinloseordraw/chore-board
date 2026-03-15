@@ -2994,8 +2994,8 @@ function isoToday(){
   return `${y}-${m}-${day}`;
 }
 function makeId(){
-  // Prefer native UUID; fall back for older Safari just in casex
-  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  // Prefer native UUID; fall back for older Safari just in case
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
   return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
