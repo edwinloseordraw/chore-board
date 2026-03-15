@@ -1,5 +1,6 @@
 console.log("[ChoreBoard] app.js loaded");
 window.__CHOREBOARD_LOADED__ = true;
+window.__firebaseSyncSchedulePush = function(){ /* local-only */ };
 /* LOCAL-ONLY BUILD
    - Firebase/Firestore removed
    - State stored locally (localStorage / existing photo storage)
@@ -294,6 +295,9 @@ const FIXED_WEEKLY_CADENCE = {
   }
 };
 
+function isWeekday(dayKey){
+  return dayKey !== "sabado" && dayKey !== "domingo";
+}
 
 // Deterministic per-week seed (Monday of the current week) so it stays stable.
 
@@ -320,6 +324,11 @@ const WEEKLY_TARGETS = {
   Celo:  { min: 8, max:12 }
 };
 
+function targetMid(person){
+  const t = WEEKLY_TARGETS[person];
+  if (!t) return 0;
+  return (t.min + t.max) / 2;
+}
 
 // Rebased weights so the FULL WEEK lands near the target system.
 // Approximate weekly total with fixed chores included: ~67 points.
@@ -351,9 +360,12 @@ function defaultChoreWeights(){
   };
 }
 
+function isExclusiveFixedChoreSlug(slug){
+  return slug === "prepBackpack" || slug === "appleWatch" || slug === "read20" || slug === "brushHarvey";
+}
 
 function isReminderSlug(slug){
-  return slug === "prepBackpack" || slug === "appleWatch" || slug === "checkAgenda";
+  return slug === "prepBackpack" || slug === "appleWatch";
 }
 
 function shouldIncludeFixedChoreOnDay(fixed, dayKey){
@@ -370,11 +382,102 @@ function shouldIncludeFixedChoreOnDay(fixed, dayKey){
   return false;
 }
 
+function initLoads(){
+  const loads = {};
+  PEOPLE.forEach(p => loads[p] = 0);
+  return loads;
+}
 
+function initDayLoads(){
+  const loads = {};
+  PEOPLE.forEach(p => loads[p] = 0);
+  return loads;
+}
 
+function addLoad(loads, person, amount){
+  if (!loads || loads[person] === undefined) return;
+  loads[person] += Number(amount) || 0;
+}
 
+function scoreAfterAssign(loads, dayLoads, person, add){
+  const t = WEEKLY_TARGETS[person];
+  if (!t) return 1e9;
 
+  const weight = Number(add) || 0;
+  const nextWeek = (loads[person] || 0) + weight;
+  const nextDay = (dayLoads[person] || 0) + weight;
 
+  const weeklyMid = targetMid(person);
+  const dailyMid = weeklyMid / 7;
+
+  const overMax = Math.max(0, nextWeek - t.max);
+  const weekDist = Math.abs(nextWeek - weeklyMid);
+
+  // Soft daily cap helps prevent one person from getting stacked on the same day.
+  const dailySoftCap = dailyMid + 0.75;
+  const dailyOver = Math.max(0, nextDay - dailySoftCap);
+  const dailyDist = Math.abs(nextDay - dailyMid);
+
+  // Reward people who are still below their target midpoint.
+  const remainingCapacity = Math.max(0, weeklyMid - nextWeek);
+
+  return (
+    (overMax * 100) +
+    (dailyOver * 30) +
+    (weekDist * 5) +
+    (dailyDist * 4) +
+    (nextDay * 2) -
+    (remainingCapacity * 2)
+  );
+}
+
+function pickBestSoloAssignee(loads, dayLoads, weight, rand, allowedPeople){
+  const pool = Array.isArray(allowedPeople) && allowedPeople.length ? allowedPeople.slice() : PEOPLE.slice();
+
+  let best = null;
+  let bestScore = Infinity;
+
+  pool.forEach(p => {
+    const sc = scoreAfterAssign(loads, dayLoads, p, weight);
+    if (sc < bestScore){
+      bestScore = sc;
+      best = p;
+    } else if (sc === bestScore && rand && rand() < 0.5){
+      best = p;
+    }
+  });
+
+  return best || pool[0] || PEOPLE[0];
+}
+
+function pickBestPairAssignees(loads, dayLoads, weight, rand, allowedPeople){
+  const pool = Array.isArray(allowedPeople) && allowedPeople.length ? allowedPeople.slice() : PEOPLE.slice();
+  const pairWeight = (Number(weight) || 0) / 2;
+
+  let bestPair = null;
+  let bestScore = Infinity;
+
+  for (let i = 0; i < pool.length; i++){
+    for (let j = i + 1; j < pool.length; j++){
+      const a = pool[i];
+      const b = pool[j];
+      const sc = scoreAfterAssign(loads, dayLoads, a, pairWeight) + scoreAfterAssign(loads, dayLoads, b, pairWeight);
+
+      if (sc < bestScore){
+        bestScore = sc;
+        bestPair = [a, b];
+      } else if (sc === bestScore && rand && rand() < 0.5){
+        bestPair = [a, b];
+      }
+    }
+  }
+
+  if (bestPair) return bestPair;
+
+  const a = pool[0] || PEOPLE[0];
+  const b = pool.find(p => p !== a) || PEOPLE.find(p => p !== a) || a;
+  return [a, b];
+}
 
 function generateBalancedWeeklyPlan(weekSeed, salt){
   const seedStr = weekSeed || weekSeedString();
@@ -389,8 +492,8 @@ function generateBalancedWeeklyPlan(weekSeed, salt){
     // Pair chores: true two-person assignments from the fixed cadence
     ROTATING_PAIR_CHORES.forEach(c => {
       const pair = cadence.pair && Array.isArray(cadence.pair[c.slug]) ? cadence.pair[c.slug].slice(0, 2) : [];
-      const a = pair;
-      const b = pair;
+      const a = pair[0];
+      const b = pair[1];
       if (!PEOPLE.includes(a) || !PEOPLE.includes(b) || a === b) return;
 
       // Primary = second assignee for a stable accountability marker
@@ -425,7 +528,7 @@ function generateBalancedWeeklyPlan(weekSeed, salt){
     const reminders = [];
     const nonReminders = [];
     tasks.forEach(t => {
-      const slug = String(t?.id || "").split("::") || "";
+      const slug = String(t?.id || "").split("::")[1] || "";
       if (isReminderSlug(slug)) reminders.push(t);
       else nonReminders.push(t);
     });
@@ -446,6 +549,37 @@ function generateBalancedWeeklyPlan(weekSeed, salt){
   return plan;
 }
 
+function hashSeed(str){
+  // small, deterministic hash (good enough for shuffling chores)
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function seededRandFactory(seed){
+  // mulberry32
+  let t = seed >>> 0;
+  return function(){
+    t += 0x6D2B79F5;
+    let x = t;
+    x = Math.imul(x ^ (x >>> 15), x | 1);
+    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seededShuffle(arr, seed){
+  const a = arr.slice();
+  const rand = seededRandFactory(seed);
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 
 // =========================
@@ -527,6 +661,23 @@ function buildWalkTask(dayKey){
   return makeTask(dayKey, "walk", "Walk with Celo", [who], who);
 }
 
+// Two-person chores safeguard: keep exactly two distinct assignees.
+// No fixed pairing groups anymore.
+function normalizeTwoPersonTask(task){
+  if (!task || !Array.isArray(task.assignees)) return task;
+  if (task.assignees.length !== 2) return task;
+
+  const a = task.assignees[0];
+  const b = task.assignees[1];
+  if (a && b && a !== b) return task;
+
+  // Repair duplicates/nulls deterministically.
+  const seed = hashSeed("pairfix::" + (task.id || ""));
+  const pool = seededShuffle(PEOPLE, seed);
+  const fixedA = pool[0];
+  const fixedB = pool[1] || pool[0];
+  return { ...task, assignees: [fixedA, fixedB], primary: fixedB };
+}
 
 function getTasksForDay(dayKey){
   // Build a rotating roster (stable per-week, varied per-day).
@@ -540,7 +691,8 @@ function getTasksForDay(dayKey){
 
   withoutWalk.push(buildWalkTask(dayKey));
 
-  return withoutWalk;
+  // Safeguard 2-person chores (must remain 2 distinct people).
+  return withoutWalk.map(t => normalizeTwoPersonTask(t));
 }
 const WEEKLY_CHORES = [
   "Sweep backyard",
@@ -582,13 +734,13 @@ const MONTHLY_CHORES = ["Clean baseboards",
 // Member avatars (Admin page) - stored as data URLs in localStorage
 function defaultMemberPhotos(){
   const o = {};
-  PEOPLE.forEach(p => o = "");
+  PEOPLE.forEach(p => o[p] = "");
   return o;
 }
 function loadMemberPhotos(){
   const d = defaultMemberPhotos();
   const s = jget("memberPhotos", d);
-  PEOPLE.forEach(p => { if (typeof s !== "string") s = ""; });
+  PEOPLE.forEach(p => { if (typeof s[p] !== "string") s[p] = ""; });
   return s;
 }
 function saveMemberPhotos(s){ jset("memberPhotos", s); }
@@ -649,7 +801,7 @@ function computePlanMemberTotals(plan){
     items.forEach(t => {
       if (!t || typeof t !== "object") return;
       const id = String(t.id || "");
-      const slug = id.includes("::") ? id.split("::") : "";
+      const slug = id.includes("::") ? id.split("::")[1] : "";
       const w = Number(weights[slug] ?? 0) || 0;
       const assignees = Array.isArray(t.assignees) ? t.assignees.filter(p => PEOPLE.includes(p)) : [];
 
@@ -661,7 +813,7 @@ function computePlanMemberTotals(plan){
         return;
       }
 
-      const person = String(t.primary || assignees || "");
+      const person = String(t.primary || assignees[0] || "");
       if (!PEOPLE.includes(person)) return;
       totals[person] = (totals[person] || 0) + w;
     });
@@ -680,14 +832,14 @@ function countPlanChanges(oldPlan, newPlan){
     // Map by slug -> normalized assignee signature
     const mapA = new Map(a.map(t => {
       const id = String((t && t.id) || "");
-      const slug = id.includes("::") ? id.split("::") : id;
+      const slug = id.includes("::") ? id.split("::")[1] : id;
       const assignees = Array.isArray(t && t.assignees) ? t.assignees.slice().sort().join("|") : "";
       const primary = String((t && t.primary) || "");
       return [slug, `${assignees}::${primary}`];
     }));
     const mapB = new Map(b.map(t => {
       const id = String((t && t.id) || "");
-      const slug = id.includes("::") ? id.split("::") : id;
+      const slug = id.includes("::") ? id.split("::")[1] : id;
       const assignees = Array.isArray(t && t.assignees) ? t.assignees.slice().sort().join("|") : "";
       const primary = String((t && t.primary) || "");
       return [slug, `${assignees}::${primary}`];
@@ -705,9 +857,9 @@ function buildPlanSummary(oldPlan, newPlan){
   const totals = computePlanMemberTotals(newPlan);
   const inRange = {};
   Object.keys(WEEKLY_TARGETS).forEach(p => {
-    const t = WEEKLY_TARGETS;
-    const v = totals || 0;
-    inRange = (v >= t.min && v <= t.max);
+    const t = WEEKLY_TARGETS[p];
+    const v = totals[p] || 0;
+    inRange[p] = (v >= t.min && v <= t.max);
   });
   const changed = countPlanChanges(oldPlan || {days:{}}, newPlan || {days:{}});
   return { totals, inRange, changed };
@@ -755,9 +907,9 @@ function showRebuildPreviewModal(summary, newPlan){
   sum.style.borderRadius = "12px";
 
   const rows = Object.keys(WEEKLY_TARGETS).map(p => {
-    const t = WEEKLY_TARGETS;
-    const v = summary.totals || 0;
-    const ok = summary.inRange;
+    const t = WEEKLY_TARGETS[p];
+    const v = summary.totals[p] || 0;
+    const ok = summary.inRange[p];
     return `<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;">
       <div style="font-weight:600;">${p}</div>
       <div>${v} pts <span style="opacity:.75;">(target ${t.min}-${t.max})</span> ${ok ? "✅" : "⚠️"}</div>
@@ -786,7 +938,7 @@ function showRebuildPreviewModal(summary, newPlan){
     const list = (newPlan.days && newPlan.days[dayKey]) ? newPlan.days[dayKey] : [];
     const items = list.map(t => {
       const id = String((t && t.id) || "");
-      const slug = id.includes("::") ? id.split("::") : "";
+      const slug = id.includes("::") ? id.split("::")[1] : "";
       const who = String((t && t.primary) || "");
       const label = (t && t.text) ? t.text : (slug || "");
       return `<div style="display:flex;justify-content:space-between;gap:10px;padding:2px 0;">
@@ -818,7 +970,7 @@ function showRebuildPreviewModal(summary, newPlan){
   btnApply.type = "button";
   btnApply.textContent = "Apply";
   btnApply.onclick = () => {
-    if (!confirm("Apply this rebuilt week plan? This will replace the current week's DAILY chore assignments.")) return;
+    if (!confirm("Apply this rebuilt week plan? This will replace the current week’s DAILY chore assignments.")) return;
     saveWeeklyPlanState(newPlan);
     overlay.remove();
     renderApp();
@@ -849,7 +1001,7 @@ function loadMemberColors(){
   const d = defaultMemberColors();
   const s = jget("memberColors", d);
   // ensure all keys exist
-  PEOPLE.forEach(p => { if (!s) s = d || "#ffffff"; });
+  PEOPLE.forEach(p => { if (!s[p]) s[p] = d[p] || "#ffffff"; });
   return s;
 }
 function saveMemberColors(s){ jset("memberColors", s); }
@@ -893,7 +1045,7 @@ function loadDashState(){
     const lines = [];
     const order = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
     order.forEach(k => {
-      const v = (typeof s.notesByDay === "string") ? s.notesByDay.trim() : "";
+      const v = (typeof s.notesByDay[k] === "string") ? s.notesByDay[k].trim() : "";
       if (v) lines.push(`${k}: ${v}`);
     });
     if (!s.dashboardNotes && lines.length){
@@ -914,9 +1066,9 @@ function loadDashState(){
     s.ringFilters = { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
   }
   ["daily","weekly","biweekly","monthly"].forEach(k => {
-    if (!s.ringFilters || typeof s.ringFilters !== "string") s.ringFilters = "All";
-    const v = s.ringFilters;
-    if (v !== "All" && !PEOPLE.includes(v)) s.ringFilters = "All";
+    if (!s.ringFilters[k] || typeof s.ringFilters[k] !== "string") s.ringFilters[k] = "All";
+    const v = s.ringFilters[k];
+    if (v !== "All" && !PEOPLE.includes(v)) s.ringFilters[k] = "All";
   });
 
   return s;
@@ -1266,7 +1418,7 @@ window.addEventListener("hashchange", renderApp);
 
 function emptyContribution(){
   const byPerson = {};
-  PEOPLE.forEach(p => byPerson = 0);
+  PEOPLE.forEach(p => byPerson[p] = 0);
   return byPerson;
 }
 
@@ -1473,7 +1625,7 @@ function renderDashboard(){
   };
 
   // After rendering the dashboard, reset viewer mode back to normal defaults
-  // so the dashboard behaves as "today notes editable" next time unless explicitly invoked.
+  // so the dashboard behaves as “today notes editable” next time unless explicitly invoked.
   dash2.viewerDay = todayKey();
   dash2.viewerReadOnly = false;
   saveDashState(dash2);
@@ -2274,7 +2426,7 @@ function renderAdmin(){
     clear.textContent = "Clear";
 
     file.onchange = () => {
-      const f = file.files && file.files;
+      const f = file.files && file.files[0];
       if (!f) return;
 
       const reader = new FileReader();
@@ -2824,7 +2976,7 @@ function applyTheme(themeId, mode){
   const m = (mode === "light" || mode === "dark") ? mode : ts.mode;
 
   const theme = (THEMES && THEMES[tId]) ? THEMES[tId] : (THEMES && THEMES.neonGlass ? THEMES.neonGlass : null);
-  const vars = theme ? (theme || theme.dark || {}) : {};
+  const vars = theme ? (theme[m] || theme.dark || {}) : {};
 
   try{
     const root = document.documentElement;
@@ -2833,7 +2985,7 @@ function applyTheme(themeId, mode){
 
     // Apply CSS variables
     Object.keys(vars).forEach(k => {
-      try{ root.style.setProperty(k, String(vars)); } catch {}
+      try{ root.style.setProperty(k, String(vars[k])); } catch {}
     });
 
     // Persist state
