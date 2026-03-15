@@ -782,6 +782,36 @@ function downloadBackupFile(payload){
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function restoreBackupPayload(payload){
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Backup file is not a valid object.");
+  }
+  if (!payload.data || typeof payload.data !== "object") {
+    throw new Error("Backup file is missing data.");
+  }
+
+  const data = payload.data;
+  const allowedKeys = [
+    "dailyState",
+    "weeklyState",
+    "biweeklyState",
+    "monthlyState",
+    "maintState",
+    "dashState",
+    "groceriesState",
+    "memberColors",
+    "memberPhotos",
+    "themeState",
+    "weeklyPlanState"
+  ];
+
+  allowedKeys.forEach(key => {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      localStorage.setItem(key, JSON.stringify(data[key]));
+    }
+  });
+}
+
 
 // ===== Rebuild Week Preview (required) =====
 function computePlanMemberTotals(plan){
@@ -2285,6 +2315,8 @@ function renderAdmin(){
           <div class="hint" style="margin:0;">Pick a theme + mode for the whole app, then (optionally) set member colors.</div>
         </div>
         <div class="right">
+          <input id="importBackupFile" type="file" accept="application/json,.json" style="display:none;" />
+          <button class="ghostBtn" id="btnImportBackup" type="button">Import Backup</button>
           <button class="ghostBtn" id="btnExportBackup" type="button">Export Backup</button>
           <button class="danger" id="btnRebalanceWeek">Rebalance Week</button>
           <button class="danger" id="btnResetColors">Reset Colors</button>
@@ -2501,6 +2533,32 @@ function renderAdmin(){
 
     // Ensure any missing day buckets are persisted
     saveDailyState(ds);
+  }
+
+  const importInput = document.getElementById("importBackupFile");
+  const importBtn = document.getElementById("btnImportBackup");
+  if (importBtn && importInput){
+    importBtn.onclick = () => {
+      importInput.value = "";
+      importInput.click();
+    };
+
+    importInput.onchange = async () => {
+      const file = importInput.files && importInput.files[0];
+      if (!file) return;
+      if (!confirm("Import this backup and replace current local app state?")) return;
+
+      try{
+        const text = await file.text();
+        const payload = JSON.parse(text);
+        restoreBackupPayload(payload);
+        alert("Backup imported successfully. The app will now reload.");
+        location.reload();
+      } catch (e){
+        console.error("Import backup failed:", e);
+        alert("Import backup failed. Check console for details.");
+      }
+    };
   }
 
   const exportBtn = document.getElementById("btnExportBackup");
