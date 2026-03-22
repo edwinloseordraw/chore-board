@@ -354,7 +354,7 @@ function defaultChoreWeights(){
 
 
 function isReminderSlug(slug){
-  return slug === "prepBackpack" || slug === "appleWatch";
+  return slug === "prepBackpack" || slug === "appleWatch" || slug === "checkAgenda";
 }
 
 function shouldIncludeFixedChoreOnDay(fixed, dayKey){
