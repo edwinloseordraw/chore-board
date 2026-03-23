@@ -2174,7 +2174,22 @@ function renderDailyColumns(dayKey){
     header.appendChild(h);
     col.appendChild(header);
 
-    const tasks = getTasksForDay(dayKey).filter(t => (t.assignees || []).includes(person));
+    let tasks = getTasksForDay(dayKey).filter(t => (t.assignees || []).includes(person));
+
+// Force reminder to bottom for Dad
+if (person === "Dad") {
+  tasks = tasks.sort((a, b) => {
+    const aSlug = String((a.id || "")).split("::")[1] || "";
+    const bSlug = String((b.id || "")).split("::")[1] || "";
+
+    const aIsReminder = aSlug === "checkAgenda";
+    const bIsReminder = bSlug === "checkAgenda";
+
+    if (aIsReminder && !bIsReminder) return 1;
+    if (!aIsReminder && bIsReminder) return -1;
+    return 0;
+  });
+}
 
     tasks.forEach(t => {
       const row = document.createElement("div");
