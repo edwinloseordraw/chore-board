@@ -3,10 +3,6 @@ import { todayKey, prevDayKey, nextDayKey } from './utils.js';
 import { loadDailyState, loadDashState, saveDashState } from './state.js';
 import { renderGroceriesPanel } from './render-groceries.js';
 
-/* =========================
-   ROUTING
-========================= */
-
 export function route(){
   const raw = (location.hash || "")
     .replace(/^#/, "")
@@ -19,20 +15,12 @@ export function goto(path){
   location.hash = "#/" + path;
 }
 
-/* =========================
-   WEEKLY RESET
-========================= */
-
 export function weeklyReset(){
   if (!confirm("Weekly Reset: clear daily checkboxes + daily notes + weekly chores assignments/checks?")) return;
   localStorage.removeItem("dailyState");
   localStorage.removeItem("weeklyState");
   window.__renderApp();
 }
-
-/* =========================
-   TOP NAV + SIDE PANEL
-========================= */
 
 export function renderTopNav(){
   const nav = document.getElementById("topNav");
@@ -139,7 +127,6 @@ export function renderTopNav(){
   }
 
   const sideNav = panel.querySelector("#sideNav");
-  if (sideNav) sideNav.innerHTML = "";
 
   function closeSide(){
     overlay.classList.remove("open");
@@ -151,22 +138,32 @@ export function renderTopNav(){
     panel.classList.add("open");
   }
 
-  function navBtn(text, path, isActive){
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "sideBtn" + (isActive ? " active" : "");
-    b.textContent = text;
-    b.onclick = () => { closeSide(); goto(path); };
-    return b;
+  const navItems = [
+    { text: "Hoy",           path: "hoy",          active: r === "hoy" || DAYS.includes(r) },
+    { text: "Dashboard",     path: "dashboard",     active: r === "dashboard" },
+    { text: "Celo's School", path: "celos-school",  active: r === "celos-school" },
+    { text: "Bi-weekly",     path: "biweekly",      active: r === "biweekly" },
+    { text: "Monthly",       path: "monthly",       active: r === "monthly" },
+    { text: "Maintenance",   path: "maintenance",   active: r === "maintenance" },
+    { text: "Admin",         path: "admin",         active: r === "admin" },
+  ];
+
+  if (sideNav.children.length === 0) {
+    navItems.forEach(({ text, path }) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "sideBtn";
+      b.dataset.path = path;
+      b.textContent = text;
+      b.onclick = () => { closeSide(); goto(path); };
+      sideNav.appendChild(b);
+    });
   }
 
-  sideNav.appendChild(navBtn("Hoy", "hoy", (r === "hoy" || DAYS.includes(r))));
-  sideNav.appendChild(navBtn("Dashboard", "dashboard", r === "dashboard"));
-  sideNav.appendChild(navBtn("Celo's School", "celos-school", r === "celos-school"));
-  sideNav.appendChild(navBtn("Bi-weekly", "biweekly", r === "biweekly"));
-  sideNav.appendChild(navBtn("Monthly", "monthly", r === "monthly"));
-  sideNav.appendChild(navBtn("Maintenance", "maintenance", r === "maintenance"));
-  sideNav.appendChild(navBtn("Admin", "admin", r === "admin"));
+  navItems.forEach(({ path, active }) => {
+    const b = sideNav.querySelector(`[data-path="${path}"]`);
+    if (b) b.classList.toggle("active", active);
+  });
 
   ham.onclick = (e) => { e.stopPropagation(); openSide(); };
 
@@ -299,10 +296,6 @@ export function renderTopNav(){
     if (ev.key === "Escape"){ closeSide(); closeNotes(); }
   };
 }
-
-/* =========================
-   CONTEXT RESET BUTTON
-========================= */
 
 export function addContextResetButton(r){
   const nav = document.getElementById("topNav");

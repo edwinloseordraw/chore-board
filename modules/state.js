@@ -1,9 +1,5 @@
 import { PEOPLE, DAYS } from './constants.js';
 
-/* =========================
-   CORE STORAGE HELPERS
-========================= */
-
 export function jget(k, fallback){
   try{ return JSON.parse(localStorage.getItem(k) || JSON.stringify(fallback)); }
   catch{ return fallback; }
@@ -16,10 +12,6 @@ export function jset(k, v){
     console.error("localStorage write failed for", k, e);
   }
 }
-
-/* =========================
-   MEMBER COLORS & PHOTOS
-========================= */
 
 export function defaultMemberColors(){
   return {
@@ -54,10 +46,6 @@ export function loadMemberPhotos(){
 
 export function saveMemberPhotos(s){ jset("memberPhotos", s); }
 
-/* =========================
-   WEEKLY PLAN CACHE
-========================= */
-
 export function loadWeeklyPlanState(){
   return jget("weeklyPlanState", { weekSeed:"", days:{}, meta:{} });
 }
@@ -73,10 +61,6 @@ export function saveWeeklyPlanState(s){
 export function clearWeeklyPlanState(){
   localStorage.removeItem("weeklyPlanState");
 }
-
-/* =========================
-   PER-TYPE CHORE STATE
-========================= */
 
 export function loadDailyState(){ return jget("dailyState", {}); }
 export function saveDailyState(s){ jset("dailyState", s); }
@@ -109,7 +93,7 @@ export function loadDashState(){
   // Migration from older dashState.notesByDay (Phase 7) if present
   if (s && typeof s === "object" && s.notesByDay && typeof s.notesByDay === "object"){
     const lines = [];
-    const order = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
+    const order = DAYS;
     order.forEach(k => {
       const v = (typeof s.notesByDay[k] === "string") ? s.notesByDay[k].trim() : "";
       if (v) lines.push(`${k}: ${v}`);
@@ -147,10 +131,6 @@ export function loadGroceriesState(){
 }
 export function saveGroceriesState(s){ jset("groceriesState", s); }
 
-/* =========================
-   RESET HELPERS
-========================= */
-
 export function resetDailyAndWeeklyChoreState(){
   const daily = loadDailyState() || {};
   Object.keys(daily).forEach(dayKey => {
@@ -164,10 +144,6 @@ export function resetDailyAndWeeklyChoreState(){
   weekly.assign = {};
   saveWeeklyState(weekly);
 }
-
-/* =========================
-   BACKUP / RESTORE
-========================= */
 
 export function buildBackupPayload(){
   return {

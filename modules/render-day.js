@@ -1,4 +1,4 @@
-import { PEOPLE, DAYS, WEEKLY_CHORES, BIWEEKLY_CHORES, MONTHLY_CHORES } from './constants.js';
+import { PEOPLE, WEEKLY_CHORES, BIWEEKLY_CHORES, MONTHLY_CHORES } from './constants.js';
 import { todayKey, formatMMDDYYYY, dateForDayKey, escapeHtml } from './utils.js';
 import {
   loadDailyState, saveDailyState,
@@ -9,10 +9,6 @@ import {
   resetDailyAndWeeklyChoreState
 } from './state.js';
 import { getTasksForDay } from './planner.js';
-
-/* =========================
-   DAY VIEW
-========================= */
 
 export function renderDay(dayKey){
   const app = document.getElementById("app");
@@ -69,10 +65,10 @@ export function renderDay(dayKey){
     </section>
   `;
 
-  renderDailyColumns(dayKey);
-  renderWeekly();
-  renderBiweeklyInline();
-  renderMonthlyInline();
+  renderDailyColumns(dayKey, dayState);
+  renderListSection("weeklyGrid",   WEEKLY_CHORES,   loadWeeklyState,   saveWeeklyState,   { rowClass:"weeklyItem", labelClass:"label", selectClass:"",            prefix:"weekly"   });
+  renderListSection("biweeklyGrid", BIWEEKLY_CHORES, loadBiweeklyState, saveBiweeklyState, { rowClass:"listItem",   labelClass:"name",  selectClass:"assignSelect", prefix:"biweekly" });
+  renderListSection("monthlyGrid",  MONTHLY_CHORES,  loadMonthlyState,  saveMonthlyState,  { rowClass:"listItem",   labelClass:"name",  selectClass:"assignSelect", prefix:"monthly"  });
 
   if (dayKey === "domingo") {
     const resetBtn = document.getElementById("btnWeeklyDayReset");
@@ -86,24 +82,82 @@ export function renderDay(dayKey){
   }
 }
 
-/* =========================
-   DAILY COLUMNS
-========================= */
+function buildAssignSelect(className) {
+  const sel = document.createElement("select");
+  if (className) sel.className = className;
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Asignar…";
+  sel.appendChild(blank);
+  PEOPLE.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p;
+    opt.textContent = p;
+    sel.appendChild(opt);
+  });
+  return sel;
+}
 
-function renderDailyColumns(dayKey){
+function renderListSection(gridId, list, loadFn, saveFn, { rowClass, labelClass, selectClass, prefix }) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.innerHTML = "";
+
+  const state = loadFn();
+  state.checks = state.checks || {};
+  state.assign = state.assign || {};
+
+  list.forEach(item => {
+    const row = document.createElement("div");
+    row.className = rowClass;
+    if (state.checks[item]) row.classList.add("pressed");
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.id = `${prefix}__${item}`;
+    cb.checked = !!state.checks[item];
+    cb.onchange = () => {
+      const s = loadFn();
+      s.checks = s.checks || {};
+      s.checks[item] = cb.checked;
+      saveFn(s);
+      row.classList.toggle("pressed", cb.checked);
+    };
+
+    const lab = document.createElement("label");
+    lab.className = labelClass;
+    lab.htmlFor = cb.id;
+    lab.style.cursor = "pointer";
+    lab.textContent = item;
+
+    const sel = buildAssignSelect(selectClass);
+    sel.value = state.assign[item] || "";
+    sel.onchange = () => {
+      const s = loadFn();
+      s.assign = s.assign || {};
+      s.assign[item] = sel.value;
+      saveFn(s);
+    };
+
+    row.appendChild(cb);
+    row.appendChild(lab);
+    row.appendChild(sel);
+    grid.appendChild(row);
+  });
+}
+
+function renderDailyColumns(dayKey, state){
   const columns = document.getElementById("columns");
   columns.innerHTML = "";
 
-  const state = loadDailyState();
-  state[dayKey] = state[dayKey] || { checks:{}, notes:"" };
+  const colors = loadMemberColors();
+  const photos = loadMemberPhotos();
 
   PEOPLE.forEach(person => {
     const col = document.createElement("div");
     col.className = "column";
 
-    const colors = loadMemberColors();
     const pc = colors[person] || "#ffffff";
-
     col.style.border = `2px solid ${pc}`;
     col.style.boxShadow = `0 0 0 1px rgba(255,255,255,0.06), 0 14px 28px rgba(0,0,0,0.28)`;
 
@@ -114,7 +168,6 @@ function renderDailyColumns(dayKey){
     header.style.alignItems = "center";
     header.style.gap = "8px";
 
-    const photos = loadMemberPhotos();
     const url = (photos && typeof photos[person] === "string") ? photos[person] : "";
 
     let avatar;
@@ -155,15 +208,12 @@ function renderDailyColumns(dayKey){
 
     let tasks = getTasksForDay(dayKey).filter(t => (t.assignees || []).includes(person));
 
-    // Force reminder to bottom for Dad
     if (person === "Dad") {
       tasks = tasks.sort((a, b) => {
         const aSlug = String((a.id || "")).split("::")[1] || "";
         const bSlug = String((b.id || "")).split("::")[1] || "";
-
         const aIsReminder = aSlug === "checkAgenda";
         const bIsReminder = bSlug === "checkAgenda";
-
         if (aIsReminder && !bIsReminder) return 1;
         if (!aIsReminder && bIsReminder) return -1;
         return 0;
@@ -179,19 +229,20 @@ function renderDailyColumns(dayKey){
       try{ cb.style.accentColor = pc; }catch(e){}
       cb.id = `${t.id}__${person}`;
       cb.checked = !!state[dayKey].checks[`${t.id}::${person}`];
+
+      const wrap = document.createElement("label");
+      wrap.className = "choreLabel";
+      if (cb.checked) wrap.classList.add("pressed");
+      wrap.htmlFor = cb.id;
+
       cb.onchange = () => {
         const s = loadDailyState();
         s[dayKey] = s[dayKey] || { checks:{}, notes:"" };
         const key = `${t.id}::${person}`;
         s[dayKey].checks[key] = cb.checked;
         saveDailyState(s);
-        renderDailyColumns(dayKey);
+        wrap.classList.toggle("pressed", cb.checked);
       };
-
-      const wrap = document.createElement("label");
-      wrap.className = "choreLabel";
-      if (cb.checked) wrap.classList.add("pressed");
-      wrap.htmlFor = cb.id;
 
       const text = document.createElement("span");
 
@@ -211,204 +262,4 @@ function renderDailyColumns(dayKey){
 
     columns.appendChild(col);
   });
-}
-
-/* =========================
-   WEEKLY CHORES (inline)
-========================= */
-
-function renderWeekly(){
-  const grid = document.getElementById("weeklyGrid");
-  grid.innerHTML = "";
-
-  const w = loadWeeklyState();
-  w.checks = w.checks || {};
-  w.assign = w.assign || {};
-
-  WEEKLY_CHORES.forEach(chore => {
-    const row = document.createElement("div");
-    row.className = "weeklyItem";
-    if (!!w.checks[chore]) row.classList.add("pressed");
-
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = !!w.checks[chore];
-    cb.onchange = () => {
-      const ws = loadWeeklyState();
-      ws.checks = ws.checks || {};
-      ws.checks[chore] = cb.checked;
-      saveWeeklyState(ws);
-      renderWeekly();
-    };
-
-    cb.id = `weekly__${chore}`;
-    const wlab = document.createElement("label");
-    wlab.className = "label";
-    wlab.htmlFor = cb.id;
-    wlab.textContent = chore;
-
-    const sel = document.createElement("select");
-    const blank = document.createElement("option");
-    blank.value = "";
-    blank.textContent = "Asignar…";
-    sel.appendChild(blank);
-
-    PEOPLE.forEach(p => {
-      const opt = document.createElement("option");
-      opt.value = p;
-      opt.textContent = p;
-      sel.appendChild(opt);
-    });
-
-    sel.value = w.assign[chore] || "";
-    sel.onchange = () => {
-      const ws = loadWeeklyState();
-      ws.assign = ws.assign || {};
-      ws.assign[chore] = sel.value;
-      saveWeeklyState(ws);
-    };
-
-    row.appendChild(cb);
-    row.appendChild(wlab);
-    row.appendChild(sel);
-    grid.appendChild(row);
-  });
-
-  saveWeeklyState(w);
-}
-
-/* =========================
-   BIWEEKLY CHORES (inline)
-========================= */
-
-function renderBiweeklyInline(){
-  const grid = document.getElementById("biweeklyGrid");
-  if (!grid) return;
-  grid.innerHTML = "";
-
-  const s = loadBiweeklyState();
-  s.checks = s.checks || {};
-  s.assign = s.assign || {};
-
-  BIWEEKLY_CHORES.forEach(item => {
-    const row = document.createElement("div");
-    row.className = "listItem";
-    if (!!s.checks[item]) row.classList.add("pressed");
-
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.id = `biweekly__${item}`;
-    cb.checked = !!s.checks[item];
-    cb.onchange = () => {
-      const cur = loadBiweeklyState();
-      cur.checks = cur.checks || {};
-      cur.checks[item] = cb.checked;
-      saveBiweeklyState(cur);
-      renderBiweeklyInline();
-    };
-
-    const lab = document.createElement("label");
-    lab.className = "name";
-    lab.htmlFor = cb.id;
-    lab.style.cursor = "pointer";
-    lab.textContent = item;
-
-    const sel = document.createElement("select");
-    sel.className = "assignSelect";
-
-    const blank = document.createElement("option");
-    blank.value = "";
-    blank.textContent = "Asignar…";
-    sel.appendChild(blank);
-
-    PEOPLE.forEach(p => {
-      const opt = document.createElement("option");
-      opt.value = p;
-      opt.textContent = p;
-      sel.appendChild(opt);
-    });
-
-    sel.value = s.assign[item] || "";
-    sel.onchange = () => {
-      const cur = loadBiweeklyState();
-      cur.assign = cur.assign || {};
-      cur.assign[item] = sel.value;
-      saveBiweeklyState(cur);
-    };
-
-    row.appendChild(cb);
-    row.appendChild(lab);
-    row.appendChild(sel);
-    grid.appendChild(row);
-  });
-
-  saveBiweeklyState(s);
-}
-
-/* =========================
-   MONTHLY CHORES (inline)
-========================= */
-
-function renderMonthlyInline(){
-  const grid = document.getElementById("monthlyGrid");
-  if (!grid) return;
-  grid.innerHTML = "";
-
-  const s = loadMonthlyState();
-  s.checks = s.checks || {};
-  s.assign = s.assign || {};
-
-  MONTHLY_CHORES.forEach(item => {
-    const row = document.createElement("div");
-    row.className = "listItem";
-    if (!!s.checks[item]) row.classList.add("pressed");
-
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.id = `monthly__${item}`;
-    cb.checked = !!s.checks[item];
-    cb.onchange = () => {
-      const cur = loadMonthlyState();
-      cur.checks = cur.checks || {};
-      cur.checks[item] = cb.checked;
-      saveMonthlyState(cur);
-      renderMonthlyInline();
-    };
-
-    const lab = document.createElement("label");
-    lab.className = "name";
-    lab.htmlFor = cb.id;
-    lab.style.cursor = "pointer";
-    lab.textContent = item;
-
-    const sel = document.createElement("select");
-    sel.className = "assignSelect";
-
-    const blank = document.createElement("option");
-    blank.value = "";
-    blank.textContent = "Asignar…";
-    sel.appendChild(blank);
-
-    PEOPLE.forEach(p => {
-      const opt = document.createElement("option");
-      opt.value = p;
-      opt.textContent = p;
-      sel.appendChild(opt);
-    });
-
-    sel.value = s.assign[item] || "";
-    sel.onchange = () => {
-      const cur = loadMonthlyState();
-      cur.assign = cur.assign || {};
-      cur.assign[item] = sel.value;
-      saveMonthlyState(cur);
-    };
-
-    row.appendChild(cb);
-    row.appendChild(lab);
-    row.appendChild(sel);
-    grid.appendChild(row);
-  });
-
-  saveMonthlyState(s);
 }

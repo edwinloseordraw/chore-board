@@ -5,6 +5,22 @@ import {
   loadMonthlyState, saveMonthlyState
 } from './state.js';
 
+function buildAssignSelect() {
+  const sel = document.createElement("select");
+  sel.className = "assignSelect";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Asignar…";
+  sel.appendChild(blank);
+  PEOPLE.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p;
+    opt.textContent = p;
+    sel.appendChild(opt);
+  });
+  return sel;
+}
+
 export function renderChecklistPage(kind){
   const app = document.getElementById("app");
   const isBi = kind === "biweekly";
@@ -56,7 +72,7 @@ export function renderChecklistPage(kind){
         s.checks = s.checks || {};
         s.checks[item] = cb.checked;
         isBi ? saveBiweeklyState(s) : saveMonthlyState(s);
-        renderChecklistPage(kind);
+        row.classList.toggle("pressed", cb.checked);
       };
 
       const name = document.createElement("label");
@@ -65,29 +81,8 @@ export function renderChecklistPage(kind){
       name.style.cursor = "pointer";
       name.textContent = item;
 
-      row.appendChild(cb);
-      row.appendChild(name);
-
-      // Assignment dropdown
-      state.assign = state.assign || {};
-
-      const sel = document.createElement("select");
-      sel.className = "assignSelect";
-
-      const blank = document.createElement("option");
-      blank.value = "";
-      blank.textContent = "Asignar…";
-      sel.appendChild(blank);
-
-      PEOPLE.forEach(p => {
-        const opt = document.createElement("option");
-        opt.value = p;
-        opt.textContent = p;
-        sel.appendChild(opt);
-      });
-
+      const sel = buildAssignSelect();
       sel.value = state.assign[item] || "";
-
       sel.onchange = () => {
         const s = isBi ? loadBiweeklyState() : loadMonthlyState();
         s.assign = s.assign || {};
@@ -96,12 +91,12 @@ export function renderChecklistPage(kind){
         else saveMonthlyState(s);
       };
 
+      row.appendChild(cb);
+      row.appendChild(name);
       row.appendChild(sel);
 
       grid.appendChild(row);
     });
-
-    isBi ? saveBiweeklyState(state) : saveMonthlyState(state);
   }
 
   document.getElementById("btnReset").onclick = () => {
@@ -114,7 +109,6 @@ export function renderChecklistPage(kind){
       ];
       keys.forEach(k => { try{ localStorage.removeItem(k); } catch {} });
 
-      // Clear any prefixed note/check keys
       Object.keys(localStorage).forEach(k => {
         if (k.startsWith("dayNote::") || k.startsWith("dayChecks::") || k.startsWith("dashNote::")) {
           try{ localStorage.removeItem(k); } catch {}

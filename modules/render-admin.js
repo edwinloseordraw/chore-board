@@ -14,10 +14,6 @@ import {
 } from './planner.js';
 import { THEMES, THEME_MEMBER_COLORS, loadThemeState } from './theme.js';
 
-/* =========================
-   REBUILD WEEK PREVIEW MODAL
-========================= */
-
 export function showRebuildPreviewModal(summary, newPlan){
   const old = document.getElementById("rebuildPreviewOverlay");
   if (old) old.remove();
@@ -135,10 +131,6 @@ export function showRebuildPreviewModal(summary, newPlan){
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
 }
-
-/* =========================
-   ADMIN RENDER
-========================= */
 
 export function renderAdmin(){
   const app = document.getElementById("app");
@@ -482,8 +474,6 @@ export function renderAdmin(){
       card.appendChild(ta);
       notesGrid.appendChild(card);
     });
-
-    saveDailyState(ds);
   }
 
   // Import backup

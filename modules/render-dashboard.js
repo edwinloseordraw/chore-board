@@ -1,4 +1,4 @@
-import { PEOPLE, WEEKLY_CHORES, BIWEEKLY_CHORES, MONTHLY_CHORES } from './constants.js';
+import { PEOPLE, DAYS, WEEKLY_CHORES, BIWEEKLY_CHORES, MONTHLY_CHORES } from './constants.js';
 import { todayKey, escapeHtml } from './utils.js';
 import {
   loadDailyState, saveDailyState,
@@ -7,10 +7,6 @@ import {
   loadMemberColors
 } from './state.js';
 import { getTasksForDay } from './planner.js';
-
-/* =========================
-   PROGRESS CALCULATIONS
-========================= */
 
 function emptyContribution(){
   const byPerson = {};
@@ -49,10 +45,6 @@ function calcDailyProgress(){
   return { done, total, byPerson, totalByPerson };
 }
 
-/**
- * Shared progress calc for list+assignment sections (Semanal/Bi-weekly/Monthly).
- * A chore counts as done ONLY when assigned AND checked.
- */
 function calcAssignedListProgress(list, loadFn){
   const total = list.length;
   const s = loadFn();
@@ -93,10 +85,6 @@ function pct(done, total){
   if (!total) return 0;
   return Math.round((done / total) * 100);
 }
-
-/* =========================
-   RING HELPERS
-========================= */
 
 function ringFilterOptions(selected){
   const opts = ["All", ...PEOPLE];
@@ -168,11 +156,7 @@ function ringSVG(done, total, byPerson){
   `;
 }
 
-function ringCard(title, ringKey, prog, percent){
-  const dash = loadDashState();
-  const filters = dash.ringFilters || { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
-  const selected = filters[ringKey] || "All";
-
+function ringCard(title, ringKey, prog, percent, selected){
   const done = prog ? (prog.done || 0) : 0;
   const total = prog ? (prog.total || 0) : 0;
   const byPerson = prog ? (prog.byPerson || emptyContribution()) : emptyContribution();
@@ -195,10 +179,6 @@ function ringCard(title, ringKey, prog, percent){
     </div>
   `;
 }
-
-/* =========================
-   DASHBOARD RENDER
-========================= */
 
 export function renderDashboard(){
   const app = document.getElementById("app");
@@ -230,10 +210,10 @@ export function renderDashboard(){
         <div class="hint">Rings track completion for Daily (Hoy), Semanal, Bi-weekly, and Monthly. (Maintenance not included yet.)</div>
 
         <div class="rings">
-          ${ringCard("Daily (Hoy)", "daily", df, dpF)}
-          ${ringCard("Semanal", "weekly", wf, wpF)}
-          ${ringCard("Bi-weekly", "biweekly", bf, bpF)}
-          ${ringCard("Monthly", "monthly", mf, mpF)}
+          ${ringCard("Daily (Hoy)", "daily",    df, dpF, filters.daily)}
+          ${ringCard("Semanal",     "weekly",   wf, wpF, filters.weekly)}
+          ${ringCard("Bi-weekly",   "biweekly", bf, bpF, filters.biweekly)}
+          ${ringCard("Monthly",     "monthly",  mf, mpF, filters.monthly)}
         </div>
       </div>
 
@@ -251,21 +231,19 @@ export function renderDashboard(){
     </div>
   `;
 
-  // Wire dashboard notes + day-notes viewer
-  const dash2 = loadDashState();
   const dashTA = document.getElementById("dashNotes");
   const dayTA = document.getElementById("dayNotes");
   const dayLabel = document.getElementById("dayNotesLabel");
 
-  dashTA.value = dash2.dashboardNotes || "";
+  dashTA.value = dash.dashboardNotes || "";
   dashTA.oninput = () => {
     const cur = loadDashState();
     cur.dashboardNotes = dashTA.value;
     saveDashState(cur);
   };
 
-  const selectedDay = (dash2.viewerDay && ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"].includes(dash2.viewerDay)) ? dash2.viewerDay : todayKey();
-  const ro = !!dash2.viewerReadOnly;
+  const selectedDay = (dash.viewerDay && DAYS.includes(dash.viewerDay)) ? dash.viewerDay : todayKey();
+  const ro = !!dash.viewerReadOnly;
 
   const ds = loadDailyState();
   ds[selectedDay] = ds[selectedDay] || { checks:{}, notes:"" };
@@ -278,7 +256,7 @@ export function renderDashboard(){
 
   dayTA.oninput = () => {
     const curDash = loadDashState();
-    const currentSelected = (curDash.viewerDay && ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"].includes(curDash.viewerDay)) ? curDash.viewerDay : todayKey();
+    const currentSelected = (curDash.viewerDay && DAYS.includes(curDash.viewerDay)) ? curDash.viewerDay : todayKey();
 
     if (curDash.viewerReadOnly) return;
     if (currentSelected !== todayKey()) return;
@@ -290,11 +268,10 @@ export function renderDashboard(){
   };
 
   // Reset viewer back to normal defaults
-  dash2.viewerDay = todayKey();
-  dash2.viewerReadOnly = false;
-  saveDashState(dash2);
+  dash.viewerDay = todayKey();
+  dash.viewerReadOnly = false;
+  saveDashState(dash);
 
-  // Wire ring filter dropdowns
   document.querySelectorAll(".ringFilter").forEach(sel => {
     sel.onchange = () => {
       const key = sel.getAttribute("data-ring");

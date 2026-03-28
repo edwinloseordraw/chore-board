@@ -90,6 +90,5 @@ export function renderGroceriesPanel(){
     redraw();
   };
 
-  saveGroceriesState(state);
   redraw();
 }
