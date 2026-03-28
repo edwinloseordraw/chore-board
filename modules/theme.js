@@ -1,6 +1,5 @@
-import { jget, jset, loadMemberColors, saveMemberColors } from './state.js';
+import { jget, jset, saveMemberColors } from './state.js';
 
-// Canonical theme definitions (CSS variable maps per theme + mode)
 export const THEMES = {
   neonGlass: {
     dark: {
@@ -24,15 +23,12 @@ export const THEMES = {
   }
 };
 
-// Per-theme member color presets (empty — only paperClean allows editing)
-export const THEME_MEMBER_COLORS = {};
-
 export function loadThemeState(){
   const s = jget("themeState", { themeId: "neonGlass", mode: "dark" });
   if (!s || typeof s !== "object") return { themeId: "neonGlass", mode: "dark" };
   if (typeof s.themeId !== "string" || !s.themeId) s.themeId = "neonGlass";
   if (s.mode !== "dark" && s.mode !== "light") s.mode = "dark";
-  if (!THEMES || !THEMES[s.themeId]) s.themeId = "neonGlass";
+  if (!THEMES[s.themeId]) s.themeId = "neonGlass";
   return s;
 }
 
@@ -48,7 +44,7 @@ export function applyTheme(themeId, mode){
   const tId = (typeof themeId === "string" && themeId) ? themeId : ts.themeId;
   const m = (mode === "light" || mode === "dark") ? mode : ts.mode;
 
-  const theme = (THEMES && THEMES[tId]) ? THEMES[tId] : (THEMES && THEMES.neonGlass ? THEMES.neonGlass : null);
+  const theme = THEMES[tId] || THEMES.neonGlass;
   const vars = theme ? (theme[m] || theme.dark || {}) : {};
 
   try{
@@ -61,15 +57,6 @@ export function applyTheme(themeId, mode){
     });
 
     saveThemeState({ themeId: tId, mode: m });
-
-    // If this theme locks member colors, snap to presets.
-    // Only paperClean allows editing.
-    try{
-      if (tId !== "paperClean" && typeof THEME_MEMBER_COLORS === "object" && THEME_MEMBER_COLORS[tId]){
-        saveMemberColors({ ...THEME_MEMBER_COLORS[tId] });
-      }
-    } catch {}
-
   } catch (e){
     console.warn("applyTheme failed:", e);
   }

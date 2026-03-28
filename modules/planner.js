@@ -6,10 +6,6 @@ import {
 import { pad2, dateForDayKey, hashSeed, seededShuffle } from './utils.js';
 import { loadWeeklyPlanState, saveWeeklyPlanState } from './state.js';
 
-/* =========================
-   WEEK SEED
-========================= */
-
 export function weekSeedString(){
   const monday = dateForDayKey("lunes");
   const y = monday.getFullYear();
@@ -18,40 +14,31 @@ export function weekSeedString(){
   return `${y}-${m}-${d}`;
 }
 
-/* =========================
-   CHORE WEIGHTS
-========================= */
+const CHORE_WEIGHTS = {
+  vacuum:      1.25,
+  dishes:      1.25,
+  trash:       0.75,
+  feedDogs:    0.75,
+  counters:    0.5,
+  dining:      0.5,
+  mop:         1.0,
+  dust:        0.75,
+  cabinets:    0.5,
+  dogPoop:     0.75,
+  walk:        0.75,
+  fynnTreat:   0.25,
+  read20:      0.5,
+  brushHarvey: 0.5,
+  checkAgenda: 0,
+  prepBackpack: 0,
+  appleWatch:  0
+};
 
-export function defaultChoreWeights(){
-  return {
-    vacuum: 1.25,
-    dishes: 1.25,
-    trash: 0.75,
-    feedDogs: 0.75,
+// Kept as export so external code (backup/audit display) can read weights by name
+export function defaultChoreWeights(){ return { ...CHORE_WEIGHTS }; }
 
-    counters: 0.5,
-    dining: 0.5,
-    mop: 1.0,
-    dust: 0.75,
-    cabinets: 0.5,
-    dogPoop: 0.75,
-
-    walk: 0.75,
-    fynnTreat: 0.25,
-
-    // member-exclusive fixed chores
-    read20: 0.5,
-    brushHarvey: 0.5,
-
-    // reminders (do not count)
-    prepBackpack: 0,
-    appleWatch: 0
-  };
-}
-
-/* =========================
-   HELPERS
-========================= */
+// Module-level constant so slugLabel doesn't recreate the array on every call
+const ALL_CHORE_LABELS = [].concat(ROTATING_PAIR_CHORES, ROTATING_SOLO_CHORES);
 
 export function isReminderSlug(slug){
   return slug === "prepBackpack" || slug === "appleWatch";
@@ -59,76 +46,57 @@ export function isReminderSlug(slug){
 
 export function shouldIncludeFixedChoreOnDay(fixed, dayKey){
   if (!fixed || !fixed.when) return false;
-
+  // "weekdays" = school nights: Sunday through Thursday (prep for next school day)
   if (fixed.when === "weekdays"){
-    // School nights: Sunday through Thursday
     return (dayKey === "domingo" || dayKey === "lunes" || dayKey === "martes" || dayKey === "miercoles" || dayKey === "jueves");
   }
   if (fixed.when === "monwed") return (dayKey === "lunes" || dayKey === "miercoles");
-  if (fixed.when === "fri") return (dayKey === "viernes");
+  if (fixed.when === "fri")    return (dayKey === "viernes");
   if (fixed.when === "monfri") return (dayKey === "lunes" || dayKey === "martes" || dayKey === "miercoles" || dayKey === "jueves" || dayKey === "viernes");
-
   return false;
 }
 
 export function makeTask(dayKey, slug, text, assignees, primary){
-  return {
-    id: `${dayKey}::${slug}`,
-    text,
-    assignees,
-    primary
-  };
+  return { id: `${dayKey}::${slug}`, text, assignees, primary };
 }
-
-/* =========================
-   PLAN GENERATION
-========================= */
 
 export function generateBalancedWeeklyPlan(weekSeed, salt){
   const seedStr = weekSeed || weekSeedString();
   const saltStr = (salt !== undefined && salt !== null) ? String(salt) : "";
-  const weights = defaultChoreWeights();
   const days = {};
 
   DAYS.forEach(dayKey => {
     const cadence = FIXED_WEEKLY_CADENCE[dayKey] || { pair:{}, solo:{}, walk:"", fynnTreat:"" };
     const tasks = [];
 
-    // Pair chores: true two-person assignments from the fixed cadence
     ROTATING_PAIR_CHORES.forEach(c => {
       const pair = cadence.pair && Array.isArray(cadence.pair[c.slug]) ? cadence.pair[c.slug].slice(0, 2) : [];
       const a = pair[0];
       const b = pair[1];
       if (!PEOPLE.includes(a) || !PEOPLE.includes(b) || a === b) return;
-
       tasks.push(makeTask(dayKey, c.slug, c.text, [a, b], b));
     });
 
-    // Solo chores from the fixed cadence
     ROTATING_SOLO_CHORES.forEach(c => {
       const assignee = cadence.solo ? cadence.solo[c.slug] : "";
       if (!PEOPLE.includes(assignee)) return;
       tasks.push(makeTask(dayKey, c.slug, c.text, [assignee], assignee));
     });
 
-    // Walk (kept explicit so the whole week is fixed)
     if (PEOPLE.includes(cadence.walk)) {
       tasks.push(makeTask(dayKey, "walk", "Walk with Celo", [cadence.walk], cadence.walk));
     }
 
-    // Fynn treat
     if (PEOPLE.includes(cadence.fynnTreat)) {
       tasks.push(makeTask(dayKey, "fynnTreat", "Give Fynn his teeth treat", [cadence.fynnTreat], cadence.fynnTreat));
     }
 
-    // Fixed member-exclusive chores
     FIXED_SOLO_CHORES.forEach(c => {
       if (!PEOPLE.includes(c.person)) return;
       if (!shouldIncludeFixedChoreOnDay(c, dayKey)) return;
       tasks.push(makeTask(dayKey, c.slug, c.text, [c.person], c.person));
     });
 
-    // Keep reminder chores at the bottom
     const reminders = [];
     const nonReminders = [];
     tasks.forEach(t => {
@@ -147,15 +115,11 @@ export function generateBalancedWeeklyPlan(weekSeed, salt){
     rebalanceSalt: saltStr,
     loads: totals,
     targets: WEEKLY_TARGETS,
-    weights
+    weights: CHORE_WEIGHTS
   };
 
   return plan;
 }
-
-/* =========================
-   PLAN VALIDATION
-========================= */
 
 export function isValidTaskObject(task){
   if (!task || typeof task !== "object") return false;
@@ -201,10 +165,6 @@ export function validateWeeklyPlan(plan){
 
   return true;
 }
-
-/* =========================
-   PLAN CACHE
-========================= */
 
 export function ensureWeeklyPlanForCurrentWeek(){
   const curSeed = weekSeedString();
@@ -254,28 +214,11 @@ export function buildDailyBaseTasks(dayKey){
     }
   } catch (e2){
     console.error("Weekly plan generation failed.", e2);
-    alert("Weekly plan generation failed. Open the console for details.");
   }
 
   return [];
 }
 
-/* =========================
-   TASK ASSEMBLY
-========================= */
-
-// Walk alternates every other day. Mom starts on lunes.
-export function walkAssigneeForDay(dayKey){
-  const idx = DAYS.indexOf(dayKey);
-  return (idx % 2 === 0) ? "Mom" : "Dad";
-}
-
-export function buildWalkTask(dayKey){
-  const who = walkAssigneeForDay(dayKey);
-  return makeTask(dayKey, "walk", "Walk with Celo", [who], who);
-}
-
-// Ensures pair chores always have 2 distinct assignees
 export function normalizeTwoPersonTask(task){
   if (!task || !Array.isArray(task.assignees)) return task;
   if (task.assignees.length !== 2) return task;
@@ -296,13 +239,9 @@ export function getTasksForDay(dayKey){
   return base.map(t => normalizeTwoPersonTask(t));
 }
 
-/* =========================
-   WORKLOAD CALCULATIONS
-========================= */
-
 export function computePlanMemberTotals(plan){
-  const weights = defaultChoreWeights();
-  const totals = { Dad:0, Mom:0, Ethan:0, Celo:0 };
+  const totals = {};
+  PEOPLE.forEach(p => totals[p] = 0);
   if (!plan || !plan.days) return totals;
 
   Object.keys(plan.days).forEach(dayKey => {
@@ -311,7 +250,7 @@ export function computePlanMemberTotals(plan){
       if (!t || typeof t !== "object") return;
       const id = String(t.id || "");
       const slug = id.includes("::") ? id.split("::")[1] : "";
-      const w = Number(weights[slug] ?? 0) || 0;
+      const w = Number(CHORE_WEIGHTS[slug] ?? 0) || 0;
       const assignees = Array.isArray(t.assignees) ? t.assignees.filter(p => PEOPLE.includes(p)) : [];
 
       if (assignees.length === 2){
@@ -373,10 +312,6 @@ export function buildPlanSummary(oldPlan, newPlan){
   return { totals, inRange, changed };
 }
 
-/* =========================
-   AUDITS
-========================= */
-
 export function buildCurrentWeekAudit(){
   const plan = ensureWeeklyPlanForCurrentWeek();
   const totals = computePlanMemberTotals(plan);
@@ -409,9 +344,7 @@ export function buildSuggestedAdjustments(){
   const suggestions = [];
   const used = new Set();
 
-  if (!plan || !plan.days) {
-    return { audit, suggestions };
-  }
+  if (!plan || !plan.days) return { audit, suggestions };
 
   for (const over of overloaded){
     for (const under of underloaded){
@@ -442,9 +375,7 @@ export function buildSuggestedAdjustments(){
           });
 
           used.add(task.id);
-          if (suggestions.length >= 8) {
-            return { audit, suggestions };
-          }
+          if (suggestions.length >= 8) return { audit, suggestions };
           break;
         }
       }
@@ -524,7 +455,6 @@ export function buildCurrentWeekRepetitionAudit(){
 }
 
 export function slugLabel(slug){
-  const all = [].concat(ROTATING_PAIR_CHORES, ROTATING_SOLO_CHORES);
-  const found = all.find(x => x.slug === slug);
+  const found = ALL_CHORE_LABELS.find(x => x.slug === slug);
   return found ? found.text : slug;
 }

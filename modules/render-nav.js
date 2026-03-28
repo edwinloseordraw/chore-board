@@ -292,9 +292,20 @@ export function renderTopNav(){
 
   groceryBtn.onclick = (e) => { e.stopPropagation(); openGroceries(); };
 
-  document.onkeydown = (ev) => {
-    if (ev.key === "Escape"){ closeSide(); closeNotes(); }
-  };
+  if (!document._choreEscHandler) {
+    document._choreEscHandler = (ev) => {
+      if (ev.key !== "Escape") return;
+      const sideOverlayEl = document.getElementById("sideOverlay");
+      const sidePanelEl   = document.getElementById("sidePanel");
+      const notesOverlayEl = document.getElementById("notesOverlay");
+      const notesPanelEl   = document.getElementById("notesPanel");
+      if (sideOverlayEl) sideOverlayEl.classList.remove("open");
+      if (sidePanelEl)   sidePanelEl.classList.remove("open");
+      if (notesOverlayEl) notesOverlayEl.classList.remove("open");
+      if (notesPanelEl)   notesPanelEl.classList.remove("open");
+    };
+    document.addEventListener("keydown", document._choreEscHandler);
+  }
 }
 
 export function addContextResetButton(r){
