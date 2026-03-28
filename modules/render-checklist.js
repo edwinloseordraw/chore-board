@@ -100,26 +100,9 @@ export function renderChecklistPage(kind){
   }
 
   document.getElementById("btnReset").onclick = () => {
-    if (!confirm("Hard reset? This will clear all local data and restore defaults.")) return;
-
-    try{
-      const keys = [
-        "dailyState","weeklyState","biweeklyState","monthlyState","dashState","groceriesState",
-        "memberColors","memberPhotos","maintState","weeklyPlanState","themeState","syncMeta"
-      ];
-      keys.forEach(k => { try{ localStorage.removeItem(k); } catch {} });
-
-      Object.keys(localStorage).forEach(k => {
-        if (k.startsWith("dayNote::") || k.startsWith("dayChecks::") || k.startsWith("dashNote::")) {
-          try{ localStorage.removeItem(k); } catch {}
-        }
-      });
-
-      window.__renderApp();
-      alert("Reset complete.");
-    } catch (e){
-      console.error("Hard reset failed:", e);
-      alert("Reset failed. Check console for details.");
-    }
+    if (!confirm(`Reset ${title} checklist? This clears only this section's checks and assignments.`)) return;
+    if (isBi) saveBiweeklyState({ checks:{}, assign:{} });
+    else saveMonthlyState({ checks:{}, assign:{} });
+    renderChecklistPage(kind);
   };
 }

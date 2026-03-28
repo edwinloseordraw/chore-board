@@ -293,16 +293,7 @@ export function normalizeTwoPersonTask(task){
 
 export function getTasksForDay(dayKey){
   const base = buildDailyBaseTasks(dayKey);
-
-  // Ensure walk alternates every other day and is injected exactly once
-  const withoutWalk = base.filter(t => {
-    const id = (t && t.id) ? t.id : "";
-    return !id.endsWith("::walk");
-  });
-
-  withoutWalk.push(buildWalkTask(dayKey));
-
-  return withoutWalk.map(t => normalizeTwoPersonTask(t));
+  return base.map(t => normalizeTwoPersonTask(t));
 }
 
 /* =========================
