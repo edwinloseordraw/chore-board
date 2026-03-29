@@ -12,7 +12,7 @@ import {
   buildCurrentWeekRepetitionAudit, slugLabel,
   generateBalancedWeeklyPlan, buildPlanSummary, weekSeedString
 } from './planner.js';
-import { THEMES, THEME_MEMBER_COLORS, loadThemeState } from './theme.js';
+import { THEMES, loadThemeState, applyTheme } from './theme.js';
 
 export function showRebuildPreviewModal(summary, newPlan){
   const old = document.getElementById("rebuildPreviewOverlay");
@@ -187,6 +187,62 @@ export function renderAdmin(){
     return;
   }
   grid.innerHTML = "";
+
+  // ---- Theme picker ----
+  const currentThemeId = loadThemeState().themeId;
+  const themeSection = document.createElement("div");
+  themeSection.style.marginBottom = "18px";
+
+  const themeHeading = document.createElement("h3");
+  themeHeading.style.margin = "0 0 4px 0";
+  themeHeading.textContent = "Theme";
+  themeSection.appendChild(themeHeading);
+
+  const themeHint = document.createElement("div");
+  themeHint.className = "hint";
+  themeHint.style.marginTop = "0";
+  themeHint.style.marginBottom = "10px";
+  themeHint.textContent = "Choose a visual style for the whole app.";
+  themeSection.appendChild(themeHint);
+
+  const pickerGrid = document.createElement("div");
+  pickerGrid.className = "themePicker";
+
+  Object.entries(THEMES).forEach(([id, { label, preview }]) => {
+    const card = document.createElement("div");
+    card.className = "themeCard" + (id === currentThemeId ? " active" : "");
+
+    const swatches = document.createElement("div");
+    swatches.className = "themeSwatches";
+    [preview.bg, preview.accent, preview.panel].forEach(color => {
+      const s = document.createElement("div");
+      s.className = "themeSwatch";
+      s.style.background = color;
+      swatches.appendChild(s);
+    });
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "themeCardName";
+    nameEl.textContent = label;
+
+    card.appendChild(swatches);
+    card.appendChild(nameEl);
+
+    card.onclick = () => {
+      applyTheme(id);
+      pickerGrid.querySelectorAll(".themeCard").forEach(c => c.classList.remove("active"));
+      card.classList.add("active");
+    };
+
+    pickerGrid.appendChild(card);
+  });
+
+  themeSection.appendChild(pickerGrid);
+
+  const panel = app.querySelector(".panel");
+  const adminGridEl = document.getElementById("adminGrid");
+  panel.insertBefore(themeSection, adminGridEl);
+  // ---- End theme picker ----
 
   const safeThemeState = (typeof loadThemeState === "function")
     ? (loadThemeState() || { themeId: "paperClean", mode: "dark" })

@@ -32,7 +32,7 @@ window.__renderApp = renderApp;
 
 try {
   const ts0 = loadThemeState();
-  applyTheme(ts0.themeId, ts0.mode);
+  applyTheme(ts0.themeId);
 } catch {}
 
 // Set initial hash without triggering hashchange (avoids double render on cold start)
