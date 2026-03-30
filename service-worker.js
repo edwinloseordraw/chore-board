@@ -1,4 +1,4 @@
-const CACHE_NAME = "chore-board-v6";
+const CACHE_NAME = "chore-board-v8";
 
 const ASSETS = [
   "./",
@@ -7,7 +7,20 @@ const ASSETS = [
   "./app.js",
   "./manifest.webmanifest",
   "./icon.png",
-  "./apple-touch-icon.png"
+  "./apple-touch-icon.png",
+  "./modules/constants.js",
+  "./modules/utils.js",
+  "./modules/state.js",
+  "./modules/theme.js",
+  "./modules/planner.js",
+  "./modules/render-nav.js",
+  "./modules/render-dashboard.js",
+  "./modules/render-day.js",
+  "./modules/render-admin.js",
+  "./modules/render-maintenance.js",
+  "./modules/render-checklist.js",
+  "./modules/render-groceries.js",
+  "./modules/render-celo.js"
 ];
 
 self.addEventListener("install", (event) => {
