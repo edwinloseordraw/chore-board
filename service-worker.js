@@ -1,4 +1,4 @@
-const CACHE_NAME = "chore-board-v7";
+const CACHE_NAME = "chore-board-v8";
 
 const ASSETS = [
   "./",

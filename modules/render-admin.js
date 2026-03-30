@@ -141,7 +141,6 @@ export function renderAdmin(){
       <div class="toolbar">
         <div class="left">
           <h2 style="margin:0;">Admin</h2>
-          <div class="hint" style="margin:0;">Pick a theme + mode for the whole app, then (optionally) set member colors.</div>
         </div>
         <div class="right">
           <input id="importBackupFile" type="file" accept="application/json,.json" style="display:none;" />
@@ -151,13 +150,16 @@ export function renderAdmin(){
           <button class="danger" id="btnResetColors">Reset Colors</button>
         </div>
       </div>
-<div style="height:10px;"></div>
 
+      <h3 style="margin:12px 0 4px 0;">Theme</h3>
+      <div class="hint" style="margin:0 0 10px 0;">Choose a visual style for the whole app.</div>
+      <div class="themePicker" id="themePickerGrid"></div>
+
+      <h3 style="margin:18px 0 4px 0;">Member Colors</h3>
+      <div class="hint" style="margin:0 0 10px 0;">Think of member colors as each person's "signature" in the rings.</div>
       <div class="adminGrid" id="adminGrid"></div>
 
-      <div class="hint" style="margin-top:10px;">Tip: Think of member colors as each person's "signature" in the rings.</div>
-
-      <div style="height:10px;"></div>
+      <div style="height:14px;"></div>
 
       <h3 style="margin:0;">Weekly Balance Audit</h3>
       <div class="hint" style="margin-top:4px;">Shows the current fixed weekly cadence load compared with each target range.</div>
@@ -190,23 +192,7 @@ export function renderAdmin(){
 
   // ---- Theme picker ----
   const currentThemeId = loadThemeState().themeId;
-  const themeSection = document.createElement("div");
-  themeSection.style.marginBottom = "18px";
-
-  const themeHeading = document.createElement("h3");
-  themeHeading.style.margin = "0 0 4px 0";
-  themeHeading.textContent = "Theme";
-  themeSection.appendChild(themeHeading);
-
-  const themeHint = document.createElement("div");
-  themeHint.className = "hint";
-  themeHint.style.marginTop = "0";
-  themeHint.style.marginBottom = "10px";
-  themeHint.textContent = "Choose a visual style for the whole app.";
-  themeSection.appendChild(themeHint);
-
-  const pickerGrid = document.createElement("div");
-  pickerGrid.className = "themePicker";
+  const pickerGrid = document.getElementById("themePickerGrid");
 
   Object.entries(THEMES).forEach(([id, { label, preview }]) => {
     const card = document.createElement("div");
@@ -236,23 +222,7 @@ export function renderAdmin(){
 
     pickerGrid.appendChild(card);
   });
-
-  themeSection.appendChild(pickerGrid);
-
-  const panel = app.querySelector(".panel");
-  const adminGridEl = document.getElementById("adminGrid");
-  panel.insertBefore(themeSection, adminGridEl);
   // ---- End theme picker ----
-
-  const safeThemeState = (typeof loadThemeState === "function")
-    ? (loadThemeState() || { themeId: "paperClean", mode: "dark" })
-    : { themeId: "paperClean", mode: "dark" };
-
-  const themePresets = (typeof THEME_MEMBER_COLORS !== "undefined" && THEME_MEMBER_COLORS)
-    ? THEME_MEMBER_COLORS
-    : null;
-
-  const colorsLocked = false;
 
   PEOPLE.forEach(person => {
     const row = document.createElement("div");
