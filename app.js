@@ -58,23 +58,23 @@ if (typeof saveThemeState !== "function") {
    ROUTES + CONSTANTS
 ========================= */
 
-const DAYS = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
+const DAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
 const PEOPLE = ["Dad","Mom","Ethan","Celo"];
 
 function todayKey(){
-  const map = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+  const map = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
   return map[new Date().getDay()];
 }
 
 function prevDayKey(dayKey){
   const idx = DAYS.indexOf(dayKey);
-  if (idx === -1) return "domingo";
+  if (idx === -1) return "sunday";
   return DAYS[(idx - 1 + DAYS.length) % DAYS.length];
 }
 
 function nextDayKey(dayKey){
   const idx = DAYS.indexOf(dayKey);
-  if (idx === -1) return "lunes";
+  if (idx === -1) return "monday";
   return DAYS[(idx + 1) % DAYS.length];
 }
 
@@ -111,7 +111,7 @@ function formatMMDDYYYY(d){
    - Bi-weekly/monthly/maintenance lists stay mostly empty until Phase 5-7.
 ========================= */
 
-// Daily chores are scheduled per day (lunes → domingo).
+// Daily chores are scheduled per day (monday → sunday).
 // Tasks are shared objects so 2-person chores have ONE completion state.
 // `primary` is who is accountable (used for Verification mapping).
 function makeTask(dayKey, slug, text, assignees, primary){
@@ -167,7 +167,7 @@ const FIXED_SOLO_CHORES = [
 // - true two-person assignments for pair chores
 // - avoids 3+ day repetition patterns
 const FIXED_WEEKLY_CADENCE = {
-  lunes: {
+  monday: {
     pair: {
       vacuum:   ["Ethan", "Celo"],
       dishes:   ["Dad", "Mom"],
@@ -185,7 +185,7 @@ const FIXED_WEEKLY_CADENCE = {
     walk: "Mom",
     fynnTreat: "Dad"
   },
-  martes: {
+  tuesday: {
     pair: {
       vacuum:   ["Dad", "Mom"],
       dishes:   ["Ethan", "Celo"],
@@ -203,7 +203,7 @@ const FIXED_WEEKLY_CADENCE = {
     walk: "Dad",
     fynnTreat: "Ethan"
   },
-  miercoles: {
+  wednesday: {
     pair: {
       vacuum:   ["Dad", "Ethan"],
       dishes:   ["Mom", "Celo"],
@@ -221,7 +221,7 @@ const FIXED_WEEKLY_CADENCE = {
     walk: "Mom",
     fynnTreat: "Dad"
   },
-  jueves: {
+  thursday: {
     pair: {
       vacuum:   ["Mom", "Celo"],
       dishes:   ["Dad", "Ethan"],
@@ -239,7 +239,7 @@ const FIXED_WEEKLY_CADENCE = {
     walk: "Dad",
     fynnTreat: "Celo"
   },
-  viernes: {
+  friday: {
     pair: {
       vacuum:   ["Dad", "Mom"],
       dishes:   ["Dad", "Ethan"],
@@ -257,7 +257,7 @@ const FIXED_WEEKLY_CADENCE = {
     walk: "Mom",
     fynnTreat: "Ethan"
   },
-  sabado: {
+  saturday: {
     pair: {
       vacuum:   ["Mom", "Ethan"],
       dishes:   ["Dad", "Celo"],
@@ -275,7 +275,7 @@ const FIXED_WEEKLY_CADENCE = {
     walk: "Dad",
     fynnTreat: "Ethan"
   },
-  domingo: {
+  sunday: {
     pair: {
       vacuum:   ["Dad", "Mom"],
       dishes:   ["Ethan", "Celo"],
@@ -299,7 +299,7 @@ const FIXED_WEEKLY_CADENCE = {
 // Deterministic per-week seed (Monday of the current week) so it stays stable.
 
 function weekSeedString(){
-  const monday = dateForDayKey("lunes");
+  const monday = dateForDayKey("monday");
   // YYYY-MM-DD
   const y = monday.getFullYear();
   const m = pad2(monday.getMonth() + 1);
@@ -362,11 +362,11 @@ function shouldIncludeFixedChoreOnDay(fixed, dayKey){
 
   if (fixed.when === "weekdays"){
     // School nights: Sunday through Thursday
-    return (dayKey === "domingo" || dayKey === "lunes" || dayKey === "martes" || dayKey === "miercoles" || dayKey === "jueves");
+    return (dayKey === "sunday" || dayKey === "monday" || dayKey === "tuesday" || dayKey === "wednesday" || dayKey === "thursday");
   }
-  if (fixed.when === "monwed") return (dayKey === "lunes" || dayKey === "miercoles");
-  if (fixed.when === "fri") return (dayKey === "viernes");
-  if (fixed.when === "monfri") return (dayKey === "lunes" || dayKey === "martes" || dayKey === "miercoles" || dayKey === "jueves" || dayKey === "viernes");
+  if (fixed.when === "monwed") return (dayKey === "monday" || dayKey === "wednesday");
+  if (fixed.when === "fri") return (dayKey === "friday");
+  if (fixed.when === "monfri") return (dayKey === "monday" || dayKey === "tuesday" || dayKey === "wednesday" || dayKey === "thursday" || dayKey === "friday");
 
   return false;
 }
@@ -598,10 +598,10 @@ const KIDS = ["Ethan", "Celo"];
 function isParent(p){ return PARENTS.includes(p); }
 function isKid(p){ return KIDS.includes(p); }
 
-// Phase 8.4: Walk alternates every other day. Mom starts on lunes.
+// Phase 8.4: Walk alternates every other day. Mom starts on monday.
 function walkAssigneeForDay(dayKey){
   const idx = DAYS.indexOf(dayKey);
-  // lunes (idx 0) => Mom, martes (1) => Dad, etc.
+  // monday (idx 0) => Mom, tuesday (1) => Dad, etc.
   return (idx % 2 === 0) ? "Mom" : "Dad";
 }
 
@@ -1190,7 +1190,7 @@ function loadDashState(){
   // Migration from older dashState.notesByDay (Phase 7) if present
   if (s && typeof s === "object" && s.notesByDay && typeof s.notesByDay === "object"){
     const lines = [];
-    const order = ["lunes","martes","miercoles","jueves","viernes","sabado","domingo"];
+    const order = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
     order.forEach(k => {
       const v = (typeof s.notesByDay[k] === "string") ? s.notesByDay[k].trim() : "";
       if (v) lines.push(`${k}: ${v}`);
@@ -1258,11 +1258,11 @@ function renderTopNav(){
 
   const r = route();
 
-  // If we're on a day page (or the special "hoy" route), enable day-to-day cycling.
-  const isDayRoute = DAYS.includes(r) || r === "hoy";
+  // If we're on a day page (or the special "today" route), enable day-to-day cycling.
+  const isDayRoute = DAYS.includes(r) || r === "today";
   const today = todayKey();
-  const currentDayKey = (r === "hoy") ? today : r;
-  const isTodayView = (r === "hoy") || (DAYS.includes(r) && r === today);
+  const currentDayKey = (r === "today") ? today : r;
+  const isTodayView = (r === "today") || (DAYS.includes(r) && r === today);
 
   // --- Hamburger on the TOP LEFT (central navigation) ---
   const menuWrap = document.createElement("div");
@@ -1277,22 +1277,22 @@ function renderTopNav(){
 
   nav.appendChild(menuWrap);
 
-  // Persistent Hoy button (always visible)
+  // Persistent Today button (always visible)
   const hoyTopBtn = document.createElement("button");
   hoyTopBtn.className = "navBtn";
   hoyTopBtn.type = "button";
-  hoyTopBtn.textContent = "Hoy";
+  hoyTopBtn.textContent = "Today";
   hoyTopBtn.addEventListener("click", () => {
-    goto("hoy");
+    goto("today");
   });
   nav.appendChild(hoyTopBtn);
 
-  // Day cycling buttons (Ayer / Mañana) shown on daily views
+  // Day cycling buttons (Yesterday / Tomorrow) shown on daily views
   if (isDayRoute){
     const ayerBtn = document.createElement("button");
     ayerBtn.className = "navBtn";
     ayerBtn.type = "button";
-    ayerBtn.textContent = "Ayer";
+    ayerBtn.textContent = "Yesterday";
     ayerBtn.addEventListener("click", () => {
       const prev = prevDayKey(currentDayKey);
       goto(prev);
@@ -1302,7 +1302,7 @@ function renderTopNav(){
     const mananaBtn = document.createElement("button");
     mananaBtn.className = "navBtn";
     mananaBtn.type = "button";
-    mananaBtn.textContent = "Mañana";
+    mananaBtn.textContent = "Tomorrow";
     mananaBtn.addEventListener("click", () => {
       const next = nextDayKey(currentDayKey);
       goto(next);
@@ -1316,13 +1316,14 @@ function renderTopNav(){
   label.style.fontSize = "13px";
   label.style.opacity = "0.8";
   label.style.whiteSpace = "nowrap";
+  label.style.textTransform = "capitalize";
   let lbl = "";
   if (r === "dashboard") lbl = "Dashboard";
   else if (r === "maintenance") lbl = "Maintenance";
   else if (r === "admin") lbl = "Admin";
   else if (r === "celos-school") lbl = "Celo's School";
-  else if (r === "hoy") lbl = `Hoy • ${today}`;
-  else if (DAYS.includes(r)) lbl = (r === today) ? `Hoy • ${today}` : r;
+  else if (r === "today") lbl = `Today • ${today}`;
+  else if (DAYS.includes(r)) lbl = (r === today) ? `Today • ${today}` : r;
   label.textContent = lbl;
   nav.appendChild(label);
 
@@ -1394,8 +1395,8 @@ function renderTopNav(){
     return b;
   }
 
-  // Hoy (simple)
-  sideNav.appendChild(navBtn("Hoy", "hoy", (r === "hoy" || DAYS.includes(r))));
+  // Today (simple)
+  sideNav.appendChild(navBtn("Today", "today", (r === "today" || DAYS.includes(r))));
 
   // Dashboard
   sideNav.appendChild(navBtn("Dashboard", "dashboard", r === "dashboard"));
@@ -1436,7 +1437,7 @@ function renderTopNav(){
     nPanel.setAttribute("aria-label", "Day notes");
     nPanel.innerHTML = `
       <div class="notesHeader">
-        <div class="notesTitle" id="notesPanelTitle">Notas</div>
+        <div class="notesTitle" id="notesPanelTitle">Notes</div>
         <button class="notesClose" type="button" id="notesCloseBtn" aria-label="Close notes">✕</button>
       </div>
       <div class="notesBody">
@@ -1460,11 +1461,11 @@ function renderTopNav(){
     const hintEl = document.getElementById("notesPanelHint");
     const taEl = document.getElementById("notesPanelText");
 
-    if (titleEl) titleEl.textContent = `Notas para ${dayKey}`;
+    if (titleEl) titleEl.textContent = `Notes for ${dayKey}`;
     if (hintEl) hintEl.textContent = "Read-only (edit on Dashboard)";
     if (taEl){
       taEl.value = note || "";
-      taEl.placeholder = `Notas para ${dayKey}...`;
+      taEl.placeholder = `Notes for ${dayKey}...`;
     }
 
     nOverlay.classList.add("open");
@@ -1599,7 +1600,7 @@ function calcDailyProgress(){
 }
 
 /**
- * Shared progress calc for list+assignment sections (Semanal/Bi-weekly/Monthly).
+ * Shared progress calc for list+assignment sections (Weekly/Bi-weekly/Monthly).
  * A chore counts as done ONLY when:
  *  - assigned to someone AND
  *  - checked complete
@@ -1687,17 +1688,17 @@ function renderDashboard(){
         <div class="dashHeaderRow">
           <h2>Progress Dashboard</h2>
         </div>
-        <div class="hint">Rings track completion for Daily (Hoy) and Semanal. (Maintenance not included yet.)</div>
+        <div class="hint">Rings track completion for Daily (Today) and Weekly. (Maintenance not included yet.)</div>
 
         <div class="rings">
-          ${ringCard("Daily (Hoy)", "daily", df, dpF)}
-          ${ringCard("Semanal", "weekly", wf, wpF)}
+          ${ringCard("Daily (Today)", "daily", df, dpF)}
+          ${ringCard("Weekly", "weekly", wf, wpF)}
         </div>
       </div>
 
       <div class="dashNotesRow">
         <div class="panel notesBox">
-          <h2>Notas</h2>
+          <h2>Notes</h2>
           <textarea id="dashNotes" placeholder="Write dashboard notes..."></textarea>
         </div>
 
@@ -1730,9 +1731,9 @@ function renderDashboard(){
   const ds = loadDailyState();
   ds[selectedDay] = ds[selectedDay] || { checks:{}, notes:"" };
 
-  if (dayLabel) dayLabel.textContent = `Notas para ${selectedDay}...`;
+  if (dayLabel) dayLabel.textContent = `Notes for ${selectedDay}...`;
   dayTA.value = ds[selectedDay].notes || "";
-  dayTA.placeholder = `Notas para ${selectedDay}...`;
+  dayTA.placeholder = `Notes for ${selectedDay}...`;
   dayTA.readOnly = ro;
   dayTA.style.opacity = ro ? "0.85" : "1";
 
@@ -1853,7 +1854,7 @@ function ringCard(title, ringKey, prog, percent){
 
 /* =========================
    DAY VIEW RENDER
-   - Layout switch implemented here: columns first, then semanal panel.
+   - Layout switch implemented here: columns first, then weekly pool panel.
 ========================= */
 
 function renderDay(dayKey){
@@ -1866,9 +1867,9 @@ function renderDay(dayKey){
   const currentNote = (dayState[dayKey] && typeof dayState[dayKey].notes === "string")
     ? dayState[dayKey].notes.trim()
     : "";
-  const pickupReminder = dayKey === "lunes"
+  const pickupReminder = dayKey === "monday"
     ? "Trash and recycling pick up tomorrow."
-    : dayKey === "jueves"
+    : dayKey === "thursday"
       ? "Trash pick up tomorrow."
       : "";
 
@@ -1878,7 +1879,7 @@ function renderDay(dayKey){
         <h2 class="dayTitle" style="margin:0;">${dayKey}</h2>
         <div style="display:flex; align-items:center; gap:10px;">
           <div class="dayDate">${dayDate}</div>
-          ${dayKey === "domingo" ? '<button class="danger" id="btnWeeklyDayReset" type="button">Reset</button>' : ''}
+          ${dayKey === "sunday" ? '<button class="danger" id="btnWeeklyDayReset" type="button">Reset</button>' : ''}
         </div>
       </div>
       ${pickupReminder ? `<div style="margin-top:8px; font-size:15px; font-weight:600; opacity:0.92;">${pickupReminder}</div>` : ""}
@@ -1892,8 +1893,8 @@ function renderDay(dayKey){
       </section>
     ` : ""}
 
-    <section class="panel weeklyPool" id="weeklyPool" aria-label="Unassigned Semanal chores">
-      <div class="weeklyPoolTitle">Semanal — Sin asignar</div>
+    <section class="panel weeklyPool" id="weeklyPool" aria-label="Unassigned weekly chores">
+      <div class="weeklyPoolTitle">Weekly — Unassigned</div>
       <div class="weeklyPoolItems" id="weeklyPoolItems"></div>
     </section>
 
@@ -1903,7 +1904,7 @@ function renderDay(dayKey){
   renderDailyColumns(dayKey);
   renderWeeklySections(dayKey);
 
-  if (dayKey === "domingo") {
+  if (dayKey === "sunday") {
     const resetBtn = document.getElementById("btnWeeklyDayReset");
     if (resetBtn) {
       resetBtn.onclick = () => {
@@ -2041,7 +2042,7 @@ if (person === "Dad") {
 
     const divider = document.createElement("div");
     divider.className = "weeklyZoneDivider";
-    divider.textContent = "Semanal";
+    divider.textContent = "Weekly";
     col.appendChild(divider);
 
     const zone = document.createElement("div");
@@ -2530,10 +2531,10 @@ function renderAdmin(){
 
       const title = document.createElement("div");
       title.className = "adminNoteTitle";
-      title.textContent = `Notas para ${dayKey}...`;
+      title.textContent = `Notes for ${dayKey}...`;
 
       const ta = document.createElement("textarea");
-      ta.placeholder = `Notas para ${dayKey}...`;
+      ta.placeholder = `Notes for ${dayKey}...`;
       ta.value = (typeof ds[dayKey].notes === "string") ? ds[dayKey].notes : "";
 
       ta.oninput = () => {
@@ -2827,8 +2828,8 @@ function renderApp(){
   // day route
   if (DAYS.includes(r)) return renderDay(r);
 
-  // special alias: "hoy" means today's day page
-  if (r === "hoy") return renderDay(todayKey());
+  // special alias: "today" means today's day page
+  if (r === "today") return renderDay(todayKey());
 
   // unknown route: go home instead of silently showing today
   return goto("dashboard");
