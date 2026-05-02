@@ -656,16 +656,6 @@ const WEEKLY_CHORES = [
   "Doors & windows"
 ];
 
-// Phase 5/6 scaffolding
-const BIWEEKLY_CHORES = [
-  "Sweep the outside area",
-  "Wipe cabinet fronts & handles",
-  "Clean pet bedding (if applicable)",
-  "Wipe window sills & tracks",
-  "Wipe walls & doors",
-  "Clean windows (inside)"
-];
-
 /* =========================
    STORAGE HELPERS
 ========================= */
@@ -736,7 +726,6 @@ function buildBackupPayload(){
     data: {
       dailyState: loadDailyState(),
       weeklyState: loadWeeklyState(),
-      biweeklyState: loadBiweeklyState(),
       maintState: loadMaintState(),
       dashState: loadDashState(),
       groceriesState: loadGroceriesState(),
@@ -783,7 +772,6 @@ function restoreBackupPayload(payload){
   const allowedKeys = [
     "dailyState",
     "weeklyState",
-    "biweeklyState",
     "maintState",
     "dashState",
     "groceriesState",
@@ -1183,10 +1171,6 @@ function saveDailyState(s){ jset("dailyState", s); }
 function loadWeeklyState(){ return jget("weeklyState", { checks:{}, assign:{} }); }
 function saveWeeklyState(s){ jset("weeklyState", s); }
 
-// Biweekly shared state (Phase 5)
-function loadBiweeklyState(){ return jget("biweeklyState", { checks:{}, assign:{} }); }
-function saveBiweeklyState(s){ jset("biweeklyState", s); }
-
 // Maintenance log (Phase 7)
 function loadMaintState(){ return jget("maintState", { entries:[] }); }
 function saveMaintState(s){ jset("maintState", s); }
@@ -1199,8 +1183,7 @@ function loadDashState(){
     viewerReadOnly: false,
     ringFilters: {
       daily: "All",
-      weekly: "All",
-      biweekly: "All"
+      weekly: "All"
     }
   });
 
@@ -1219,7 +1202,7 @@ function loadDashState(){
   }
 
   if (!s || typeof s !== "object"){
-    return { dashboardNotes: "", viewerDay: "", viewerReadOnly: false, ringFilters: { daily:"All", weekly:"All", biweekly:"All" } };
+    return { dashboardNotes: "", viewerDay: "", viewerReadOnly: false, ringFilters: { daily:"All", weekly:"All" } };
   }
 
   if (typeof s.dashboardNotes !== "string") s.dashboardNotes = "";
@@ -1227,9 +1210,9 @@ function loadDashState(){
   if (typeof s.viewerReadOnly !== "boolean") s.viewerReadOnly = false;
 
   if (!s.ringFilters || typeof s.ringFilters !== "object"){
-    s.ringFilters = { daily:"All", weekly:"All", biweekly:"All" };
+    s.ringFilters = { daily:"All", weekly:"All" };
   }
-  ["daily","weekly","biweekly"].forEach(k => {
+  ["daily","weekly"].forEach(k => {
     if (!s.ringFilters[k] || typeof s.ringFilters[k] !== "string") s.ringFilters[k] = "All";
     const v = s.ringFilters[k];
     if (v !== "All" && !PEOPLE.includes(v)) s.ringFilters[k] = "All";
@@ -1335,7 +1318,6 @@ function renderTopNav(){
   label.style.whiteSpace = "nowrap";
   let lbl = "";
   if (r === "dashboard") lbl = "Dashboard";
-  else if (r === "biweekly") lbl = "Bi-weekly";
   else if (r === "maintenance") lbl = "Maintenance";
   else if (r === "admin") lbl = "Admin";
   else if (r === "celos-school") lbl = "Celo's School";
@@ -1422,7 +1404,6 @@ function renderTopNav(){
   sideNav.appendChild(navBtn("Celo's School", "celos-school", r === "celos-school"));
 
   // Other primary routes
-  sideNav.appendChild(navBtn("Bi-weekly", "biweekly", r === "biweekly"));
   sideNav.appendChild(navBtn("Maintenance", "maintenance", r === "maintenance"));
   sideNav.appendChild(navBtn("Admin", "admin", r === "admin"));
 
@@ -1654,10 +1635,6 @@ function calcWeeklyProgress(){
   return calcAssignedListProgress(WEEKLY_CHORES, loadWeeklyState);
 }
 
-function calcBiweeklyProgress(){
-  return calcAssignedListProgress(BIWEEKLY_CHORES, loadBiweeklyState);
-}
-
 function pct(done, total){
   if (!total) return 0;
   return Math.round((done / total) * 100);
@@ -1692,20 +1669,17 @@ function renderDashboard(){
   const app = document.getElementById("app");
 
   const w = calcWeeklyProgress();
-  const b = calcBiweeklyProgress();
   const d = calcDailyProgress();
 
   // Extract filters and apply per-ring
   const dash = loadDashState();
-  const filters = dash.ringFilters || { daily:"All", weekly:"All", biweekly:"All" };
+  const filters = dash.ringFilters || { daily:"All", weekly:"All" };
 
   const df = applyRingFilter(d, filters.daily);
   const wf = applyRingFilter(w, filters.weekly);
-  const bf = applyRingFilter(b, filters.biweekly);
 
   const dpF = pct(df.done, df.total);
   const wpF = pct(wf.done, wf.total);
-  const bpF = pct(bf.done, bf.total);
 
   app.innerHTML = `
     <div class="dashGrid">
@@ -1713,12 +1687,11 @@ function renderDashboard(){
         <div class="dashHeaderRow">
           <h2>Progress Dashboard</h2>
         </div>
-        <div class="hint">Rings track completion for Daily (Hoy), Semanal, and Bi-weekly. (Maintenance not included yet.)</div>
+        <div class="hint">Rings track completion for Daily (Hoy) and Semanal. (Maintenance not included yet.)</div>
 
         <div class="rings">
           ${ringCard("Daily (Hoy)", "daily", df, dpF)}
           ${ringCard("Semanal", "weekly", wf, wpF)}
-          ${ringCard("Bi-weekly", "biweekly", bf, bpF)}
         </div>
       </div>
 
@@ -1790,7 +1763,7 @@ function renderDashboard(){
       const key = sel.getAttribute("data-ring");
       const val = sel.value;
       const cur = loadDashState();
-      cur.ringFilters = cur.ringFilters || { daily:"All", weekly:"All", biweekly:"All" };
+      cur.ringFilters = cur.ringFilters || { daily:"All", weekly:"All" };
       if (key) cur.ringFilters[key] = val;
       saveDashState(cur);
       renderDashboard();
@@ -1850,7 +1823,7 @@ function ringSVG(done, total, byPerson){
 
 function ringCard(title, ringKey, prog, percent){
   const dash = loadDashState();
-  const filters = dash.ringFilters || { daily:"All", weekly:"All", biweekly:"All" };
+  const filters = dash.ringFilters || { daily:"All", weekly:"All" };
   const selected = filters[ringKey] || "All";
 
   const done = prog ? (prog.done || 0) : 0;
@@ -1926,16 +1899,10 @@ function renderDay(dayKey){
       <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
       <div class="weeklyGrid" id="weeklyGrid"></div>
     </section>
-    <section class="panel" aria-label="Bi-weekly chores">
-      <h3 style="font-size:22px; letter-spacing:0.5px;">Quincenal</h3>
-      <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
-      <div class="listGrid" id="biweeklyGrid"></div>
-    </section>
   `;
 
   renderDailyColumns(dayKey);
   renderWeekly();
-  renderBiweeklyInline();
 
   if (dayKey === "domingo") {
     const resetBtn = document.getElementById("btnWeeklyDayReset");
@@ -1947,70 +1914,6 @@ function renderDay(dayKey){
       };
     }
   }
-}
-
-function renderBiweeklyInline(){
-  const grid = document.getElementById("biweeklyGrid");
-  if (!grid) return;
-  grid.innerHTML = "";
-
-  const s = loadBiweeklyState();
-  s.checks = s.checks || {};
-  s.assign = s.assign || {};
-
-  BIWEEKLY_CHORES.forEach(item => {
-    const row = document.createElement("div");
-    row.className = "listItem";
-    if (!!s.checks[item]) row.classList.add("pressed");
-
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.id = `biweekly__${item}`;
-    cb.checked = !!s.checks[item];
-    cb.onchange = () => {
-      const cur = loadBiweeklyState();
-      cur.checks = cur.checks || {};
-      cur.checks[item] = cb.checked;
-      saveBiweeklyState(cur);
-      renderBiweeklyInline();
-    };
-
-    const lab = document.createElement("label");
-    lab.className = "name";
-    lab.htmlFor = cb.id;
-    lab.style.cursor = "pointer";
-    lab.textContent = item;
-
-    const sel = document.createElement("select");
-    sel.className = "assignSelect";
-
-    const blank = document.createElement("option");
-    blank.value = "";
-    blank.textContent = "Asignar…";
-    sel.appendChild(blank);
-
-    PEOPLE.forEach(p => {
-      const opt = document.createElement("option");
-      opt.value = p;
-      opt.textContent = p;
-      sel.appendChild(opt);
-    });
-
-    sel.value = s.assign[item] || "";
-    sel.onchange = () => {
-      const cur = loadBiweeklyState();
-      cur.assign = cur.assign || {};
-      cur.assign[item] = sel.value;
-      saveBiweeklyState(cur);
-    };
-
-    row.appendChild(cb);
-    row.appendChild(lab);
-    row.appendChild(sel);
-    grid.appendChild(row);
-  });
-
-  saveBiweeklyState(s);
 }
 
 function renderDailyColumns(dayKey){
@@ -2247,130 +2150,6 @@ function renderCeloSchool(){
       </div>
     </section>
   `;
-}
-
-/* =========================
-   BIWEEKLY / MAINTENANCE (scaffold pages)
-========================= */
-
-function renderChecklistPage(kind){
-  const app = document.getElementById("app");
-
-  app.innerHTML = `
-    <section class="panel">
-      <div class="toolbar">
-        <div class="left">
-          <h2 style="margin:0;">Bi-weekly</h2>
-          <div class="hint" style="margin:0;">Check items as you complete them. Use the reset button to clear this section only.</div>
-        </div>
-        <div class="right">
-          <button class="danger" id="btnReset">Bi-weekly Reset</button>
-        </div>
-      </div>
-      <div class="listGrid" id="listGrid"></div>
-    </section>
-  `;
-
-  const grid = document.getElementById("listGrid");
-  grid.innerHTML = "";
-
-  if (BIWEEKLY_CHORES.length === 0){
-    const empty = document.createElement("div");
-    empty.className = "panel";
-    empty.style.background = "transparent";
-    empty.style.borderStyle = "dashed";
-    empty.style.color = "rgba(245,245,245,0.7)";
-    empty.textContent = "No items yet. We'll add them next phase.";
-    grid.appendChild(empty);
-  } else {
-    const state = loadBiweeklyState();
-    state.checks = state.checks || {};
-    state.assign = state.assign || {};
-
-    BIWEEKLY_CHORES.forEach(item => {
-      const row = document.createElement("div");
-      row.className = "listItem";
-      if (!!state.checks[item]) row.classList.add("pressed");
-
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.id = `${kind}__${item}`;
-      cb.checked = !!state.checks[item];
-      cb.onchange = () => {
-        const s = loadBiweeklyState();
-        s.checks = s.checks || {};
-        s.checks[item] = cb.checked;
-        saveBiweeklyState(s);
-        renderChecklistPage(kind);
-      };
-
-      const name = document.createElement("label");
-      name.className = "name";
-      name.htmlFor = cb.id;
-      name.style.cursor = "pointer";
-      name.textContent = item;
-
-      row.appendChild(cb);
-      row.appendChild(name);
-
-      state.assign = state.assign || {};
-
-      const sel = document.createElement("select");
-      sel.className = "assignSelect";
-
-      const blank = document.createElement("option");
-      blank.value = "";
-      blank.textContent = "Asignar…";
-      sel.appendChild(blank);
-
-      PEOPLE.forEach(p => {
-        const opt = document.createElement("option");
-        opt.value = p;
-        opt.textContent = p;
-        sel.appendChild(opt);
-      });
-
-      sel.value = state.assign[item] || "";
-
-      sel.onchange = () => {
-        const s = loadBiweeklyState();
-        s.assign = s.assign || {};
-        s.assign[item] = sel.value;
-        saveBiweeklyState(s);
-      };
-
-      row.appendChild(sel);
-
-      grid.appendChild(row);
-    });
-
-    saveBiweeklyState(state);
-  }
-
-  document.getElementById("btnReset").onclick = () => {
-  if (!confirm("Hard reset? This will clear all local data and restore defaults.")) return;
-
-  try{
-    const keys = [
-      "dailyState","weeklyState","biweeklyState","dashState","groceriesState",
-      "memberColors","memberPhotos","maintState","weeklyPlanState","themeState","syncMeta"
-    ];
-    keys.forEach(k => { try{ localStorage.removeItem(k); } catch {} });
-
-    // Best-effort: clear any prefixed note/check keys
-    Object.keys(localStorage).forEach(k => {
-      if (k.startsWith("dayNote::") || k.startsWith("dayChecks::") || k.startsWith("dashNote::")) {
-        try{ localStorage.removeItem(k); } catch {}
-      }
-    });
-
-    renderApp();
-    alert("Reset complete.");
-  } catch (e){
-    console.error("Hard reset failed:", e);
-    alert("Reset failed. Check console for details.");
-  }
-};
 }
 
 function renderAdmin(){
@@ -2955,7 +2734,7 @@ function renderMaintenance(){
    - resets daily pages (checkboxes + notes)
    - resets weekly chores (checks + assignments)
    - DOES NOT touch dashboard notes/pin
-   - DOES NOT touch biweekly/maintenance
+   - DOES NOT touch maintenance
 ========================= */
 
 function weeklyReset(){
@@ -2987,7 +2766,6 @@ function renderApp(){
     saveDashState(dash);
     return renderDashboard();
   }
-  if (r === "biweekly") return renderChecklistPage("biweekly");
   if (r === "maintenance") return renderMaintenance();
   if (r === "admin") return renderAdmin();
   if (r === "celos-school") return renderCeloSchool();
