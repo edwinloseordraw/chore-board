@@ -1695,16 +1695,16 @@ function renderDashboard(){
         </div>
       </div>
 
-      <div class="panel notesBox">
-        <h2>Notas</h2>
-        <div class="hint">Two fields: general dashboard notes, plus day-specific notes viewer.</div>
+      <div class="dashNotesRow">
+        <div class="panel notesBox">
+          <h2>Notas</h2>
+          <textarea id="dashNotes" placeholder="Write dashboard notes..."></textarea>
+        </div>
 
-        <textarea id="dashNotes" placeholder="Write dashboard notes..."></textarea>
-
-        <div style="height:10px;"></div>
-
-        <div class="hint" id="dayNotesLabel"></div>
-        <textarea id="dayNotes" placeholder=""></textarea>
+        <div class="panel notesBox">
+          <div class="hint" id="dayNotesLabel"></div>
+          <textarea id="dayNotes" placeholder=""></textarea>
+        </div>
       </div>
     </div>
   `;
