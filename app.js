@@ -2107,6 +2107,17 @@ function populateWeeklyZone(person, zone, dayKey){
   setupDropZone(zone, person, dayKey);
 }
 
+// Touch drag state (shared across all drag items on the page)
+const _touchDrag = { active: false, chore: null, ghost: null, dayKey: null };
+
+function _touchDragEnd(){
+  if (_touchDrag.ghost) { _touchDrag.ghost.remove(); _touchDrag.ghost = null; }
+  document.querySelectorAll(".dropOver").forEach(el => el.classList.remove("dropOver"));
+  _touchDrag.active = false;
+  _touchDrag.chore = null;
+  _touchDrag.dayKey = null;
+}
+
 function makeWeeklyDragItem(chore, dayKey){
   const w = loadWeeklyState();
   const item = document.createElement("div");
@@ -2139,12 +2150,95 @@ function makeWeeklyDragItem(chore, dayKey){
   item.appendChild(cb);
   item.appendChild(label);
 
+  // ── Mouse drag (desktop) ──────────────────────────────────────────
   item.addEventListener("dragstart", (e) => {
     e.dataTransfer.setData("text/plain", chore);
     e.dataTransfer.effectAllowed = "move";
     setTimeout(() => item.classList.add("dragging"), 0);
   });
   item.addEventListener("dragend", () => item.classList.remove("dragging"));
+
+  // ── Touch drag (iPad / mobile) ────────────────────────────────────
+  item.addEventListener("touchstart", (e) => {
+    // Don't hijack checkbox taps
+    if (e.target === cb) return;
+    e.preventDefault();
+
+    _touchDrag.active = true;
+    _touchDrag.chore = chore;
+    _touchDrag.dayKey = dayKey;
+
+    // Create a floating ghost clone
+    const rect = item.getBoundingClientRect();
+    const ghost = item.cloneNode(true);
+    ghost.style.position = "fixed";
+    ghost.style.left = rect.left + "px";
+    ghost.style.top = rect.top + "px";
+    ghost.style.width = rect.width + "px";
+    ghost.style.opacity = "0.75";
+    ghost.style.pointerEvents = "none";
+    ghost.style.zIndex = "9999";
+    ghost.style.transition = "none";
+    ghost.style.borderRadius = "8px";
+    ghost.style.boxShadow = "0 8px 24px rgba(0,0,0,0.5)";
+    document.body.appendChild(ghost);
+    _touchDrag.ghost = ghost;
+
+    item.classList.add("dragging");
+  }, { passive: false });
+
+  item.addEventListener("touchmove", (e) => {
+    if (!_touchDrag.active) return;
+    e.preventDefault();
+
+    const touch = e.touches[0];
+    const ghost = _touchDrag.ghost;
+    if (ghost){
+      ghost.style.left = (touch.clientX - 40) + "px";
+      ghost.style.top  = (touch.clientY - 20) + "px";
+    }
+
+    // Find drop zone under the touch point
+    ghost && (ghost.style.display = "none");
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    ghost && (ghost.style.display = "");
+
+    const zone = el && (el.closest(".weeklyZone") || el.closest(".weeklyPoolItems"));
+    document.querySelectorAll(".dropOver").forEach(z => z.classList.remove("dropOver"));
+    if (zone) zone.classList.add("dropOver");
+  }, { passive: false });
+
+  item.addEventListener("touchend", (e) => {
+    if (!_touchDrag.active) return;
+    e.preventDefault();
+
+    const touch = e.changedTouches[0];
+
+    // Temporarily hide ghost so elementFromPoint finds the zone
+    if (_touchDrag.ghost) _touchDrag.ghost.style.display = "none";
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (_touchDrag.ghost) _touchDrag.ghost.style.display = "";
+
+    const zone = el && (el.closest(".weeklyZone") || el.closest(".weeklyPoolItems"));
+    if (zone && _touchDrag.chore && WEEKLY_CHORES.includes(_touchDrag.chore)){
+      const person = zone.closest(".weeklyZone")
+        ? (zone.id || "").replace("weeklyZone__", "")
+        : "";
+      const ws = loadWeeklyState();
+      ws.assign = ws.assign || {};
+      ws.assign[_touchDrag.chore] = person;
+      saveWeeklyState(ws);
+      renderWeeklySections(_touchDrag.dayKey);
+    }
+
+    item.classList.remove("dragging");
+    _touchDragEnd();
+  }, { passive: false });
+
+  item.addEventListener("touchcancel", () => {
+    item.classList.remove("dragging");
+    _touchDragEnd();
+  });
 
   return item;
 }
