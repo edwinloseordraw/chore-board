@@ -1892,17 +1892,16 @@ function renderDay(dayKey){
       </section>
     ` : ""}
 
-    <div class="columns" id="columns"></div>
-
-    <section class="panel" aria-label="Weekly chores">
-      <h3 style="font-size:22px; letter-spacing:0.5px;">Semanal</h3>
-      <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
-      <div class="weeklyGrid" id="weeklyGrid"></div>
+    <section class="panel weeklyPool" id="weeklyPool" aria-label="Unassigned Semanal chores">
+      <div class="weeklyPoolTitle">Semanal — Sin asignar</div>
+      <div class="weeklyPoolItems" id="weeklyPoolItems"></div>
     </section>
+
+    <div class="columns" id="columns"></div>
   `;
 
   renderDailyColumns(dayKey);
-  renderWeekly();
+  renderWeeklySections(dayKey);
 
   if (dayKey === "domingo") {
     const resetBtn = document.getElementById("btnWeeklyDayReset");
@@ -2040,6 +2039,16 @@ if (person === "Dad") {
       col.appendChild(row);
     });
 
+    const divider = document.createElement("div");
+    divider.className = "weeklyZoneDivider";
+    divider.textContent = "Semanal";
+    col.appendChild(divider);
+
+    const zone = document.createElement("div");
+    zone.className = "weeklyZone";
+    zone.id = `weeklyZone__${person}`;
+    col.appendChild(zone);
+
     columns.appendChild(col);
   });
 }
@@ -2058,65 +2067,110 @@ function renderDayNotes(dayKey){
   };
 }
 
-function renderWeekly(){
-  const grid = document.getElementById("weeklyGrid");
-  grid.innerHTML = "";
+function renderWeeklySections(dayKey){
+  renderWeeklyPool(dayKey);
+  PEOPLE.forEach(person => {
+    const zone = document.getElementById(`weeklyZone__${person}`);
+    if (zone) populateWeeklyZone(person, zone, dayKey);
+  });
+}
+
+function renderWeeklyPool(dayKey){
+  const pool = document.getElementById("weeklyPoolItems");
+  if (!pool) return;
+  pool.innerHTML = "";
 
   const w = loadWeeklyState();
-  w.checks = w.checks || {};
-  w.assign = w.assign || {};
+  const unassigned = WEEKLY_CHORES.filter(c => !PEOPLE.includes(w.assign[c] || ""));
 
-  WEEKLY_CHORES.forEach(chore => {
-    const row = document.createElement("div");
-    row.className = "weeklyItem";
-    if (!!w.checks[chore]) row.classList.add("pressed");
+  if (unassigned.length === 0){
+    const msg = document.createElement("span");
+    msg.className = "weeklyPoolEmpty";
+    msg.textContent = "All chores assigned";
+    pool.appendChild(msg);
+  } else {
+    unassigned.forEach(chore => pool.appendChild(makeWeeklyDragItem(chore, dayKey)));
+  }
 
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.checked = !!w.checks[chore];
-    cb.onchange = () => {
-      const ws = loadWeeklyState();
-      ws.checks = ws.checks || {};
-      ws.checks[chore] = cb.checked;
-      saveWeeklyState(ws);
-      renderWeekly();
-      // update dashboard ring if open later
-    };
+  setupDropZone(pool, "", dayKey);
 
-    cb.id = `weekly__${chore}`;
-    const wlab = document.createElement("label");
-    wlab.className = "label";
-    wlab.htmlFor = cb.id;
-    wlab.textContent = chore;
+  const poolSection = document.getElementById("weeklyPool");
+  if (poolSection) poolSection.style.display = unassigned.length === 0 ? "none" : "";
+}
 
-    const sel = document.createElement("select");
-    const blank = document.createElement("option");
-    blank.value = "";
-    blank.textContent = "Asignar…";
-    sel.appendChild(blank);
+function populateWeeklyZone(person, zone, dayKey){
+  zone.innerHTML = "";
+  const w = loadWeeklyState();
+  const mine = WEEKLY_CHORES.filter(c => (w.assign[c] || "") === person);
+  mine.forEach(chore => zone.appendChild(makeWeeklyDragItem(chore, dayKey)));
+  setupDropZone(zone, person, dayKey);
+}
 
-    PEOPLE.forEach(p => {
-      const opt = document.createElement("option");
-      opt.value = p;
-      opt.textContent = p;
-      sel.appendChild(opt);
-    });
+function makeWeeklyDragItem(chore, dayKey){
+  const w = loadWeeklyState();
+  const item = document.createElement("div");
+  item.className = "weeklyDragItem";
+  if (!!w.checks[chore]) item.classList.add("pressed");
+  item.draggable = true;
+  item.setAttribute("data-chore", chore);
 
-    sel.value = w.assign[chore] || "";
-    sel.onchange = () => {
-      const ws = loadWeeklyState();
-      ws.assign = ws.assign || {};
-      ws.assign[chore] = sel.value;
-      saveWeeklyState(ws);
-    };
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  cb.checked = !!w.checks[chore];
+  cb.onclick = (e) => e.stopPropagation();
+  cb.onchange = () => {
+    const ws = loadWeeklyState();
+    ws.checks = ws.checks || {};
+    ws.checks[chore] = cb.checked;
+    saveWeeklyState(ws);
+    item.classList.toggle("pressed", cb.checked);
+  };
 
-    row.appendChild(cb);
-    row.appendChild(wlab);
-    row.appendChild(sel);
-    grid.appendChild(row);
+  const label = document.createElement("span");
+  label.textContent = chore;
+
+  const handle = document.createElement("span");
+  handle.className = "dragHandle";
+  handle.textContent = "⠿";
+  handle.setAttribute("aria-hidden", "true");
+
+  item.appendChild(handle);
+  item.appendChild(cb);
+  item.appendChild(label);
+
+  item.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("text/plain", chore);
+    e.dataTransfer.effectAllowed = "move";
+    setTimeout(() => item.classList.add("dragging"), 0);
   });
+  item.addEventListener("dragend", () => item.classList.remove("dragging"));
 
-  saveWeeklyState(w);
+  return item;
+}
+
+function setupDropZone(el, person, dayKey){
+  el.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  });
+  el.addEventListener("dragenter", (e) => {
+    e.preventDefault();
+    el.classList.add("dropOver");
+  });
+  el.addEventListener("dragleave", (e) => {
+    if (!el.contains(e.relatedTarget)) el.classList.remove("dropOver");
+  });
+  el.addEventListener("drop", (e) => {
+    e.preventDefault();
+    el.classList.remove("dropOver");
+    const chore = e.dataTransfer.getData("text/plain");
+    if (!chore || !WEEKLY_CHORES.includes(chore)) return;
+    const ws = loadWeeklyState();
+    ws.assign = ws.assign || {};
+    ws.assign[chore] = person;
+    saveWeeklyState(ws);
+    renderWeeklySections(dayKey);
+  });
 }
 
 
