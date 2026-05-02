@@ -1,10 +1,9 @@
-const CACHE_NAME = "chore-board-v6";
+const CACHE_NAME = "chore-board-v10";
 
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
-  "./app.js",
   "./manifest.webmanifest",
   "./icon.png",
   "./apple-touch-icon.png"
@@ -30,21 +29,28 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
+  if (request.method !== "GET") return;
 
-  // Always fetch latest school calendar image (do NOT cache month.png)
-  if (request.method === "GET" && request.url.includes("month.png")) {
+  const url = request.url;
+
+  // JS modules: always network-only, no caching
+  if (url.includes(".js")) {
+    event.respondWith(fetch(request, { cache: "no-store" }));
+    return;
+  }
+
+  // School calendar image: always network-only
+  if (url.includes("month.png")) {
     event.respondWith(fetch(request));
     return;
   }
 
-  // Network-first strategy
+  // Everything else (HTML, CSS, icons): network-first, cache fallback
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: "no-store" })
       .then((response) => {
-        if (request.method === "GET" && !request.url.includes("month.png")) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        }
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
         return response;
       })
       .catch(() =>
