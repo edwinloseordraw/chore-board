@@ -1,10 +1,8 @@
-import { PEOPLE, WEEKLY_CHORES, BIWEEKLY_CHORES, MONTHLY_CHORES } from './constants.js';
+import { PEOPLE, WEEKLY_CHORES } from './constants.js';
 import { todayKey, formatMMDDYYYY, dateForDayKey, escapeHtml } from './utils.js';
 import {
   loadDailyState, saveDailyState,
   loadWeeklyState, saveWeeklyState,
-  loadBiweeklyState, saveBiweeklyState,
-  loadMonthlyState, saveMonthlyState,
   loadMemberColors, loadMemberPhotos,
   resetDailyAndWeeklyChoreState
 } from './state.js';
@@ -53,22 +51,10 @@ export function renderDay(dayKey){
       <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
       <div class="weeklyGrid" id="weeklyGrid"></div>
     </section>
-    <section class="panel" aria-label="Bi-weekly chores">
-      <h3 style="font-size:22px; letter-spacing:0.5px;">Quincenal</h3>
-      <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
-      <div class="listGrid" id="biweeklyGrid"></div>
-    </section>
-    <section class="panel" aria-label="Monthly chores">
-      <h3 style="font-size:22px; letter-spacing:0.5px;">Mensual</h3>
-      <div class="hint">Asignar y rotar manualmente. Se mantiene igual en todos los días.</div>
-      <div class="listGrid" id="monthlyGrid"></div>
-    </section>
   `;
 
   renderDailyColumns(dayKey, dayState);
-  renderListSection("weeklyGrid",   WEEKLY_CHORES,   loadWeeklyState,   saveWeeklyState,   { rowClass:"weeklyItem", labelClass:"label", selectClass:"",            prefix:"weekly"   });
-  renderListSection("biweeklyGrid", BIWEEKLY_CHORES, loadBiweeklyState, saveBiweeklyState, { rowClass:"listItem",   labelClass:"name",  selectClass:"assignSelect", prefix:"biweekly" });
-  renderListSection("monthlyGrid",  MONTHLY_CHORES,  loadMonthlyState,  saveMonthlyState,  { rowClass:"listItem",   labelClass:"name",  selectClass:"assignSelect", prefix:"monthly"  });
+  renderListSection("weeklyGrid", WEEKLY_CHORES, loadWeeklyState, saveWeeklyState, { rowClass:"weeklyItem", labelClass:"label", selectClass:"", prefix:"weekly" });
 
   if (dayKey === "domingo") {
     const resetBtn = document.getElementById("btnWeeklyDayReset");

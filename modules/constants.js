@@ -181,23 +181,3 @@ export const WEEKLY_CHORES = [
   "Doors & windows"
 ];
 
-export const BIWEEKLY_CHORES = [
-  "Sweep the outside area",
-  "Wipe cabinet fronts & handles",
-  "Clean pet bedding (if applicable)",
-  "Wipe window sills & tracks",
-  "Wipe walls & doors",
-  "Clean windows (inside)"
-];
-
-export const MONTHLY_CHORES = [
-  "Clean baseboards",
-  "Clean light switches & door handles",
-  "Deep clean bathrooms (grout, tub edges, behind toilet)",
-  "Clean behind large appliances (fridge, stove if movable)",
-  "Wash blankets & throws",
-  "Wash mattress protectors",
-  "Clean oven (light or self-clean)",
-  "Clean front door",
-  "Spot clean patio or porch"
-];

@@ -78,8 +78,6 @@ export function renderTopNav(){
   label.style.whiteSpace = "nowrap";
   let lbl = "";
   if (r === "dashboard") lbl = "Dashboard";
-  else if (r === "biweekly") lbl = "Bi-weekly";
-  else if (r === "monthly") lbl = "Monthly";
   else if (r === "maintenance") lbl = "Maintenance";
   else if (r === "admin") lbl = "Admin";
   else if (r === "celos-school") lbl = "Celo's School";
@@ -142,8 +140,6 @@ export function renderTopNav(){
     { text: "Hoy",           path: "hoy",          active: r === "hoy" || DAYS.includes(r) },
     { text: "Dashboard",     path: "dashboard",     active: r === "dashboard" },
     { text: "Celo's School", path: "celos-school",  active: r === "celos-school" },
-    { text: "Bi-weekly",     path: "biweekly",      active: r === "biweekly" },
-    { text: "Monthly",       path: "monthly",       active: r === "monthly" },
     { text: "Maintenance",   path: "maintenance",   active: r === "maintenance" },
     { text: "Admin",         path: "admin",         active: r === "admin" },
   ];

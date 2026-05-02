@@ -1,4 +1,4 @@
-const CACHE_NAME = "chore-board-v8";
+const CACHE_NAME = "chore-board-v9";
 
 const ASSETS = [
   "./",
@@ -18,7 +18,6 @@ const ASSETS = [
   "./modules/render-day.js",
   "./modules/render-admin.js",
   "./modules/render-maintenance.js",
-  "./modules/render-checklist.js",
   "./modules/render-groceries.js",
   "./modules/render-celo.js"
 ];

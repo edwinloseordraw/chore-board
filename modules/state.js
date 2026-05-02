@@ -68,11 +68,6 @@ export function saveDailyState(s){ jset("dailyState", s); }
 export function loadWeeklyState(){ return jget("weeklyState", { checks:{}, assign:{} }); }
 export function saveWeeklyState(s){ jset("weeklyState", s); }
 
-export function loadBiweeklyState(){ return jget("biweeklyState", { checks:{}, assign:{} }); }
-export function saveBiweeklyState(s){ jset("biweeklyState", s); }
-
-export function loadMonthlyState(){ return jget("monthlyState", { checks:{}, assign:{} }); }
-export function saveMonthlyState(s){ jset("monthlyState", s); }
 
 export function loadMaintState(){ return jget("maintState", { entries:[] }); }
 export function saveMaintState(s){ jset("maintState", s); }
@@ -84,9 +79,7 @@ export function loadDashState(){
     viewerReadOnly: false,
     ringFilters: {
       daily: "All",
-      weekly: "All",
-      biweekly: "All",
-      monthly: "All"
+      weekly: "All"
     }
   });
 
@@ -105,7 +98,7 @@ export function loadDashState(){
   }
 
   if (!s || typeof s !== "object"){
-    return { dashboardNotes: "", viewerDay: "", viewerReadOnly: false, ringFilters: { daily:"All", weekly:"All", biweekly:"All", monthly:"All" } };
+    return { dashboardNotes: "", viewerDay: "", viewerReadOnly: false, ringFilters: { daily:"All", weekly:"All" } };
   }
 
   if (typeof s.dashboardNotes !== "string") s.dashboardNotes = "";
@@ -113,9 +106,9 @@ export function loadDashState(){
   if (typeof s.viewerReadOnly !== "boolean") s.viewerReadOnly = false;
 
   if (!s.ringFilters || typeof s.ringFilters !== "object"){
-    s.ringFilters = { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
+    s.ringFilters = { daily:"All", weekly:"All" };
   }
-  ["daily","weekly","biweekly","monthly"].forEach(k => {
+  ["daily","weekly"].forEach(k => {
     if (!s.ringFilters[k] || typeof s.ringFilters[k] !== "string") s.ringFilters[k] = "All";
     const v = s.ringFilters[k];
     if (v !== "All" && !PEOPLE.includes(v)) s.ringFilters[k] = "All";
@@ -152,8 +145,6 @@ export function buildBackupPayload(){
     data: {
       dailyState:     loadDailyState(),
       weeklyState:    loadWeeklyState(),
-      biweeklyState:  loadBiweeklyState(),
-      monthlyState:   loadMonthlyState(),
       maintState:     loadMaintState(),
       dashState:      loadDashState(),
       groceriesState: loadGroceriesState(),

@@ -6,7 +6,6 @@ import { renderDashboard } from './modules/render-dashboard.js';
 import { renderDay } from './modules/render-day.js';
 import { renderAdmin } from './modules/render-admin.js';
 import { renderMaintenance } from './modules/render-maintenance.js';
-import { renderChecklistPage } from './modules/render-checklist.js';
 import { renderCeloSchool } from './modules/render-celo.js';
 
 window.__CHOREBOARD_LOADED__ = true;
@@ -17,8 +16,6 @@ function renderApp(){
   addContextResetButton(r);
 
   if (r === "dashboard")    return renderDashboard();
-  if (r === "biweekly")     return renderChecklistPage("biweekly");
-  if (r === "monthly")      return renderChecklistPage("monthly");
   if (r === "maintenance")  return renderMaintenance();
   if (r === "admin")        return renderAdmin();
   if (r === "celos-school") return renderCeloSchool();

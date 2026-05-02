@@ -1,9 +1,9 @@
-import { PEOPLE, DAYS, WEEKLY_CHORES, BIWEEKLY_CHORES, MONTHLY_CHORES } from './constants.js';
+import { PEOPLE, DAYS, WEEKLY_CHORES } from './constants.js';
 import { todayKey, escapeHtml } from './utils.js';
 import {
   loadDailyState, saveDailyState,
   loadDashState, saveDashState,
-  loadWeeklyState, loadBiweeklyState, loadMonthlyState,
+  loadWeeklyState,
   loadMemberColors
 } from './state.js';
 import { getTasksForDay } from './planner.js';
@@ -73,13 +73,6 @@ function calcWeeklyProgress(){
   return calcAssignedListProgress(WEEKLY_CHORES, loadWeeklyState);
 }
 
-function calcBiweeklyProgress(){
-  return calcAssignedListProgress(BIWEEKLY_CHORES, loadBiweeklyState);
-}
-
-function calcMonthlyProgress(){
-  return calcAssignedListProgress(MONTHLY_CHORES, loadMonthlyState);
-}
 
 function pct(done, total){
   if (!total) return 0;
@@ -184,22 +177,16 @@ export function renderDashboard(){
   const app = document.getElementById("app");
 
   const w = calcWeeklyProgress();
-  const b = calcBiweeklyProgress();
-  const m = calcMonthlyProgress();
   const d = calcDailyProgress();
 
   const dash = loadDashState();
-  const filters = dash.ringFilters || { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
+  const filters = dash.ringFilters || { daily:"All", weekly:"All" };
 
   const df = applyRingFilter(d, filters.daily);
   const wf = applyRingFilter(w, filters.weekly);
-  const bf = applyRingFilter(b, filters.biweekly);
-  const mf = applyRingFilter(m, filters.monthly);
 
   const dpF = pct(df.done, df.total);
   const wpF = pct(wf.done, wf.total);
-  const bpF = pct(bf.done, bf.total);
-  const mpF = pct(mf.done, mf.total);
 
   app.innerHTML = `
     <div class="dashGrid">
@@ -207,13 +194,11 @@ export function renderDashboard(){
         <div class="dashHeaderRow">
           <h2>Progress Dashboard</h2>
         </div>
-        <div class="hint">Rings track completion for Daily (Hoy), Semanal, Bi-weekly, and Monthly. (Maintenance not included yet.)</div>
+        <div class="hint">Rings track completion for Daily (Hoy) and Semanal chores.</div>
 
         <div class="rings">
-          ${ringCard("Daily (Hoy)", "daily",    df, dpF, filters.daily)}
-          ${ringCard("Semanal",     "weekly",   wf, wpF, filters.weekly)}
-          ${ringCard("Bi-weekly",   "biweekly", bf, bpF, filters.biweekly)}
-          ${ringCard("Monthly",     "monthly",  mf, mpF, filters.monthly)}
+          ${ringCard("Daily (Hoy)", "daily",  df, dpF, filters.daily)}
+          ${ringCard("Semanal",     "weekly", wf, wpF, filters.weekly)}
         </div>
       </div>
 
@@ -277,7 +262,7 @@ export function renderDashboard(){
       const key = sel.getAttribute("data-ring");
       const val = sel.value;
       const cur = loadDashState();
-      cur.ringFilters = cur.ringFilters || { daily:"All", weekly:"All", biweekly:"All", monthly:"All" };
+      cur.ringFilters = cur.ringFilters || { daily:"All", weekly:"All" };
       if (key) cur.ringFilters[key] = val;
       saveDashState(cur);
       renderDashboard();
