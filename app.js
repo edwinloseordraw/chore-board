@@ -2310,7 +2310,7 @@ function renderAdmin(){
       <div class="toolbar">
         <div class="left">
           <h2 style="margin:0;">Admin</h2>
-          <div class="hint" style="margin:0;">Pick a theme + mode for the whole app, then (optionally) set member colors.</div>
+          <div class="hint" style="margin:0;">Pick a theme for the whole app, then (optionally) set member colors.</div>
         </div>
         <div class="right">
           <input id="importBackupFile" type="file" accept="application/json,.json" style="display:none;" />
@@ -2322,6 +2322,12 @@ function renderAdmin(){
       </div>
 <div style="height:10px;"></div>
 
+      <h3 style="margin:0 0 8px 0;">Theme</h3>
+      <div class="themePicker" id="themePicker"></div>
+
+      <div style="height:14px;"></div>
+
+      <h3 style="margin:0 0 8px 0;">Member Colors</h3>
       <div class="adminGrid" id="adminGrid"></div>
 
       <div class="hint" style="margin-top:10px;">Tip: Think of member colors as each person's "signature" in the rings.</div>
@@ -2359,12 +2365,44 @@ function renderAdmin(){
 
   // Theme system may not always be initialized. Guard against missing helpers/constants.
   const safeThemeState = (typeof loadThemeState === "function")
-    ? (loadThemeState() || { themeId: "paperClean", mode: "dark" })
-    : { themeId: "paperClean", mode: "dark" };
+    ? (loadThemeState() || { themeId: "neonGlass", mode: "dark" })
+    : { themeId: "neonGlass", mode: "dark" };
 
   const themePresets = (typeof THEME_MEMBER_COLORS !== "undefined" && THEME_MEMBER_COLORS)
     ? THEME_MEMBER_COLORS
     : null;
+
+  // Render theme picker
+  const themePicker = document.getElementById("themePicker");
+  if (themePicker && typeof THEMES === "object") {
+    themePicker.innerHTML = "";
+    Object.keys(THEMES).forEach(tid => {
+      const themeObj = THEMES[tid];
+      const isActive = safeThemeState.themeId === tid;
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "themeCard" + (isActive ? " themeCardActive" : "");
+      card.dataset.themeId = tid;
+
+      // Swatch colors from theme vars
+      const mode = themeObj.defaultMode || "dark";
+      const tv = (themeObj[mode] || {});
+      const accentColor = tv["--btnActive"] || "#22f0b6";
+      const swatchBg = tv["--bg"] ? tv["--bg"].split(",").slice(-1)[0].trim() : "#111";
+
+      card.innerHTML = `
+        <div class="themeCardSwatch" style="background:${accentColor};"></div>
+        <div class="themeCardLabel">${escapeHtml(themeObj.label || tid)}</div>
+        ${isActive ? '<div class="themeCardCheck">✓</div>' : ""}
+      `;
+      card.onclick = () => {
+        const newMode = themeObj.defaultMode || "dark";
+        applyTheme(tid, newMode);
+        renderAdmin();
+      };
+      themePicker.appendChild(card);
+    });
+  }
 
   // Member colors are always editable in this build.
   const colorsLocked = false;
@@ -3097,32 +3135,129 @@ function makeId(){
 }
 
 
-// Safety fallback: ensure THEMES exists so theme loader never crashes
-// (Prevents "ReferenceError: Can't find variable: THEMES" if theme presets are missing)
-if (typeof THEMES === "undefined") {
-  var THEMES = {
-    neonGlass: {
-      dark: {
-        "--panel": "#111",
-        "--ringTrack": "rgba(255,255,255,0.12)"
-      },
-      light: {
-        "--panel": "#ffffff",
-        "--ringTrack": "rgba(0,0,0,0.12)"
-      }
-    },
-    paperClean: {
-      dark: {
-        "--panel": "#111",
-        "--ringTrack": "rgba(255,255,255,0.12)"
-      },
-      light: {
-        "--panel": "#ffffff",
-        "--ringTrack": "rgba(0,0,0,0.12)"
-      }
+// Full theme definitions — overrides the safety stub set at boot
+var THEMES = {
+  neonGlass: {
+    label: "Neon Glass",
+    defaultMode: "dark",
+    dark: {
+      "--bg": "radial-gradient(1200px 800px at 20% 10%, rgba(0,255,240,0.10), transparent 55%), radial-gradient(900px 700px at 80% 25%, rgba(255,0,200,0.10), transparent 55%), linear-gradient(180deg, #0b0f12 0%, #07090b 100%)",
+      "--headerBg": "rgba(12,14,18,0.88)",
+      "--panel": "rgba(255,255,255,0.06)",
+      "--panel2": "rgba(255,255,255,0.08)",
+      "--panel3": "rgba(0,0,0,0.28)",
+      "--border": "rgba(255,255,255,0.10)",
+      "--border2": "rgba(255,255,255,0.12)",
+      "--text": "#f5f5f5",
+      "--muted": "rgba(245,245,245,0.75)",
+      "--muted2": "rgba(245,245,245,0.6)",
+      "--btn": "rgba(255,255,255,0.10)",
+      "--btnHover": "rgba(255,255,255,0.14)",
+      "--btnActive": "#22f0b6",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.30)",
+      "--inputBorder": "rgba(255,255,255,0.14)",
+      "--ringTrack": "rgba(255,255,255,0.22)",
+      "--shadow": "0 14px 28px rgba(0,0,0,0.45)",
+      "--glassBlur": "14px",
+      "--neuOutShadow": "8px 8px 18px rgba(0,0,0,0.38), -6px -6px 14px rgba(255,255,255,0.06)",
+      "--neuOutShadowSoft": "6px 6px 14px rgba(0,0,0,0.34), -5px -5px 12px rgba(255,255,255,0.05)",
+      "--neuInShadow": "inset 8px 8px 18px rgba(0,0,0,0.42), inset -6px -6px 14px rgba(255,255,255,0.06)",
+      "--neuInShadowSoft": "inset 6px 6px 14px rgba(0,0,0,0.36), inset -5px -5px 12px rgba(255,255,255,0.05)",
+      "--radius": "12px"
     }
-  };
-}
+  },
+  obsidianLeather: {
+    label: "Obsidian Leather",
+    defaultMode: "dark",
+    dark: {
+      "--bg": "repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px), radial-gradient(ellipse at 20% 20%, rgba(160,80,20,0.28), transparent 60%), linear-gradient(160deg, #1e0f08 0%, #120a05 100%)",
+      "--headerBg": "rgba(18,9,4,0.94)",
+      "--panel": "rgba(255,200,140,0.06)",
+      "--panel2": "rgba(255,200,140,0.09)",
+      "--panel3": "rgba(0,0,0,0.38)",
+      "--border": "rgba(201,146,42,0.22)",
+      "--border2": "rgba(201,146,42,0.30)",
+      "--text": "#f2e8d8",
+      "--muted": "rgba(242,232,216,0.75)",
+      "--muted2": "rgba(242,232,216,0.55)",
+      "--btn": "rgba(201,146,42,0.12)",
+      "--btnHover": "rgba(201,146,42,0.22)",
+      "--btnActive": "#c9922a",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.35)",
+      "--inputBorder": "rgba(201,146,42,0.24)",
+      "--ringTrack": "rgba(201,146,42,0.28)",
+      "--shadow": "0 14px 28px rgba(0,0,0,0.55)",
+      "--glassBlur": "12px",
+      "--neuOutShadow": "8px 8px 18px rgba(0,0,0,0.50), -6px -6px 14px rgba(201,146,42,0.08)",
+      "--neuOutShadowSoft": "6px 6px 14px rgba(0,0,0,0.44), -5px -5px 12px rgba(201,146,42,0.06)",
+      "--neuInShadow": "inset 8px 8px 18px rgba(0,0,0,0.52), inset -6px -6px 14px rgba(201,146,42,0.08)",
+      "--neuInShadowSoft": "inset 6px 6px 14px rgba(0,0,0,0.46), inset -5px -5px 12px rgba(201,146,42,0.06)",
+      "--radius": "12px"
+    }
+  },
+  midnightVelvet: {
+    label: "Midnight Velvet",
+    defaultMode: "dark",
+    dark: {
+      "--bg": "repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(139,92,246,0.04) 3px, rgba(139,92,246,0.04) 4px), repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(139,92,246,0.025) 3px, rgba(139,92,246,0.025) 4px), radial-gradient(ellipse at 70% 15%, rgba(100,50,200,0.22), transparent 60%), linear-gradient(180deg, #0c0814 0%, #07050f 100%)",
+      "--headerBg": "rgba(9,6,18,0.94)",
+      "--panel": "rgba(139,92,246,0.08)",
+      "--panel2": "rgba(139,92,246,0.12)",
+      "--panel3": "rgba(0,0,0,0.32)",
+      "--border": "rgba(139,92,246,0.22)",
+      "--border2": "rgba(139,92,246,0.30)",
+      "--text": "#e8e4ff",
+      "--muted": "rgba(232,228,255,0.75)",
+      "--muted2": "rgba(232,228,255,0.55)",
+      "--btn": "rgba(139,92,246,0.14)",
+      "--btnHover": "rgba(139,92,246,0.24)",
+      "--btnActive": "#8b5cf6",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(0,0,0,0.32)",
+      "--inputBorder": "rgba(139,92,246,0.24)",
+      "--ringTrack": "rgba(139,92,246,0.28)",
+      "--shadow": "0 14px 28px rgba(0,0,0,0.50)",
+      "--glassBlur": "14px",
+      "--neuOutShadow": "8px 8px 18px rgba(0,0,0,0.44), -6px -6px 14px rgba(139,92,246,0.10)",
+      "--neuOutShadowSoft": "6px 6px 14px rgba(0,0,0,0.38), -5px -5px 12px rgba(139,92,246,0.08)",
+      "--neuInShadow": "inset 8px 8px 18px rgba(0,0,0,0.46), inset -6px -6px 14px rgba(139,92,246,0.10)",
+      "--neuInShadowSoft": "inset 6px 6px 14px rgba(0,0,0,0.40), inset -5px -5px 12px rgba(139,92,246,0.08)",
+      "--radius": "12px"
+    }
+  },
+  linenSlate: {
+    label: "Linen & Slate",
+    defaultMode: "light",
+    light: {
+      "--bg": "repeating-linear-gradient(45deg, rgba(0,0,0,0.018) 0px, rgba(0,0,0,0.018) 1px, transparent 1px, transparent 8px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.018) 0px, rgba(0,0,0,0.018) 1px, transparent 1px, transparent 8px), linear-gradient(160deg, #f8f4eb 0%, #ede5d0 100%)",
+      "--headerBg": "rgba(245,240,228,0.96)",
+      "--panel": "rgba(0,0,0,0.04)",
+      "--panel2": "rgba(0,0,0,0.065)",
+      "--panel3": "rgba(0,0,0,0.09)",
+      "--border": "rgba(43,87,151,0.16)",
+      "--border2": "rgba(43,87,151,0.24)",
+      "--text": "#1e1e2e",
+      "--muted": "rgba(30,30,46,0.70)",
+      "--muted2": "rgba(30,30,46,0.50)",
+      "--btn": "rgba(43,87,151,0.10)",
+      "--btnHover": "rgba(43,87,151,0.18)",
+      "--btnActive": "#2b5797",
+      "--danger": "#c62828",
+      "--inputBg": "rgba(255,255,255,0.82)",
+      "--inputBorder": "rgba(43,87,151,0.24)",
+      "--ringTrack": "rgba(43,87,151,0.18)",
+      "--shadow": "0 8px 20px rgba(0,0,0,0.12)",
+      "--glassBlur": "10px",
+      "--neuOutShadow": "8px 8px 18px rgba(166,145,115,0.36), -6px -6px 14px rgba(255,255,255,0.78)",
+      "--neuOutShadowSoft": "6px 6px 14px rgba(166,145,115,0.30), -5px -5px 12px rgba(255,255,255,0.72)",
+      "--neuInShadow": "inset 8px 8px 18px rgba(166,145,115,0.36), inset -6px -6px 14px rgba(255,255,255,0.68)",
+      "--neuInShadowSoft": "inset 6px 6px 14px rgba(166,145,115,0.30), inset -5px -5px 12px rgba(255,255,255,0.62)",
+      "--radius": "12px"
+    }
+  }
+};
 /* =========================
    THEME STATE
 ========================= */
