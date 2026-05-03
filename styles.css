@@ -127,7 +127,7 @@
       cursor:pointer;
       line-height:1;
       white-space:nowrap;
-      height:40px;
+      min-height:44px;
       box-shadow: var(--neuOutShadowSoft);
     }
     .hamburgerBtn:hover{ background:var(--btnHover); }
@@ -328,7 +328,7 @@
       font-size:14px;
       cursor:pointer;
       white-space:nowrap;
-      height:40px;
+      min-height:44px;
       box-shadow: var(--neuOutShadowSoft);
     }
     
@@ -605,7 +605,7 @@
     /* ---------- Day view ---------- */
     .columns{
       display:grid;
-      grid-template-columns:repeat(4, minmax(260px, 1fr));
+      grid-template-columns:repeat(4, minmax(0, 1fr));
       gap:10px;
       align-items:stretch;
 
@@ -660,12 +660,13 @@
       font-size:14px;
     }
 
-    /* Phase 8.5: make the entire chore row (including text) a tap target */
+    /* make the entire chore row (including text) a tap target — 44px min for iOS */
     .choreLabel{
       display:flex;
       align-items:center;
       gap:7px;
-      padding:7px 10px;
+      padding:9px 10px;
+      min-height:44px;
       border-radius:10px;
       cursor:pointer;
       user-select:none;
@@ -736,12 +737,13 @@
       transition:background 0.15s;
     }
 
-    /* Draggable weekly chore item */
+    /* Draggable weekly chore item — 44px min for touch */
     .weeklyDragItem{
       display:flex;
       align-items:center;
       gap:6px;
-      padding:6px 8px;
+      padding:10px 10px;
+      min-height:44px;
       border-radius:8px;
       background:var(--panel3);
       border:1px solid var(--border2);
@@ -1265,11 +1267,111 @@
       .groceryForm{ grid-template-columns: 1fr; }
     }
 
-    /* responsive */
+    /* ===== Theme Picker (Admin) ===== */
+    .themePicker{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+    }
+    .themeCard{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:8px;
+      padding:14px 18px;
+      border-radius:14px;
+      border:2px solid var(--border2);
+      background:var(--panel2);
+      cursor:pointer;
+      color:var(--text);
+      font-size:13px;
+      font-weight:600;
+      min-width:110px;
+      min-height:44px;
+      position:relative;
+      box-shadow:var(--neuOutShadowSoft);
+      transition:border-color 0.15s, box-shadow 0.15s;
+    }
+    .themeCard:hover{ border-color:var(--btnActive); background:var(--panel3); }
+    .themeCard:active{ box-shadow:var(--neuInShadowSoft); }
+    .themeCardActive{
+      border-color:var(--btnActive);
+      box-shadow:var(--neuInShadowSoft);
+    }
+    .themeCardSwatch{
+      width:36px;
+      height:36px;
+      border-radius:50%;
+      border:2px solid rgba(255,255,255,0.18);
+    }
+    .themeCardLabel{
+      text-align:center;
+      line-height:1.2;
+    }
+    .themeCardCheck{
+      position:absolute;
+      top:6px;
+      right:8px;
+      font-size:13px;
+      color:var(--btnActive);
+      font-weight:900;
+    }
+
+    /* ===== Responsive ===== */
+
+    /* iPad landscape (1024px) */
+    @media (max-width: 1024px){
+      .columns{ grid-template-columns:repeat(2, 1fr); }
+    }
+
+    /* iPad portrait / tablet (768px) */
     @media (max-width: 980px){
       .dashNotesRow{ grid-template-columns:1fr; }
-      .columns{ grid-template-columns:1fr 1fr; }
+      .columns{ grid-template-columns:repeat(2, 1fr); }
       .yesterdayGrid{ grid-template-columns:1fr 1fr; }
       .weeklyGrid{ grid-template-columns:1fr; }
       .listGrid{ grid-template-columns:1fr; }
+      .sidePanel{ width:80vw; max-width:340px; }
+    }
+
+    /* Phone */
+    @media (max-width: 600px){
+      .columns{ grid-template-columns:1fr; }
+      .dashNotesRow{ grid-template-columns:1fr; }
+      .yesterdayGrid{ grid-template-columns:1fr; }
+      header{ padding:8px; gap:6px; }
+      .navBtn{ padding:10px 10px; font-size:13px; }
+    }
+
+    /* ===== Theme: Linen & Slate (light mode) ===== */
+    [data-theme="linenSlate"]{
+      color-scheme: light;
+    }
+    [data-theme="linenSlate"] .choreLabel:active{
+      background: rgba(0,0,0,0.06);
+    }
+    [data-theme="linenSlate"] .weeklyZone.dropOver,
+    [data-theme="linenSlate"] .weeklyPoolItems.dropOver{
+      background:rgba(43,87,151,0.08);
+      outline:2px dashed rgba(43,87,151,0.45);
+    }
+    [data-theme="linenSlate"] header button.active{
+      color:#fff;
+    }
+    [data-theme="linenSlate"] .lockedOverlay{
+      border-color:rgba(43,87,151,0.28);
+    }
+
+    /* ===== Theme: Obsidian Leather ===== */
+    [data-theme="obsidianLeather"] .weeklyZone.dropOver,
+    [data-theme="obsidianLeather"] .weeklyPoolItems.dropOver{
+      background:rgba(201,146,42,0.10);
+      outline:2px dashed rgba(201,146,42,0.45);
+    }
+
+    /* ===== Theme: Midnight Velvet ===== */
+    [data-theme="midnightVelvet"] .weeklyZone.dropOver,
+    [data-theme="midnightVelvet"] .weeklyPoolItems.dropOver{
+      background:rgba(139,92,246,0.10);
+      outline:2px dashed rgba(139,92,246,0.45);
     }
