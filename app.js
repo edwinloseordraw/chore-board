@@ -2013,8 +2013,9 @@ if (person === "Dad") {
         const key = `${t.id}::${person}`;
         s[dayKey].checks[key] = cb.checked;
         saveDailyState(s);
-        // Re-render to refresh pressed styling, but do NOT sync other people's checkboxes.
+        // Re-render columns to refresh pressed styling, then repopulate weekly zones.
         renderDailyColumns(dayKey);
+        renderWeeklySections(dayKey);
       };
 
       // Label wraps checkbox + text so the text is part of the tap target
